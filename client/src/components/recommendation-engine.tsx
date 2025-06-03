@@ -37,13 +37,13 @@ export default function RecommendationEngine({
     isLoading,
     error,
     recommendationsData,
-    hasRecommendations: !!recommendationsData?.recommendations?.length
+    hasRecommendations: !!recommendationsData?.recommendations?.length,
+    dataType: typeof recommendationsData,
+    isArray: Array.isArray(recommendationsData)
   });
 
-  // Handle both direct array response and wrapped object response
-  const recommendations: Recommendation[] = Array.isArray(recommendationsData) 
-    ? recommendationsData 
-    : (recommendationsData?.recommendations || []);
+  // Handle the response format from the API
+  const recommendations: Recommendation[] = recommendationsData?.recommendations || [];
   const topRecommendation = recommendations[0];
   const alternativeRecommendations = recommendations.slice(1, 4);
 

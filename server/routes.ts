@@ -67,10 +67,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allExercises = await storage.getAllExercises();
       const candidateExercises = allExercises.filter(ex => ex.id !== exerciseAId);
 
-      // Calculate compatibility scores using pairing logic
+      // Calculate compatibility scores using enhanced pairing logic
       const recommendations = candidateExercises.map(exerciseB => {
-        const score = calculateCompatibilityScore(exerciseA, exerciseB);
-        const reasoning = generatePairingReasoning(exerciseA, exerciseB);
+        const { score, reasoning } = calculateCompatibilityScoreWithReasoning(exerciseA, exerciseB);
         
         return {
           exercise: exerciseB,
@@ -126,56 +125,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-// Enhanced trainer-inspired pairing logic based on your requirements
-function calculateCompatibilityScore(exerciseA: Exercise, exerciseB: Exercise): number {
+// Enhanced trainer-inspired pairing logic using all 22 Airtable fields
+function calculateCompatibilityScoreWithReasoning(exerciseA: Exercise, exerciseB: Exercise): { score: number; reasoning: string[] } {
   let score = 0;
-  
-  // Anchor Type preference (highest priority) - prefer Anchored → Mobile
-  if (exerciseA.anchorType === "Anchored" && exerciseB.anchorType === "Mobile") {
-    score += 35;
-  } else if (exerciseA.anchorType === "Mobile" && exerciseB.anchorType === "Anchored") {
-    score += 25;
-  }
-  
-  // Setup Time efficiency - prefer B is Low/Medium if A is High
-  if (exerciseA.setupTime === "High" && (exerciseB.setupTime === "Low" || exerciseB.setupTime === "Medium")) {
-    score += 25;
-  } else if (exerciseA.setupTime === exerciseB.setupTime) {
-    score += 15;
-  }
-  
-  // Equipment Zone preference - same zone or nearby
-  if (exerciseA.equipmentZone === exerciseB.equipmentZone) {
-    score += 20;
-  }
-  
-  // Best Paired With tags matching
-  if (exerciseA.bestPairedWith && exerciseB.bestPairedWith) {
-    const hasMatchingTags = exerciseA.bestPairedWith.some(tag => 
-      exerciseB.bestPairedWith?.includes(tag)
-    );
-    if (hasMatchingTags) {
-      score += 15;
-    }
-  }
+  const reasons: string[] = [];
   
   // Avoid pairing exercise with itself
   if (exerciseA.id === exerciseB.id) {
-    return 0;
+    return { score: 0, reasoning: [] };
   }
   
-  // Legacy criteria (lower priority but still valuable)
-  // Opposing movement patterns
-  if (isOpposingMovementPattern(exerciseA.movementPattern, exerciseB.movementPattern)) {
+  // 1. Pairing Compatibility Tags (highest priority - 40 points)
+  if (exerciseA.pairingCompatibility && exerciseB.exerciseType) {
+    if (exerciseA.pairingCompatibility.includes(exerciseB.exerciseType)) {
+      score += 40;
+      reasons.push(`${exerciseA.name} pairs well with ${exerciseB.exerciseType} exercises`);
+    }
+  }
+  
+  // 2. Anchor Type preference (35 points) - prefer Anchored → Mobile
+  if (exerciseA.anchorType === "Anchored" && exerciseB.anchorType === "Mobile") {
+    score += 35;
+    reasons.push("Optimal flow: anchored exercise to mobile exercise");
+  } else if (exerciseA.anchorType === "Mobile" && exerciseB.anchorType === "Anchored") {
+    score += 25;
+    reasons.push("Good flow: mobile to anchored transition");
+  }
+  
+  // 3. Exercise Type Opposition (30 points) - Push/Pull pairing
+  if (exerciseA.exerciseType && exerciseB.exerciseType) {
+    if ((exerciseA.exerciseType === "Push" && exerciseB.exerciseType === "Pull") ||
+        (exerciseA.exerciseType === "Pull" && exerciseB.exerciseType === "Push")) {
+      score += 30;
+      reasons.push("Perfect push-pull antagonist pairing");
+    }
+  }
+  
+  // 4. Equipment Zone efficiency (25 points)
+  if (exerciseA.equipmentZone === exerciseB.equipmentZone) {
+    score += 25;
+    reasons.push(`Both use ${exerciseA.equipmentZone} - minimal setup transition`);
+  }
+  
+  // 5. Setup Time efficiency (20 points)
+  if (exerciseA.setupTime === "High" && (exerciseB.setupTime === "Low" || exerciseB.setupTime === "Medium")) {
+    score += 20;
+    reasons.push("Efficient transition from complex to simple setup");
+  } else if (exerciseA.setupTime === exerciseB.setupTime) {
+    score += 15;
+    reasons.push("Consistent setup complexity");
+  }
+  
+  // 6. Best Paired With tags (15 points)
+  if (exerciseA.bestPairedWith && exerciseB.tags) {
+    const hasMatchingTags = exerciseA.bestPairedWith.some(tag => 
+      exerciseB.tags?.includes(tag)
+    );
+    if (hasMatchingTags) {
+      score += 15;
+      reasons.push("Trainer-recommended pairing tags match");
+    }
+  }
+  
+  // 7. Primary Muscle Group differentiation (10 points)
+  if (exerciseA.primaryMuscleGroup && exerciseB.primaryMuscleGroup && 
+      exerciseA.primaryMuscleGroup !== exerciseB.primaryMuscleGroup) {
     score += 10;
+    reasons.push("Different muscle groups allow active recovery");
   }
   
-  // Different primary muscle groups (recovery)
-  if (!hasMuscleOverlap(exerciseA.primaryMuscles, exerciseB.primaryMuscles)) {
-    score += 8;
+  // 8. Difficulty Level matching (5 points)
+  if (exerciseA.difficultyLevel === exerciseB.difficultyLevel) {
+    score += 5;
+    reasons.push("Similar difficulty levels for consistent intensity");
   }
   
-  return Math.min(score, 100);
+  // Add fallback reasoning if no specific reasons found
+  if (reasons.length === 0) {
+    reasons.push("Compatible exercise pairing based on movement patterns");
+  }
+  
+  return { score: Math.min(score, 100), reasoning: reasons };
 }
 
 function isOpposingMovementPattern(patternA: string, patternB: string): boolean {
@@ -203,29 +233,13 @@ function isCompoundIsolationPair(exerciseA: any, exerciseB: any): boolean {
   return isACompound !== isBCompound;
 }
 
-function generatePairingReasoning(exerciseA: any, exerciseB: any): string[] {
-  const reasoning = [];
-  
-  if (isOpposingMovementPattern(exerciseA.movementPattern, exerciseB.movementPattern)) {
-    reasoning.push("Opposing movement patterns for balanced training");
-  }
-  
-  if (exerciseA.equipment === exerciseB.equipment) {
-    reasoning.push("Same equipment for efficient transitions");
-  }
-  
-  if (!hasMuscleOverlap(exerciseA.primaryMuscles, exerciseB.primaryMuscles)) {
-    reasoning.push("Different muscle groups allow for active recovery");
-  }
-  
-  if (isCompoundIsolationPair(exerciseA, exerciseB)) {
-    reasoning.push("Compound and isolation exercise pairing");
-  }
-  
-  const difficultyDiff = Math.abs(exerciseA.difficulty - exerciseB.difficulty);
-  if (difficultyDiff <= 1) {
-    reasoning.push("Similar difficulty levels for consistent intensity");
-  }
-  
-  return reasoning;
+// Legacy compatibility functions
+function calculateCompatibilityScore(exerciseA: Exercise, exerciseB: Exercise): number {
+  const result = calculateCompatibilityScoreWithReasoning(exerciseA, exerciseB);
+  return result.score;
+}
+
+function generatePairingReasoning(exerciseA: Exercise, exerciseB: Exercise): string[] {
+  const result = calculateCompatibilityScoreWithReasoning(exerciseA, exerciseB);
+  return result.reasoning;
 }
