@@ -149,26 +149,31 @@ export class AirtableStorage implements IStorage {
 
   async getExercisesByCategory(category: string): Promise<Exercise[]> {
     await this.refreshCache();
-    return Array.from(this.exerciseCache.values()).filter(
-      exercise => exercise.category === category
+    return Array.from(this.exerciseCache.values()).filter(exercise => 
+      exercise.exerciseType?.toLowerCase() === category.toLowerCase() ||
+      exercise.primaryMuscleGroup?.toLowerCase() === category.toLowerCase() ||
+      exercise.exerciseCategory.some(cat => cat.toLowerCase() === category.toLowerCase()) ||
+      exercise.category.toLowerCase() === category.toLowerCase()
     );
   }
 
   async getExercisesByEquipment(equipment: string): Promise<Exercise[]> {
     await this.refreshCache();
-    return Array.from(this.exerciseCache.values()).filter(
-      exercise => exercise.equipment === equipment
+    return Array.from(this.exerciseCache.values()).filter(exercise => 
+      exercise.equipment.toLowerCase().includes(equipment.toLowerCase())
     );
   }
 
   async searchExercises(query: string): Promise<Exercise[]> {
     await this.refreshCache();
     const lowercaseQuery = query.toLowerCase();
-    return Array.from(this.exerciseCache.values()).filter(
-      exercise => 
-        exercise.name.toLowerCase().includes(lowercaseQuery) ||
-        exercise.primaryMuscles.some(muscle => muscle.toLowerCase().includes(lowercaseQuery)) ||
-        exercise.category.toLowerCase().includes(lowercaseQuery)
+    return Array.from(this.exerciseCache.values()).filter(exercise => 
+      exercise.name.toLowerCase().includes(lowercaseQuery) ||
+      exercise.primaryMuscleGroup?.toLowerCase().includes(lowercaseQuery) ||
+      exercise.exerciseType?.toLowerCase().includes(lowercaseQuery) ||
+      exercise.equipment.toLowerCase().includes(lowercaseQuery) ||
+      exercise.tags.some(tag => tag.toLowerCase().includes(lowercaseQuery)) ||
+      exercise.exerciseCategory.some(cat => cat.toLowerCase().includes(lowercaseQuery))
     );
   }
 

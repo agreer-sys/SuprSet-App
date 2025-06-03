@@ -23,7 +23,16 @@ export default function ExerciseSelection({
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [equipmentFilter, setEquipmentFilter] = useState("All Equipment");
 
-  const { data: exercises = [], isLoading } = useQuery({
+  // Get dynamic categories and equipment from your Airtable data
+  const { data: categories = [] } = useQuery<string[]>({
+    queryKey: ["/api/exercises/categories"],
+  });
+
+  const { data: equipmentTypes = [] } = useQuery<string[]>({
+    queryKey: ["/api/exercises/equipment"],
+  });
+
+  const { data: exercises = [], isLoading } = useQuery<Exercise[]>({
     queryKey: ["/api/exercises/search", { q: searchQuery, category: categoryFilter, equipment: equipmentFilter }],
     enabled: true,
   });
@@ -76,11 +85,11 @@ export default function ExerciseSelection({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="All Categories">All Categories</SelectItem>
-                <SelectItem value="push">Push</SelectItem>
-                <SelectItem value="pull">Pull</SelectItem>
-                <SelectItem value="legs">Legs</SelectItem>
-                <SelectItem value="core">Core</SelectItem>
-                <SelectItem value="compound">Compound</SelectItem>
+                {categories.map((category: string) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             
@@ -90,11 +99,11 @@ export default function ExerciseSelection({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="All Equipment">All Equipment</SelectItem>
-                <SelectItem value="barbell">Barbell</SelectItem>
-                <SelectItem value="dumbbell">Dumbbell</SelectItem>
-                <SelectItem value="bodyweight">Bodyweight</SelectItem>
-                <SelectItem value="machine">Machine</SelectItem>
-                <SelectItem value="cable">Cable</SelectItem>
+                {equipmentTypes.map((equipment: string) => (
+                  <SelectItem key={equipment} value={equipment}>
+                    {equipment}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

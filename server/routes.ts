@@ -37,6 +37,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get unique categories from exercises (before :id route)
+  app.get("/api/exercises/categories", async (req, res) => {
+    try {
+      const allExercises = await storage.getAllExercises();
+      const categories = new Set<string>();
+      
+      allExercises.forEach(exercise => {
+        if (exercise.exerciseType) categories.add(exercise.exerciseType);
+        if (exercise.primaryMuscleGroup) categories.add(exercise.primaryMuscleGroup);
+        exercise.exerciseCategory.forEach(cat => categories.add(cat));
+      });
+      
+      res.json(Array.from(categories).sort());
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  // Get unique equipment types from exercises (before :id route)
+  app.get("/api/exercises/equipment", async (req, res) => {
+    try {
+      const allExercises = await storage.getAllExercises();
+      const equipment = new Set<string>();
+      
+      allExercises.forEach(exercise => {
+        const equipmentList = exercise.equipment.split(',').map(eq => eq.trim());
+        equipmentList.forEach(eq => {
+          if (eq) equipment.add(eq);
+        });
+      });
+      
+      res.json(Array.from(equipment).sort());
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch equipment" });
+    }
+  });
+
   // Get exercise by ID
   app.get("/api/exercises/:id", async (req, res) => {
     try {
