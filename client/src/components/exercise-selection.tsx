@@ -20,7 +20,7 @@ export default function ExerciseSelection({
   onShowInstructions 
 }: ExerciseSelectionProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("All Categories");
+  const [categoryFilter, setCategoryFilter] = useState("Exercise Type");
   const [equipmentFilter, setEquipmentFilter] = useState("All Equipment");
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<Exercise[]>([]);
@@ -167,7 +167,7 @@ export default function ExerciseSelection({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="All Categories">All Categories</SelectItem>
+                <SelectItem value="Exercise Type">Exercise Type</SelectItem>
                 {categories.map((category: string) => (
                   <SelectItem key={category} value={category}>
                     {category}
