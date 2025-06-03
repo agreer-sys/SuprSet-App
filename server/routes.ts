@@ -37,21 +37,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get unique categories from exercises (before :id route)
+  // Get unique Exercise Type values from Airtable (before :id route)
   app.get("/api/exercises/categories", async (req, res) => {
     try {
       const allExercises = await storage.getAllExercises();
-      const categories = new Set<string>();
+      const exerciseTypes = new Set<string>();
       
       allExercises.forEach(exercise => {
-        if (exercise.exerciseType) categories.add(exercise.exerciseType);
-        if (exercise.primaryMuscleGroup) categories.add(exercise.primaryMuscleGroup);
-        exercise.exerciseCategory.forEach(cat => categories.add(cat));
+        if (exercise.exerciseType) exerciseTypes.add(exercise.exerciseType);
       });
       
-      res.json(Array.from(categories).sort());
+      res.json(Array.from(exerciseTypes).sort());
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch categories" });
+      res.status(500).json({ message: "Failed to fetch exercise types" });
     }
   });
 
