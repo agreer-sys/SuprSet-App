@@ -16,6 +16,7 @@ export interface IStorage {
   getExercise(id: number): Promise<Exercise | undefined>;
   getAllExercises(): Promise<Exercise[]>;
   getExercisesByCategory(category: string): Promise<Exercise[]>;
+  getExercisesByExerciseType(exerciseType: string): Promise<Exercise[]>;
   getExercisesByEquipment(equipment: string): Promise<Exercise[]>;
   searchExercises(query: string): Promise<Exercise[]>;
   createExercise(exercise: InsertExercise): Promise<Exercise>;
@@ -154,6 +155,13 @@ export class AirtableStorage implements IStorage {
       exercise.primaryMuscleGroup?.toLowerCase() === category.toLowerCase() ||
       exercise.exerciseCategory.some(cat => cat.toLowerCase() === category.toLowerCase()) ||
       exercise.category.toLowerCase() === category.toLowerCase()
+    );
+  }
+
+  async getExercisesByExerciseType(exerciseType: string): Promise<Exercise[]> {
+    await this.refreshCache();
+    return Array.from(this.exerciseCache.values()).filter(exercise => 
+      exercise.exerciseType?.toLowerCase() === exerciseType.toLowerCase()
     );
   }
 

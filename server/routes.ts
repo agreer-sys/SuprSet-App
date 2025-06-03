@@ -24,7 +24,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (q) {
         exercises = await storage.searchExercises(q as string);
       } else if (category && category !== "Exercise Type") {
-        exercises = await storage.getExercisesByCategory(category as string);
+        exercises = await storage.getExercisesByExerciseType(category as string);
       } else if (equipment && equipment !== "All Equipment") {
         exercises = await storage.getExercisesByEquipment(equipment as string);
       } else {
