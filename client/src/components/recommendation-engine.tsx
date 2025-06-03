@@ -31,16 +31,7 @@ export default function RecommendationEngine({
     enabled: !!selectedExercise,
   });
 
-  // Debug logging
-  console.log("RecommendationEngine Debug:", {
-    selectedExercise: selectedExercise?.name,
-    isLoading,
-    error,
-    recommendationsData,
-    hasRecommendations: !!recommendationsData?.recommendations?.length,
-    dataType: typeof recommendationsData,
-    isArray: Array.isArray(recommendationsData)
-  });
+  // Clean production code - debug logging removed
 
   // Handle the response format from the API
   const recommendations: Recommendation[] = recommendationsData?.recommendations || [];
