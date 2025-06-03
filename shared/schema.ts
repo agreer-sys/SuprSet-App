@@ -16,6 +16,14 @@ export const exercises = pgTable("exercises", {
     execution: string[];
     safetyTips: string[];
   }>().notNull(),
+  // Airtable specific fields
+  anchorType: text("anchor_type"), // Anchored, Mobile
+  setupTime: text("setup_time"), // Low, Medium, High
+  equipmentZone: text("equipment_zone"), // zone identifier
+  bestPairedWith: text("best_paired_with").array(), // tags like Core, Pull, Anti-Rotation
+  coachingTips: text("coaching_tips").array(),
+  mistakes: text("mistakes").array(),
+  variations: text("variations").array(),
 });
 
 export const workoutSessions = pgTable("workout_sessions", {

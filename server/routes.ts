@@ -126,34 +126,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-// Trainer-inspired pairing logic
-function calculateCompatibilityScore(exerciseA: any, exerciseB: any): number {
+// Enhanced trainer-inspired pairing logic based on your requirements
+function calculateCompatibilityScore(exerciseA: Exercise, exerciseB: Exercise): number {
   let score = 0;
   
-  // Opposing muscle groups (highest priority)
-  if (isOpposingMovementPattern(exerciseA.movementPattern, exerciseB.movementPattern)) {
-    score += 40;
+  // Anchor Type preference (highest priority) - prefer Anchored → Mobile
+  if (exerciseA.anchorType === "Anchored" && exerciseB.anchorType === "Mobile") {
+    score += 35;
+  } else if (exerciseA.anchorType === "Mobile" && exerciseB.anchorType === "Anchored") {
+    score += 25;
   }
   
-  // Same equipment (efficiency)
-  if (exerciseA.equipment === exerciseB.equipment) {
+  // Setup Time efficiency - prefer B is Low/Medium if A is High
+  if (exerciseA.setupTime === "High" && (exerciseB.setupTime === "Low" || exerciseB.setupTime === "Medium")) {
     score += 25;
+  } else if (exerciseA.setupTime === exerciseB.setupTime) {
+    score += 15;
+  }
+  
+  // Equipment Zone preference - same zone or nearby
+  if (exerciseA.equipmentZone === exerciseB.equipmentZone) {
+    score += 20;
+  }
+  
+  // Best Paired With tags matching
+  if (exerciseA.bestPairedWith && exerciseB.bestPairedWith) {
+    const hasMatchingTags = exerciseA.bestPairedWith.some(tag => 
+      exerciseB.bestPairedWith?.includes(tag)
+    );
+    if (hasMatchingTags) {
+      score += 15;
+    }
+  }
+  
+  // Avoid pairing exercise with itself
+  if (exerciseA.id === exerciseB.id) {
+    return 0;
+  }
+  
+  // Legacy criteria (lower priority but still valuable)
+  // Opposing movement patterns
+  if (isOpposingMovementPattern(exerciseA.movementPattern, exerciseB.movementPattern)) {
+    score += 10;
   }
   
   // Different primary muscle groups (recovery)
   if (!hasMuscleOverlap(exerciseA.primaryMuscles, exerciseB.primaryMuscles)) {
-    score += 20;
-  }
-  
-  // Difficulty balance
-  const difficultyDiff = Math.abs(exerciseA.difficulty - exerciseB.difficulty);
-  if (difficultyDiff <= 1) {
-    score += 10;
-  }
-  
-  // Compound + isolation pairing
-  if (isCompoundIsolationPair(exerciseA, exerciseB)) {
-    score += 5;
+    score += 8;
   }
   
   return Math.min(score, 100);
