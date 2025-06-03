@@ -4,22 +4,27 @@ interface AirtableRecord {
   id: string;
   fields: {
     "Exercise Name"?: string;
-    "Category"?: string;
+    "Alternative Names"?: string;
+    "Primary Muscle Group"?: string;
+    "Secondary Muscle Group"?: string | string[];
     "Equipment"?: string;
-    "Primary Muscles"?: string;
-    "Secondary Muscles"?: string;
-    "Movement Pattern"?: string;
-    "Difficulty"?: number;
-    "Setup Instructions"?: string;
-    "Execution Steps"?: string;
-    "Safety Tips"?: string;
+    "Difficulty Level"?: string;
+    "Exercise Type"?: string;
+    "Exercise Category"?: string | string[];
+    "Pairing Compatibility"?: string | string[];
+    "Coaching Bullet Points"?: string;
+    "Common Mistakes"?: string;
+    "Exercise Variations"?: string;
+    "Contraindications"?: string;
+    "Exercise Tempo"?: string;
+    "Ideal Rep Range"?: string;
+    "Rest Period (sec)"?: number;
+    "Estimated Time per Set (sec)"?: number;
+    "Tags"?: string | string[];
     "Anchor Type"?: string;
-    "Setup Time"?: string;
+    "Best Paired With"?: string | string[];
     "Equipment Zone"?: string;
-    "Best Paired With"?: string;
-    "Coaching Tips"?: string;
-    "Mistakes"?: string;
-    "Variations"?: string;
+    "Setup Time"?: string;
   };
 }
 
@@ -71,27 +76,55 @@ export class AirtableService {
     const fields = record.fields;
     
     return {
-      id: record.id.hashCode(), // Convert Airtable ID to number
+      id: record.id.hashCode(),
       name: fields["Exercise Name"] || "Unknown Exercise",
-      category: fields["Category"]?.toLowerCase() || "general",
-      equipment: fields["Equipment"]?.toLowerCase() || "bodyweight",
-      primaryMuscles: this.parseArrayField(fields["Primary Muscles"]),
-      secondaryMuscles: this.parseArrayField(fields["Secondary Muscles"]),
-      movementPattern: fields["Movement Pattern"]?.toLowerCase().replace(/\s+/g, '_') || "general",
-      difficulty: fields["Difficulty"] || 1,
-      instructions: {
-        setup: fields["Setup Instructions"] || "No setup instructions provided",
-        execution: this.parseInstructionField(fields["Execution Steps"]),
-        safetyTips: this.parseInstructionField(fields["Safety Tips"])
-      },
+      // New comprehensive fields from your 22-field Airtable structure
+      alternativeNames: fields["Alternative Names"] || null,
+      primaryMuscleGroup: fields["Primary Muscle Group"] || null,
+      secondaryMuscleGroup: this.parseArrayField(fields["Secondary Muscle Group"]),
+      equipment: fields["Equipment"] || "bodyweight",
+      difficultyLevel: fields["Difficulty Level"] || null,
+      exerciseType: fields["Exercise Type"] || null,
+      exerciseCategory: this.parseArrayField(fields["Exercise Category"]),
+      pairingCompatibility: this.parseArrayField(fields["Pairing Compatibility"]),
+      coachingBulletPoints: fields["Coaching Bullet Points"] || null,
+      commonMistakes: fields["Common Mistakes"] || null,
+      exerciseVariations: fields["Exercise Variations"] || null,
+      contraindications: fields["Contraindications"] || null,
+      exerciseTempo: fields["Exercise Tempo"] || null,
+      idealRepRange: fields["Ideal Rep Range"] || null,
+      restPeriodSec: fields["Rest Period (sec)"] || null,
+      estimatedTimePerSetSec: fields["Estimated Time per Set (sec)"] || null,
+      tags: this.parseArrayField(fields["Tags"]),
       anchorType: fields["Anchor Type"] ? String(fields["Anchor Type"]) : null,
       setupTime: fields["Setup Time"] ? String(fields["Setup Time"]) : null,
       equipmentZone: fields["Equipment Zone"] ? String(fields["Equipment Zone"]) : null,
       bestPairedWith: this.parseArrayField(fields["Best Paired With"]),
-      coachingTips: this.parseInstructionField(fields["Coaching Tips"]),
-      mistakes: this.parseInstructionField(fields["Mistakes"]),
-      variations: this.parseInstructionField(fields["Variations"])
+      
+      // Legacy fields for compatibility with existing frontend
+      category: this.parseArrayField(fields["Exercise Category"])[0] || "general",
+      primaryMuscles: fields["Primary Muscle Group"] ? [fields["Primary Muscle Group"]] : [],
+      secondaryMuscles: this.parseArrayField(fields["Secondary Muscle Group"]),
+      movementPattern: fields["Exercise Type"]?.toLowerCase() || "general",
+      difficulty: this.mapDifficultyToNumber(fields["Difficulty Level"]),
+      instructions: {
+        setup: "See coaching notes",
+        execution: fields["Coaching Bullet Points"] ? this.parseInstructionField(fields["Coaching Bullet Points"]) : [],
+        safetyTips: fields["Common Mistakes"] ? this.parseInstructionField(fields["Common Mistakes"]) : []
+      },
+      coachingTips: fields["Coaching Bullet Points"] ? this.parseInstructionField(fields["Coaching Bullet Points"]) : [],
+      mistakes: fields["Common Mistakes"] ? this.parseInstructionField(fields["Common Mistakes"]) : [],
+      variations: fields["Exercise Variations"] ? this.parseInstructionField(fields["Exercise Variations"]) : []
     };
+  }
+
+  private mapDifficultyToNumber(difficulty: string | undefined): number {
+    switch (difficulty?.toLowerCase()) {
+      case "beginner": return 1;
+      case "intermediate": return 2;
+      case "advanced": return 3;
+      default: return 1;
+    }
   }
 
   async getAllExercises(): Promise<Exercise[]> {

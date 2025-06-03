@@ -5,25 +5,44 @@ import { z } from "zod";
 export const exercises = pgTable("exercises", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  category: text("category").notNull(), // push, pull, legs, core, compound
-  equipment: text("equipment").notNull(), // barbell, dumbbell, bodyweight, machine, cable
-  primaryMuscles: text("primary_muscles").array().notNull(),
-  secondaryMuscles: text("secondary_muscles").array().notNull(),
-  movementPattern: text("movement_pattern").notNull(), // horizontal_push, horizontal_pull, vertical_push, vertical_pull, squat, hinge, lunge, rotation
-  difficulty: integer("difficulty").notNull(), // 1-5 scale
+  
+  // All 22 fields from your Airtable database
+  alternativeNames: text("alternative_names"),
+  primaryMuscleGroup: text("primary_muscle_group"),
+  secondaryMuscleGroup: text("secondary_muscle_group").array().notNull().default([]),
+  equipment: text("equipment").notNull(),
+  difficultyLevel: text("difficulty_level"),
+  exerciseType: text("exercise_type"), // Push, Pull, etc.
+  exerciseCategory: text("exercise_category").array().notNull().default([]), // Hypertrophy, etc.
+  pairingCompatibility: text("pairing_compatibility").array().notNull().default([]), // Pull, Core, etc.
+  coachingBulletPoints: text("coaching_bullet_points"),
+  commonMistakes: text("common_mistakes"),
+  exerciseVariations: text("exercise_variations"),
+  contraindications: text("contraindications"),
+  exerciseTempo: text("exercise_tempo"),
+  idealRepRange: text("ideal_rep_range"),
+  restPeriodSec: integer("rest_period_sec"),
+  estimatedTimePerSetSec: integer("estimated_time_per_set_sec"),
+  tags: text("tags").array().notNull().default([]),
+  anchorType: text("anchor_type"), // Anchored, Mobile
+  bestPairedWith: text("best_paired_with").array().notNull().default([]),
+  equipmentZone: text("equipment_zone"),
+  setupTime: text("setup_time"), // Low, Medium, High
+  
+  // Legacy fields for backward compatibility
+  category: text("category").notNull().default("general"),
+  primaryMuscles: text("primary_muscles").array().notNull().default([]),
+  secondaryMuscles: text("secondary_muscles").array().notNull().default([]),
+  movementPattern: text("movement_pattern").notNull().default("general"),
+  difficulty: integer("difficulty").notNull().default(1),
   instructions: json("instructions").$type<{
     setup: string;
     execution: string[];
     safetyTips: string[];
   }>().notNull(),
-  // Airtable specific fields
-  anchorType: text("anchor_type"), // Anchored, Mobile
-  setupTime: text("setup_time"), // Low, Medium, High
-  equipmentZone: text("equipment_zone"), // zone identifier
-  bestPairedWith: text("best_paired_with").array(), // tags like Core, Pull, Anti-Rotation
-  coachingTips: text("coaching_tips").array(),
-  mistakes: text("mistakes").array(),
-  variations: text("variations").array(),
+  coachingTips: text("coaching_tips").array().notNull().default([]),
+  mistakes: text("mistakes").array().notNull().default([]),
+  variations: text("variations").array().notNull().default([]),
 });
 
 export const workoutSessions = pgTable("workout_sessions", {

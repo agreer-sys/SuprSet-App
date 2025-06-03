@@ -40,7 +40,10 @@ export default function RecommendationEngine({
     hasRecommendations: !!recommendationsData?.recommendations?.length
   });
 
-  const recommendations: Recommendation[] = recommendationsData?.recommendations || [];
+  // Handle both direct array response and wrapped object response
+  const recommendations: Recommendation[] = Array.isArray(recommendationsData) 
+    ? recommendationsData 
+    : (recommendationsData?.recommendations || []);
   const topRecommendation = recommendations[0];
   const alternativeRecommendations = recommendations.slice(1, 4);
 
