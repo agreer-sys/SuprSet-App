@@ -26,9 +26,18 @@ export default function RecommendationEngine({
   onShowInstructions,
   onClearSelection 
 }: RecommendationEngineProps) {
-  const { data: recommendationsData, isLoading } = useQuery({
+  const { data: recommendationsData, isLoading, error } = useQuery({
     queryKey: ["/api/exercises", selectedExercise?.id, "recommendations"],
     enabled: !!selectedExercise,
+  });
+
+  // Debug logging
+  console.log("RecommendationEngine Debug:", {
+    selectedExercise: selectedExercise?.name,
+    isLoading,
+    error,
+    recommendationsData,
+    hasRecommendations: !!recommendationsData?.recommendations?.length
   });
 
   const recommendations: Recommendation[] = recommendationsData?.recommendations || [];
