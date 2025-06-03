@@ -22,6 +22,7 @@ export default function ExerciseSelection({
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Exercise Type");
   const [equipmentFilter, setEquipmentFilter] = useState("All Equipment");
+  const [muscleGroupFilter, setMuscleGroupFilter] = useState("All Muscle Groups");
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<Exercise[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -40,11 +41,16 @@ export default function ExerciseSelection({
     queryKey: ["/api/exercises/equipment"],
   });
 
+  const { data: muscleGroups = [] } = useQuery<string[]>({
+    queryKey: ["/api/exercises/muscle-groups"],
+  });
+
   // Build query string for filtering
   const queryParams = new URLSearchParams();
   if (searchQuery) queryParams.set('q', searchQuery);
   if (categoryFilter !== "Exercise Type") queryParams.set('category', categoryFilter);
   if (equipmentFilter !== "All Equipment") queryParams.set('equipment', equipmentFilter);
+  if (muscleGroupFilter !== "All Muscle Groups") queryParams.set('muscleGroup', muscleGroupFilter);
   
   const { data: exercises = [], isLoading } = useQuery<Exercise[]>({
     queryKey: [`/api/exercises/search${queryParams.toString() ? '?' + queryParams.toString() : ''}`],
@@ -191,6 +197,20 @@ export default function ExerciseSelection({
                 {equipmentTypes.map((equipment: string) => (
                   <SelectItem key={equipment} value={equipment}>
                     {equipment}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={muscleGroupFilter} onValueChange={setMuscleGroupFilter}>
+              <SelectTrigger className="flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All Muscle Groups">All Muscle Groups</SelectItem>
+                {muscleGroups.map((muscleGroup: string) => (
+                  <SelectItem key={muscleGroup} value={muscleGroup}>
+                    {muscleGroup}
                   </SelectItem>
                 ))}
               </SelectContent>

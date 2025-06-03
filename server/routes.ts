@@ -18,8 +18,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Search exercises
   app.get("/api/exercises/search", async (req, res) => {
     try {
-      const { q, category, equipment } = req.query;
-      console.log("Search params:", { q, category, equipment });
+      const { q, category, equipment, muscleGroup } = req.query;
+      console.log("Search params:", { q, category, equipment, muscleGroup });
       
       let exercises;
       if (q) {
@@ -32,7 +32,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (category && category !== "Exercise Type") {
           console.log("Filtering by Exercise Type:", category);
           exercises = exercises.filter(exercise => 
-            exercise.exerciseType?.toLowerCase() === category.toLowerCase()
+            exercise.exerciseType?.toLowerCase() === (category as string).toLowerCase()
           );
         }
         
@@ -40,7 +40,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (equipment && equipment !== "All Equipment") {
           console.log("Filtering by Equipment:", equipment);
           exercises = exercises.filter(exercise => 
-            exercise.equipment.toLowerCase().includes(equipment.toLowerCase())
+            exercise.equipment.toLowerCase().includes((equipment as string).toLowerCase())
+          );
+        }
+        
+        // Apply Primary Muscle Group filter
+        if (muscleGroup && muscleGroup !== "All Muscle Groups") {
+          console.log("Filtering by Primary Muscle Group:", muscleGroup);
+          exercises = exercises.filter(exercise => 
+            exercise.primaryMuscleGroup?.toLowerCase() === (muscleGroup as string).toLowerCase()
           );
         }
       }
@@ -85,6 +93,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(Array.from(equipment).sort());
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch equipment" });
+    }
+  });
+
+  // Get unique Primary Muscle Groups from Airtable (before :id route)
+  app.get("/api/exercises/muscle-groups", async (req, res) => {
+    try {
+      const allExercises = await storage.getAllExercises();
+      const muscleGroups = new Set<string>();
+      
+      allExercises.forEach(exercise => {
+        if (exercise.primaryMuscleGroup) muscleGroups.add(exercise.primaryMuscleGroup);
+      });
+      
+      res.json(Array.from(muscleGroups).sort());
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch muscle groups" });
     }
   });
 
