@@ -19,11 +19,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/exercises/search", async (req, res) => {
     try {
       const { q, category, equipment } = req.query;
+      console.log("Search params:", { q, category, equipment });
       
       let exercises;
       if (q) {
         exercises = await storage.searchExercises(q as string);
       } else if (category && category !== "Exercise Type") {
+        console.log("Filtering by Exercise Type:", category);
         exercises = await storage.getExercisesByExerciseType(category as string);
       } else if (equipment && equipment !== "All Equipment") {
         exercises = await storage.getExercisesByEquipment(equipment as string);
@@ -31,8 +33,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         exercises = await storage.getAllExercises();
       }
       
+      console.log(`Returning ${exercises.length} exercises`);
       res.json(exercises);
     } catch (error) {
+      console.error("Search error:", error);
       res.status(500).json({ message: "Failed to search exercises" });
     }
   });

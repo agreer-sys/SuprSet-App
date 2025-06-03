@@ -160,9 +160,16 @@ export class AirtableStorage implements IStorage {
 
   async getExercisesByExerciseType(exerciseType: string): Promise<Exercise[]> {
     await this.refreshCache();
-    return Array.from(this.exerciseCache.values()).filter(exercise => 
+    const allExercises = Array.from(this.exerciseCache.values());
+    console.log(`Filtering for Exercise Type: "${exerciseType}"`);
+    console.log(`Sample exercise types:`, allExercises.slice(0, 5).map(e => ({ name: e.name, exerciseType: e.exerciseType })));
+    
+    const filtered = allExercises.filter(exercise => 
       exercise.exerciseType?.toLowerCase() === exerciseType.toLowerCase()
     );
+    
+    console.log(`Found ${filtered.length} exercises with Exercise Type "${exerciseType}"`);
+    return filtered;
   }
 
   async getExercisesByEquipment(equipment: string): Promise<Exercise[]> {
