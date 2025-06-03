@@ -40,6 +40,8 @@ export class AirtableService {
       throw new Error("Missing Airtable credentials");
     }
 
+    console.log(`Airtable Service initialized with Base ID: ${baseId.substring(0, 8)}...`);
+    
     this.baseUrl = `https://api.airtable.com/v0/${baseId}`;
     this.headers = {
       'Authorization': `Bearer ${apiKey}`,
@@ -90,17 +92,60 @@ export class AirtableService {
       let offset: string | undefined;
 
       do {
-        const url = new URL(`${this.baseUrl}/Exercises%20Master%20Library`);
-        if (offset) {
-          url.searchParams.set('offset', offset);
+        // Test multiple possible table name variations
+        const tableVariations = [
+          'Exercises%20Master%20Library',
+          'Exercise%20Master%20Library',
+          'Exercises',
+          'Exercise%20Library',
+          'Master%20Library',
+          'tblYourTableId' // If you know your table ID, it starts with 'tbl'
+        ];
+
+        let response: Response | null = null;
+        let successfulTableName = '';
+        
+        for (const tableName of tableVariations) {
+          const testUrl = new URL(`${this.baseUrl}/${tableName}`);
+          if (offset) {
+            testUrl.searchParams.set('offset', offset);
+          }
+
+          console.log(`Testing table name: ${decodeURIComponent(tableName)}`);
+          
+          try {
+            response = await fetch(testUrl.toString(), {
+              headers: this.headers,
+            });
+            
+            if (response.ok) {
+              successfulTableName = tableName;
+              console.log(`Successfully connected to table: ${decodeURIComponent(tableName)}`);
+              break;
+            } else {
+              console.log(`Failed for ${decodeURIComponent(tableName)}: ${response.status} ${response.statusText}`);
+            }
+          } catch (error) {
+            console.log(`Error testing ${decodeURIComponent(tableName)}:`, error);
+          }
         }
 
-        const response = await fetch(url.toString(), {
-          headers: this.headers,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+        if (!response || !response.ok) {
+          // List available tables to help debug
+          const listTablesUrl = new URL(`${this.baseUrl}/`);
+          try {
+            const listResponse = await fetch(listTablesUrl.toString(), {
+              headers: this.headers,
+            });
+            if (listResponse.ok) {
+              const listData = await listResponse.json();
+              console.log('Available tables in base:', listData);
+            }
+          } catch (error) {
+            console.log('Could not list tables:', error);
+          }
+          
+          throw new Error(`Could not find table. Tried: ${tableVariations.map(t => decodeURIComponent(t)).join(', ')}`);
         }
 
         const data: AirtableResponse = await response.json();
