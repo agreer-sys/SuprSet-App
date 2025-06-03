@@ -40,8 +40,14 @@ export default function ExerciseSelection({
     queryKey: ["/api/exercises/equipment"],
   });
 
+  // Build query string for filtering
+  const queryParams = new URLSearchParams();
+  if (searchQuery) queryParams.set('q', searchQuery);
+  if (categoryFilter !== "Exercise Type") queryParams.set('category', categoryFilter);
+  if (equipmentFilter !== "All Equipment") queryParams.set('equipment', equipmentFilter);
+  
   const { data: exercises = [], isLoading } = useQuery<Exercise[]>({
-    queryKey: ["/api/exercises/search", { q: searchQuery, category: categoryFilter, equipment: equipmentFilter }],
+    queryKey: [`/api/exercises/search${queryParams.toString() ? '?' + queryParams.toString() : ''}`],
     enabled: true,
   });
 
