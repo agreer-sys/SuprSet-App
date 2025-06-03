@@ -24,13 +24,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let exercises;
       if (q) {
         exercises = await storage.searchExercises(q as string);
-      } else if (category && category !== "Exercise Type") {
-        console.log("Filtering by Exercise Type:", category);
-        exercises = await storage.getExercisesByExerciseType(category as string);
-      } else if (equipment && equipment !== "All Equipment") {
-        exercises = await storage.getExercisesByEquipment(equipment as string);
       } else {
+        // Start with all exercises and apply filters
         exercises = await storage.getAllExercises();
+        
+        // Apply Exercise Type filter
+        if (category && category !== "Exercise Type") {
+          console.log("Filtering by Exercise Type:", category);
+          exercises = exercises.filter(exercise => 
+            exercise.exerciseType?.toLowerCase() === category.toLowerCase()
+          );
+        }
+        
+        // Apply Equipment filter
+        if (equipment && equipment !== "All Equipment") {
+          console.log("Filtering by Equipment:", equipment);
+          exercises = exercises.filter(exercise => 
+            exercise.equipment.toLowerCase().includes(equipment.toLowerCase())
+          );
+        }
       }
       
       console.log(`Returning ${exercises.length} exercises`);
