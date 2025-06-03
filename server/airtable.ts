@@ -49,14 +49,22 @@ export class AirtableService {
     };
   }
 
-  private parseArrayField(field: string | undefined): string[] {
+  private parseArrayField(field: string | string[] | undefined): string[] {
     if (!field) return [];
-    return field.split(',').map(item => item.trim()).filter(Boolean);
+    if (Array.isArray(field)) return field;
+    if (typeof field === 'string') {
+      return field.split(',').map(item => item.trim()).filter(Boolean);
+    }
+    return [];
   }
 
-  private parseInstructionField(field: string | undefined): string[] {
+  private parseInstructionField(field: string | string[] | undefined): string[] {
     if (!field) return [];
-    return field.split('\n').map(item => item.trim()).filter(Boolean);
+    if (Array.isArray(field)) return field;
+    if (typeof field === 'string') {
+      return field.split('\n').map(item => item.trim()).filter(Boolean);
+    }
+    return [];
   }
 
   private transformRecord(record: AirtableRecord): Exercise {
@@ -76,9 +84,9 @@ export class AirtableService {
         execution: this.parseInstructionField(fields["Execution Steps"]),
         safetyTips: this.parseInstructionField(fields["Safety Tips"])
       },
-      anchorType: fields["Anchor Type"],
-      setupTime: fields["Setup Time"],
-      equipmentZone: fields["Equipment Zone"],
+      anchorType: fields["Anchor Type"] ? String(fields["Anchor Type"]) : null,
+      setupTime: fields["Setup Time"] ? String(fields["Setup Time"]) : null,
+      equipmentZone: fields["Equipment Zone"] ? String(fields["Equipment Zone"]) : null,
       bestPairedWith: this.parseArrayField(fields["Best Paired With"]),
       coachingTips: this.parseInstructionField(fields["Coaching Tips"]),
       mistakes: this.parseInstructionField(fields["Mistakes"]),
