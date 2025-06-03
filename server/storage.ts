@@ -55,10 +55,86 @@ export class AirtableStorage implements IStorage {
         this.exerciseCache.set(exercise.id, exercise);
       });
       this.cacheExpiry = Date.now() + this.CACHE_DURATION;
+      console.log(`Successfully loaded ${exercises.length} exercises from Airtable`);
     } catch (error) {
       console.error("Failed to refresh exercise cache:", error);
       throw error;
     }
+  }
+
+  private loadSampleExercises(): void {
+    const sampleExercises: Exercise[] = [
+      {
+        id: 1,
+        name: "Bench Press",
+        category: "push",
+        equipment: "barbell",
+        primaryMuscles: ["chest", "triceps"],
+        secondaryMuscles: ["anterior deltoids"],
+        movementPattern: "horizontal_push",
+        difficulty: 3,
+        instructions: {
+          setup: "Lie on a flat bench with your feet firmly planted on the ground.",
+          execution: ["Lower the bar slowly to your chest", "Press back up explosively"],
+          safetyTips: ["Always use a spotter", "Keep wrists straight"]
+        },
+        anchorType: "Anchored",
+        setupTime: "Medium",
+        equipmentZone: "Barbell Zone",
+        bestPairedWith: ["Pull", "Back"],
+        coachingTips: ["Focus on controlled movement", "Maintain shoulder blade retraction"],
+        mistakes: ["Bouncing off chest", "Flaring elbows too wide"],
+        variations: ["Incline Bench Press", "Dumbbell Bench Press"]
+      },
+      {
+        id: 2,
+        name: "Bent-Over Row",
+        category: "pull",
+        equipment: "barbell",
+        primaryMuscles: ["lats", "rhomboids"],
+        secondaryMuscles: ["biceps", "rear delts"],
+        movementPattern: "horizontal_pull",
+        difficulty: 3,
+        instructions: {
+          setup: "Hinge at hips with slight knee bend, grip barbell with overhand grip.",
+          execution: ["Pull bar towards lower chest", "Squeeze shoulder blades together"],
+          safetyTips: ["Don't round your back", "Keep bar close to body"]
+        },
+        anchorType: "Mobile",
+        setupTime: "Low",
+        equipmentZone: "Barbell Zone",
+        bestPairedWith: ["Push", "Chest"],
+        coachingTips: ["Lead with elbows", "Keep core tight"],
+        mistakes: ["Using too much momentum", "Rounding the back"],
+        variations: ["T-Bar Row", "Cable Row"]
+      },
+      {
+        id: 3,
+        name: "Face Pulls",
+        category: "pull",
+        equipment: "cable",
+        primaryMuscles: ["rear delts", "rhomboids"],
+        secondaryMuscles: ["middle traps"],
+        movementPattern: "horizontal_pull",
+        difficulty: 2,
+        instructions: {
+          setup: "Set cable to face height with rope attachment.",
+          execution: ["Pull rope towards face", "Separate handles at end"],
+          safetyTips: ["Use light weight", "Keep elbows high"]
+        },
+        anchorType: "Anchored",
+        setupTime: "Low",
+        equipmentZone: "Cable Zone",
+        bestPairedWith: ["Push", "Chest", "Core"],
+        coachingTips: ["Focus on rear delt squeeze", "Control the negative"],
+        mistakes: ["Using too much weight", "Not separating handles"],
+        variations: ["Band Face Pulls", "Reverse Fly"]
+      }
+    ];
+
+    sampleExercises.forEach(exercise => {
+      this.exerciseCache.set(exercise.id, exercise);
+    });
   }
 
   async getExercise(id: number): Promise<Exercise | undefined> {

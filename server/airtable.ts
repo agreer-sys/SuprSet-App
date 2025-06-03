@@ -90,42 +90,17 @@ export class AirtableService {
       let offset: string | undefined;
 
       do {
-        // Try common table name variations
-        const possibleTableNames = [
-          'Exercises%20Master%20Library',
-          'Exercise%20Master%20Library', 
-          'Exercises',
-          'Exercise%20Library',
-          'Master%20Library'
-        ];
-        
-        let response: Response | null = null;
-        let lastError: string = '';
-        
-        for (const tableName of possibleTableNames) {
-          const url = new URL(`${this.baseUrl}/${tableName}`);
-          if (offset) {
-            url.searchParams.set('offset', offset);
-          }
-
-          try {
-            response = await fetch(url.toString(), {
-              headers: this.headers,
-            });
-            
-            if (response.ok) {
-              console.log(`Successfully connected to table: ${tableName.replace('%20', ' ')}`);
-              break;
-            } else {
-              lastError = `${response.status} ${response.statusText}`;
-            }
-          } catch (error) {
-            lastError = error instanceof Error ? error.message : 'Unknown error';
-          }
+        const url = new URL(`${this.baseUrl}/Exercises%20Master%20Library`);
+        if (offset) {
+          url.searchParams.set('offset', offset);
         }
 
-        if (!response || !response.ok) {
-          throw new Error(`Airtable API error: ${lastError}. Please check your table name and API permissions.`);
+        const response = await fetch(url.toString(), {
+          headers: this.headers,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
         }
 
         const data: AirtableResponse = await response.json();
@@ -150,7 +125,7 @@ export class AirtableService {
 
   async getExerciseByName(name: string): Promise<Exercise | null> {
     try {
-      const url = new URL(`${this.baseUrl}/Exercises Master Library`);
+      const url = new URL(`${this.baseUrl}/Exercises%20Master%20Library`);
       url.searchParams.set('filterByFormula', `{Exercise Name} = "${name}"`);
 
       const response = await fetch(url.toString(), {
