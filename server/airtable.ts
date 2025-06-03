@@ -90,17 +90,42 @@ export class AirtableService {
       let offset: string | undefined;
 
       do {
-        const url = new URL(`${this.baseUrl}/Exercises Master Library`);
-        if (offset) {
-          url.searchParams.set('offset', offset);
+        // Try common table name variations
+        const possibleTableNames = [
+          'Exercises%20Master%20Library',
+          'Exercise%20Master%20Library', 
+          'Exercises',
+          'Exercise%20Library',
+          'Master%20Library'
+        ];
+        
+        let response: Response | null = null;
+        let lastError: string = '';
+        
+        for (const tableName of possibleTableNames) {
+          const url = new URL(`${this.baseUrl}/${tableName}`);
+          if (offset) {
+            url.searchParams.set('offset', offset);
+          }
+
+          try {
+            response = await fetch(url.toString(), {
+              headers: this.headers,
+            });
+            
+            if (response.ok) {
+              console.log(`Successfully connected to table: ${tableName.replace('%20', ' ')}`);
+              break;
+            } else {
+              lastError = `${response.status} ${response.statusText}`;
+            }
+          } catch (error) {
+            lastError = error instanceof Error ? error.message : 'Unknown error';
+          }
         }
 
-        const response = await fetch(url.toString(), {
-          headers: this.headers,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+        if (!response || !response.ok) {
+          throw new Error(`Airtable API error: ${lastError}. Please check your table name and API permissions.`);
         }
 
         const data: AirtableResponse = await response.json();
