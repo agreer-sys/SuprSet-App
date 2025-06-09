@@ -137,7 +137,9 @@ export class AirtableService {
         if (offset) {
           url.searchParams.set('offset', offset);
         }
-        // No sorting - get records in database order
+        // Sort by Exercise Name to match database view order
+        url.searchParams.set('sort[0][field]', 'Exercise Name');
+        url.searchParams.set('sort[0][direction]', 'asc');
 
         const response = await fetch(url.toString(), {
           headers: this.headers,
