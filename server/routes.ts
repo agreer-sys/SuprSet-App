@@ -61,14 +61,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get unique Exercise Type values from Airtable (before :id route)
+  // Get filtered Exercise Type values from Airtable (before :id route)
   app.get("/api/exercises/categories", async (req, res) => {
     try {
+      const allowedTypes = ["Push", "Pull", "Squat", "Hinge", "Lunge", "Isometric", "Explosive", "Accessory"];
       const allExercises = await storage.getAllExercises();
       const exerciseTypes = new Set<string>();
       
       allExercises.forEach(exercise => {
-        if (exercise.exerciseType) exerciseTypes.add(exercise.exerciseType);
+        if (exercise.exerciseType && allowedTypes.includes(exercise.exerciseType)) {
+          exerciseTypes.add(exercise.exerciseType);
+        }
       });
       
       res.json(Array.from(exerciseTypes).sort());
