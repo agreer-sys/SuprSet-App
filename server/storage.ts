@@ -33,6 +33,7 @@ export interface IStorage {
 
 export class AirtableStorage implements IStorage {
   private exerciseCache: Map<number, Exercise> = new Map();
+  private exerciseOrder: Exercise[] = []; // Preserve original order from Airtable
   private workoutSessions: Map<number, WorkoutSession> = new Map();
   private exercisePairings: Map<number, ExercisePairing> = new Map();
   private currentSessionId: number = 1;
@@ -52,6 +53,7 @@ export class AirtableStorage implements IStorage {
     try {
       const exercises = await airtableService.getAllExercises();
       this.exerciseCache.clear();
+      this.exerciseOrder = exercises; // Preserve original Airtable order
       exercises.forEach(exercise => {
         this.exerciseCache.set(exercise.id, exercise);
       });
@@ -145,7 +147,7 @@ export class AirtableStorage implements IStorage {
 
   async getAllExercises(): Promise<Exercise[]> {
     await this.refreshCache();
-    return Array.from(this.exerciseCache.values());
+    return this.exerciseOrder; // Return exercises in original Airtable order
   }
 
   async getExercisesByCategory(category: string): Promise<Exercise[]> {
