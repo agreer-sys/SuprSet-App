@@ -18,10 +18,16 @@ export const EXERCISE_FAMILIES: Record<string, string[]> = {
     "Bent Over Barbell Row",
     "Bent Over Dumbbell Row",
     "Seated Cable Row",
+    "T Bar Row",
     "T-Bar Row",
     "Single Arm Dumbbell Row",
     "Chest Supported Row",
-    "Inverted Rows"
+    "Inverted Rows",
+    "TRX Row",
+    "Cable Row",
+    "Machine Row",
+    "Landmine Row",
+    "Resistance Band Row"
   ],
   
   // VERTICAL PUSH FAMILY
@@ -119,8 +125,15 @@ export function areFamiliesCompatible(exerciseA: string, exerciseB: string): boo
   const familyA = getExerciseFamily(exerciseA);
   const familyB = getExerciseFamily(exerciseB);
   
+  // Debug logging
+  console.log(`Family check: ${exerciseA} (${familyA}) -> ${exerciseB} (${familyB})`);
+  
   if (!familyA || !familyB) return false;
   
   const compatibleFamilies = FAMILY_PAIRINGS[familyA] || [];
-  return compatibleFamilies.includes(familyB);
+  const isCompatible = compatibleFamilies.includes(familyB);
+  
+  console.log(`Compatible families for ${familyA}: ${compatibleFamilies.join(', ')}, Result: ${isCompatible}`);
+  
+  return isCompatible;
 }

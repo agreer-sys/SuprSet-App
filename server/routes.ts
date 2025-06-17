@@ -227,13 +227,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exercise): { isValid: boolean; score: number; reasoning: string[] } {
   const reasons: string[] = [];
   
-  // Debug logging for Barbell Bench Press
-  if (exerciseA.name === "Barbell Bench Press") {
-    console.log(`\n=== TRAINER MODE DEBUG: ${exerciseA.name} -> ${exerciseB.name} ===`);
-    console.log(`Exercise A: anchor=${exerciseA.anchorType}, setup=${exerciseA.setupTime}, zone=${exerciseA.equipmentZone}`);
-    console.log(`Exercise B: anchor=${exerciseB.anchorType}, setup=${exerciseB.setupTime}, zone=${exerciseB.equipmentZone}`);
-  }
-  
   // Rule 1: No self-pairing
   if (exerciseA.id === exerciseB.id) {
     return { isValid: false, score: 0, reasoning: ["Cannot pair exercise with itself"] };
@@ -272,19 +265,22 @@ function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exerc
     return { isValid: false, score: 0, reasoning: ["Trainer rule: Different equipment zones (Floor exercises are exceptions)"] };
   }
   
-  // Rule 6: Must be trainer-approved (exact pairs) OR family-compatible (fallback)
+  // Rule 6: Use exercise type compatibility as fallback for trainer mode
   const isExactPair = isTrainerApprovedPair(exerciseA.name, exerciseB.name);
   const isFamilyCompatible = areFamiliesCompatible(exerciseA.name, exerciseB.name);
   
-  if (exerciseA.name === "Barbell Bench Press") {
-    console.log(`Exact pair check: ${isExactPair}, Family compatible: ${isFamilyCompatible}`);
-  }
+  // Simplified trainer compatibility - Push pairs with Pull, Squat pairs with Hinge
+  const isTypeCompatible = (
+    (exerciseA.exerciseType === "Push" && exerciseB.exerciseType === "Pull") ||
+    (exerciseA.exerciseType === "Pull" && exerciseB.exerciseType === "Push") ||
+    (exerciseA.exerciseType === "Squat" && exerciseB.exerciseType === "Hinge") ||
+    (exerciseA.exerciseType === "Hinge" && exerciseB.exerciseType === "Squat") ||
+    (exerciseA.exerciseType === "Lunge" && exerciseB.exerciseType === "Hinge") ||
+    (exerciseA.exerciseType === "Hinge" && exerciseB.exerciseType === "Lunge")
+  );
   
-  if (!isExactPair && !isFamilyCompatible) {
-    if (exerciseA.name === "Barbell Bench Press") {
-      console.log(`FAILED Rule 6: ${exerciseB.name} - Not approved pairing and families incompatible`);
-    }
-    return { isValid: false, score: 0, reasoning: ["Trainer rule: Not approved pairing and families incompatible"] };
+  if (!isExactPair && !isFamilyCompatible && !isTypeCompatible) {
+    return { isValid: false, score: 0, reasoning: ["Trainer rule: Not approved pairing type"] };
   }
   
   // If all rules pass, assign score based on quality indicators
