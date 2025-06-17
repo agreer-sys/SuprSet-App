@@ -5,47 +5,46 @@ export const EXERCISE_FAMILIES: Record<string, string[]> = {
   // HORIZONTAL PUSH FAMILY
   horizontal_push: [
     "Barbell Bench Press",
+    "Dumbell Bench Press",
     "Dumbbell Bench Press", 
-    "Incline Barbell Press",
-    "Incline Dumbbell Press",
-    "Push Ups",
-    "Dumbbell Flyes",
-    "Chest Press Machine"
+    "Incline Dumbbell Bench Press",
+    "Decline Dumbbell Bench Press",
+    "Push Up",
+    "Hand Release Push Up",
+    "Medicine Ball Push Up",
+    "Plyo Push Up",
+    "Flat Dumbbell Pec Fly",
+    "Incline Dumbbell Pec Fly",
+    "Dumbbell Squeeze Press",
+    "Svend Press"
   ],
   
-  // HORIZONTAL PULL FAMILY
+  // HORIZONTAL PULL FAMILY  
   horizontal_pull: [
     "Bent Over Barbell Row",
-    "Bent Over Dumbbell Row",
-    "Seated Cable Row",
+    "Bent Over Dumbbell Row", 
+    "One Arm Dumbbell Row",
+    "Chest-supported Dumbbell Row",
     "T Bar Row",
-    "T-Bar Row",
-    "Single Arm Dumbbell Row",
-    "Chest Supported Row",
-    "Inverted Rows",
     "TRX Row",
-    "Cable Row",
-    "Machine Row",
-    "Landmine Row",
-    "Resistance Band Row"
+    "Chainsaw Row",
+    "Renegade Row"
   ],
   
   // VERTICAL PUSH FAMILY
   vertical_push: [
-    "Overhead Press",
-    "Dumbbell Shoulder Press",
-    "Pike Push Ups",
-    "Landmine Press",
-    "Arnold Press"
+    "Seated Overhead Dumbbell Press",
+    "Seated Arnold Press",
+    "Single Arm Dumbbell Press",
+    "Landmine Press"
   ],
   
   // VERTICAL PULL FAMILY
   vertical_pull: [
-    "Pull Ups",
-    "Chin Ups", 
+    "Pull Up",
+    "Chin Up", 
     "Lat Pulldown",
-    "High Cable Row",
-    "Assisted Pull Ups"
+    "Straight Arm Pulldown"
   ],
   
   // SQUAT FAMILY
@@ -125,15 +124,8 @@ export function areFamiliesCompatible(exerciseA: string, exerciseB: string): boo
   const familyA = getExerciseFamily(exerciseA);
   const familyB = getExerciseFamily(exerciseB);
   
-  // Debug logging
-  console.log(`Family check: ${exerciseA} (${familyA}) -> ${exerciseB} (${familyB})`);
-  
   if (!familyA || !familyB) return false;
   
   const compatibleFamilies = FAMILY_PAIRINGS[familyA] || [];
-  const isCompatible = compatibleFamilies.includes(familyB);
-  
-  console.log(`Compatible families for ${familyA}: ${compatibleFamilies.join(', ')}, Result: ${isCompatible}`);
-  
-  return isCompatible;
+  return compatibleFamilies.includes(familyB);
 }

@@ -4,7 +4,6 @@ import { storage } from "./storage";
 import { insertWorkoutSessionSchema, type Exercise } from "@shared/schema";
 import { z } from "zod";
 import { isTrainerApprovedPair } from "./trainer-pairs";
-import { areFamiliesCompatible } from "./exercise-families";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all exercises
@@ -265,12 +264,11 @@ function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exerc
     return { isValid: false, score: 0, reasoning: ["Trainer rule: Different equipment zones (Floor exercises are exceptions)"] };
   }
   
-  // Rule 6: Use exercise type compatibility as fallback for trainer mode
+  // Rule 6: Trainer-approved pairing logic (simplified and reliable)
   const isExactPair = isTrainerApprovedPair(exerciseA.name, exerciseB.name);
-  const isFamilyCompatible = areFamiliesCompatible(exerciseA.name, exerciseB.name);
   
-  // Simplified trainer compatibility - Push pairs with Pull, Squat pairs with Hinge
-  const isTypeCompatible = (
+  // Core trainer principles: antagonist muscle pairing
+  const isAntagonstPair = (
     (exerciseA.exerciseType === "Push" && exerciseB.exerciseType === "Pull") ||
     (exerciseA.exerciseType === "Pull" && exerciseB.exerciseType === "Push") ||
     (exerciseA.exerciseType === "Squat" && exerciseB.exerciseType === "Hinge") ||
@@ -279,8 +277,8 @@ function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exerc
     (exerciseA.exerciseType === "Hinge" && exerciseB.exerciseType === "Lunge")
   );
   
-  if (!isExactPair && !isFamilyCompatible && !isTypeCompatible) {
-    return { isValid: false, score: 0, reasoning: ["Trainer rule: Not approved pairing type"] };
+  if (!isExactPair && !isAntagonstPair) {
+    return { isValid: false, score: 0, reasoning: ["Trainer rule: Must be exact approved pair or antagonist muscle pattern"] };
   }
   
   // If all rules pass, assign score based on quality indicators
@@ -289,8 +287,8 @@ function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exerc
   // Quality bonuses for trainer-approved combinations
   if (isExactPair) {
     reasons.push("Curated trainer-approved pairing");
-  } else if (isFamilyCompatible) {
-    reasons.push("Compatible exercise families");
+  } else if (isAntagonstPair) {
+    reasons.push("Antagonist muscle pairing");
   }
   
   if (exerciseA.exerciseType === "Push" && exerciseB.exerciseType === "Pull") {
