@@ -154,6 +154,21 @@ export default function RecommendationEngine({
             <div className="text-center py-8 text-gray-500">
               Calculating optimal pairings...
             </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-500">
+              Failed to load recommendations. Please try again.
+            </div>
+          ) : recommendations.length === 0 && isTrainerMode ? (
+            <div className="text-center py-8">
+              <Settings className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Perfect Matches Found</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                No exercises meet all strict trainer criteria for this pairing.
+              </p>
+              <p className="text-xs text-gray-500">
+                Try switching to Standard Mode for algorithmic suggestions.
+              </p>
+            </div>
           ) : topRecommendation ? (
             <div className="space-y-4">
               {/* Top Recommendation */}
@@ -162,7 +177,7 @@ export default function RecommendationEngine({
                   <div className="flex items-center space-x-2">
                     <Badge className="bg-secondary text-secondary-foreground">BEST MATCH</Badge>
                     <span className="text-secondary font-semibold">
-                      {Math.round(topRecommendation.compatibilityScore)}% Compatibility
+                      {isTrainerMode ? 'Perfect Match' : `${Math.round(topRecommendation.compatibilityScore)}% Compatibility`}
                     </span>
                   </div>
                   <Button 

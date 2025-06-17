@@ -61,16 +61,20 @@
 ## Implementation Status
 
 ### ✅ Completed
-- Dual scoring systems
+- Dual scoring systems (Standard + Trainer modes)
+- Trainer Mode toggle UI with clear mode indicators
+- Strict binary filtering with mandatory rules
 - Deltoid exclusion logic
-- Equipment zone scoring
-- Anchor type preferences
+- Equipment zone scoring with Floor compatibility
+- Anchor type preferences (Anchored → Mobile flow)
 - Setup time optimization
+- Empty state handling for strict mode
+- Query parameter integration for mode switching
 
 ### 🔄 In Progress
-- Trainer Mode toggle UI
-- Strict binary filtering
-- Floor exercise special handling
+- Testing Trainer Mode with real Airtable data
+- Validating "Best Paired With" field matching logic
+- Fine-tuning compatibility score thresholds
 
 ### 💭 Future Considerations
 - Time-based pairing (rest periods)
