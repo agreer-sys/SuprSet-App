@@ -227,6 +227,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exercise): { isValid: boolean; score: number; reasoning: string[] } {
   const reasons: string[] = [];
   
+  // Debug logging for Barbell Bench Press
+  if (exerciseA.name === "Barbell Bench Press") {
+    console.log(`\n=== TRAINER MODE DEBUG: ${exerciseA.name} -> ${exerciseB.name} ===`);
+    console.log(`Exercise A: anchor=${exerciseA.anchorType}, setup=${exerciseA.setupTime}, zone=${exerciseA.equipmentZone}`);
+    console.log(`Exercise B: anchor=${exerciseB.anchorType}, setup=${exerciseB.setupTime}, zone=${exerciseB.equipmentZone}`);
+  }
+  
   // Rule 1: No self-pairing
   if (exerciseA.id === exerciseB.id) {
     return { isValid: false, score: 0, reasoning: ["Cannot pair exercise with itself"] };
@@ -246,14 +253,16 @@ function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exerc
     return { isValid: false, score: 0, reasoning: ["Trainer rule: No deltoid-deltoid pairings due to fatigue conflicts"] };
   }
   
-  // Rule 3: Anchor flow - If A is Anchored, B MUST be Mobile
-  if (exerciseA.anchorType === "Anchored" && exerciseB.anchorType !== "Mobile") {
-    return { isValid: false, score: 0, reasoning: ["Trainer rule: Anchored exercise must pair with Mobile exercise"] };
+  // Rule 3: Anchor flow preference (relaxed) - Anchored can pair with Mobile OR other Anchored
+  // Only restrict if both are Mobile (creates flow issues)
+  if (exerciseA.anchorType === "Mobile" && exerciseB.anchorType === "Mobile") {
+    // Allow Mobile-Mobile pairings as they're common in circuits
   }
   
-  // Rule 4: Setup time - B must be Low or Medium
-  if (exerciseB.setupTime === "High") {
-    return { isValid: false, score: 0, reasoning: ["Trainer rule: Second exercise must have Low or Medium setup time"] };
+  // Rule 4: Setup time optimization - Prefer simpler setups for B, but allow flexibility
+  // Only reject if A is already High setup AND B is also High setup (double complexity)
+  if (exerciseA.setupTime === "High" && exerciseB.setupTime === "High") {
+    return { isValid: false, score: 0, reasoning: ["Trainer rule: Avoid pairing two high-setup exercises"] };
   }
   
   // Rule 5: Equipment zone compatibility (Floor is universal)
@@ -267,7 +276,14 @@ function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exerc
   const isExactPair = isTrainerApprovedPair(exerciseA.name, exerciseB.name);
   const isFamilyCompatible = areFamiliesCompatible(exerciseA.name, exerciseB.name);
   
+  if (exerciseA.name === "Barbell Bench Press") {
+    console.log(`Exact pair check: ${isExactPair}, Family compatible: ${isFamilyCompatible}`);
+  }
+  
   if (!isExactPair && !isFamilyCompatible) {
+    if (exerciseA.name === "Barbell Bench Press") {
+      console.log(`FAILED Rule 6: ${exerciseB.name} - Not approved pairing and families incompatible`);
+    }
     return { isValid: false, score: 0, reasoning: ["Trainer rule: Not approved pairing and families incompatible"] };
   }
   
