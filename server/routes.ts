@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertWorkoutSessionSchema, type Exercise } from "@shared/schema";
 import { z } from "zod";
 import { isTrainerApprovedPair } from "./trainer-pairs";
+import { areFamiliesCompatible } from "./exercise-families";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all exercises
@@ -262,17 +263,24 @@ function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exerc
     return { isValid: false, score: 0, reasoning: ["Trainer rule: Different equipment zones (Floor exercises are exceptions)"] };
   }
   
-  // Rule 6: Must be a trainer-approved pairing
-  const isApprovedPairing = isTrainerApprovedPair(exerciseA.name, exerciseB.name);
+  // Rule 6: Must be trainer-approved (exact pairs) OR family-compatible (fallback)
+  const isExactPair = isTrainerApprovedPair(exerciseA.name, exerciseB.name);
+  const isFamilyCompatible = areFamiliesCompatible(exerciseA.name, exerciseB.name);
   
-  if (!isApprovedPairing) {
-    return { isValid: false, score: 0, reasoning: ["Trainer rule: Not in curated approved pairings list"] };
+  if (!isExactPair && !isFamilyCompatible) {
+    return { isValid: false, score: 0, reasoning: ["Trainer rule: Not approved pairing and families incompatible"] };
   }
   
   // If all rules pass, assign score based on quality indicators
   let score = 2; // Base perfect score
   
   // Quality bonuses for trainer-approved combinations
+  if (isExactPair) {
+    reasons.push("Curated trainer-approved pairing");
+  } else if (isFamilyCompatible) {
+    reasons.push("Compatible exercise families");
+  }
+  
   if (exerciseA.exerciseType === "Push" && exerciseB.exerciseType === "Pull") {
     reasons.push("Perfect push-pull antagonist pairing");
   }

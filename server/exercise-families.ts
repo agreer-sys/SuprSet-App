@@ -1,7 +1,7 @@
 // Exercise family groupings for intelligent pairing
 // Groups similar exercises that can substitute for each other in pairings
 
-export const EXERCISE_FAMILIES = {
+export const EXERCISE_FAMILIES: Record<string, string[]> = {
   // HORIZONTAL PUSH FAMILY
   horizontal_push: [
     "Barbell Bench Press",
@@ -92,7 +92,7 @@ export const EXERCISE_FAMILIES = {
 };
 
 // Family-based pairing rules - these families work well together
-export const FAMILY_PAIRINGS = {
+export const FAMILY_PAIRINGS: Record<string, string[]> = {
   horizontal_push: ["horizontal_pull"],
   horizontal_pull: ["horizontal_push"],
   vertical_push: ["vertical_pull"],  
