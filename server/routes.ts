@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertWorkoutSessionSchema, type Exercise } from "@shared/schema";
 import { z } from "zod";
+import { isTrainerApprovedPair } from "./trainer-pairs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all exercises
@@ -261,16 +262,11 @@ function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exerc
     return { isValid: false, score: 0, reasoning: ["Trainer rule: Different equipment zones (Floor exercises are exceptions)"] };
   }
   
-  // Rule 6: Best Paired With field must include A's primary muscle or function
-  const hasRecommendedPairing = exerciseB.bestPairedWith?.some(tag => 
-    exerciseA.primaryMuscleGroup?.toLowerCase().includes(tag.toLowerCase()) ||
-    exerciseA.exerciseType?.toLowerCase().includes(tag.toLowerCase()) ||
-    tag.toLowerCase().includes(exerciseA.primaryMuscleGroup?.toLowerCase() || '') ||
-    tag.toLowerCase().includes(exerciseA.exerciseType?.toLowerCase() || '')
-  );
+  // Rule 6: Must be a trainer-approved pairing
+  const isApprovedPairing = isTrainerApprovedPair(exerciseA.name, exerciseB.name);
   
-  if (!hasRecommendedPairing) {
-    return { isValid: false, score: 0, reasoning: ["Trainer rule: Exercise B must include A's muscle/function in 'Best Paired With' field"] };
+  if (!isApprovedPairing) {
+    return { isValid: false, score: 0, reasoning: ["Trainer rule: Not in curated approved pairings list"] };
   }
   
   // If all rules pass, assign score based on quality indicators

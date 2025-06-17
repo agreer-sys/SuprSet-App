@@ -1,0 +1,126 @@
+// Exercise family groupings for intelligent pairing
+// Groups similar exercises that can substitute for each other in pairings
+
+export const EXERCISE_FAMILIES = {
+  // HORIZONTAL PUSH FAMILY
+  horizontal_push: [
+    "Barbell Bench Press",
+    "Dumbbell Bench Press", 
+    "Incline Barbell Press",
+    "Incline Dumbbell Press",
+    "Push Ups",
+    "Dumbbell Flyes",
+    "Chest Press Machine"
+  ],
+  
+  // HORIZONTAL PULL FAMILY
+  horizontal_pull: [
+    "Bent Over Barbell Row",
+    "Bent Over Dumbbell Row",
+    "Seated Cable Row",
+    "T-Bar Row",
+    "Single Arm Dumbbell Row",
+    "Chest Supported Row",
+    "Inverted Rows"
+  ],
+  
+  // VERTICAL PUSH FAMILY
+  vertical_push: [
+    "Overhead Press",
+    "Dumbbell Shoulder Press",
+    "Pike Push Ups",
+    "Landmine Press",
+    "Arnold Press"
+  ],
+  
+  // VERTICAL PULL FAMILY
+  vertical_pull: [
+    "Pull Ups",
+    "Chin Ups", 
+    "Lat Pulldown",
+    "High Cable Row",
+    "Assisted Pull Ups"
+  ],
+  
+  // SQUAT FAMILY
+  squat_dominant: [
+    "Back Squat",
+    "Front Squat",
+    "Goblet Squat",
+    "Dumbbell Squat",
+    "Leg Press",
+    "Jump Squats"
+  ],
+  
+  // HINGE FAMILY
+  hinge_dominant: [
+    "Deadlift",
+    "Romanian Deadlift",
+    "Sumo Deadlift",
+    "Stiff Leg Deadlift",
+    "Hip Thrusts",
+    "Good Mornings"
+  ],
+  
+  // UNILATERAL LOWER FAMILY
+  unilateral_lower: [
+    "Walking Lunges",
+    "Bulgarian Split Squats",
+    "Single Leg RDL",
+    "Step Ups",
+    "Single Leg Squats",
+    "Lateral Lunges"
+  ],
+  
+  // BICEP FAMILY
+  bicep_dominant: [
+    "Bicep Curls",
+    "Hammer Curls",
+    "Cable Curls",
+    "Concentration Curls",
+    "Preacher Curls"
+  ],
+  
+  // TRICEP FAMILY
+  tricep_dominant: [
+    "Tricep Extensions",
+    "Overhead Tricep Press", 
+    "Close Grip Push Ups",
+    "Tricep Dips",
+    "Diamond Push Ups"
+  ]
+};
+
+// Family-based pairing rules - these families work well together
+export const FAMILY_PAIRINGS = {
+  horizontal_push: ["horizontal_pull"],
+  horizontal_pull: ["horizontal_push"],
+  vertical_push: ["vertical_pull"],  
+  vertical_pull: ["vertical_push"],
+  squat_dominant: ["hinge_dominant"],
+  hinge_dominant: ["squat_dominant", "unilateral_lower"],
+  unilateral_lower: ["hinge_dominant"],
+  bicep_dominant: ["tricep_dominant"],
+  tricep_dominant: ["bicep_dominant"]
+};
+
+// Get the family of an exercise
+export function getExerciseFamily(exerciseName: string): string | null {
+  for (const [family, exercises] of Object.entries(EXERCISE_FAMILIES)) {
+    if (exercises.includes(exerciseName)) {
+      return family;
+    }
+  }
+  return null;
+}
+
+// Check if two exercises are compatible based on family rules
+export function areFamiliesCompatible(exerciseA: string, exerciseB: string): boolean {
+  const familyA = getExerciseFamily(exerciseA);
+  const familyB = getExerciseFamily(exerciseB);
+  
+  if (!familyA || !familyB) return false;
+  
+  const compatibleFamilies = FAMILY_PAIRINGS[familyA] || [];
+  return compatibleFamilies.includes(familyB);
+}

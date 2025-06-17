@@ -26,7 +26,7 @@
 1. **Anchor Flow:** If A is Anchored, B MUST be Mobile
 2. **Setup Time:** B must have Low or Medium setup time
 3. **Equipment Zone:** Must be same zone OR involve Floor (Floor compatible with all)
-4. **Best Paired With:** B's field must include A's primary muscle or function
+4. **Curated Pairings:** Must be in trainer-approved pairings list (exact exercise names)
 5. **No Self-Pairing:** A ≠ B
 6. **No Deltoid Conflicts:** No deltoid-deltoid pairings
 
@@ -72,9 +72,9 @@
 - Query parameter integration for mode switching
 
 ### 🔄 In Progress
-- Testing Trainer Mode with real Airtable data
-- Validating "Best Paired With" field matching logic
-- Fine-tuning compatibility score thresholds
+- Testing curated pairing system with real Airtable data
+- Expanding trainer-approved pairs database
+- Validating equipment zone and anchor type rules
 
 ### 💭 Future Considerations
 - Time-based pairing (rest periods)
@@ -83,11 +83,37 @@
 - Gym layout optimization
 - Peak/off-peak equipment availability
 
+## Trainer Mode Evolution: From Generic to Curated
+
+### Previous Approach (Problematic)
+- Relied on string matching between exercise types and "Best Paired With" tags
+- Fuzzy logic: "Push" exercise trying to match "chest" tags
+- Inconsistent results due to tagging variations
+- Too many false negatives from mismatched terminology
+
+### Current Approach (Improved)
+- **Curated Pairing Database**: Hand-selected exercise-to-exercise mappings
+- **Exact Name Matching**: "Barbell Bench Press" → ["Bent Over Barbell Row", "Lat Pulldown"]
+- **Trainer Expertise**: Each pairing reflects proven training methods
+- **Predictable Results**: Clear yes/no decisions based on professional experience
+
+### Challenges to Address
+1. **Coverage Gaps**: Not all 196 exercises have curated pairs yet
+2. **Name Variations**: "DB Bench Press" vs "Dumbbell Bench Press" matching issues
+3. **Maintenance Overhead**: Requires manual updates for new exercises
+4. **Scaling**: Large exercise databases need extensive pairing lists
+
+### Alternative Approaches Worth Considering
+- **Hybrid System**: Curated pairs for common exercises, algorithmic fallback for others
+- **Exercise Families**: Group similar exercises for broader matching
+- **Fuzzy Name Matching**: Handle variations like "DB" = "Dumbbell"
+- **User-Submitted Pairs**: Allow trainers to add verified pairings
+
 ## Development Notes
 - Standard Mode encourages exploration and variety
-- Trainer Mode enforces proven methodologies
+- Trainer Mode enforces proven methodologies with precise control
 - System allows evolution as training philosophy develops
-- User feedback will inform future refinements
+- Curated approach provides reliability at the cost of coverage
 
-*Last Updated: [Current Date]*
-*Version: 1.0*
+*Last Updated: June 17, 2025*
+*Version: 2.0 - Curated Pairing System*
