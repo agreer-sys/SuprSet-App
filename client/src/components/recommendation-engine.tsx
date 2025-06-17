@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Dumbbell, X, RefreshCw, Lightbulb } from "lucide-react";
+import { Dumbbell, X, RefreshCw, Lightbulb, Settings } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type { Exercise } from "@shared/schema";
 
 interface RecommendationEngineProps {
@@ -26,8 +29,15 @@ export default function RecommendationEngine({
   onShowInstructions,
   onClearSelection 
 }: RecommendationEngineProps) {
+  const [isTrainerMode, setIsTrainerMode] = useState(false);
+  
   const { data: recommendationsData, isLoading, error } = useQuery({
-    queryKey: [`/api/exercises/${selectedExercise?.id}/recommendations`],
+    queryKey: [`/api/exercises/${selectedExercise?.id}/recommendations`, isTrainerMode],
+    queryFn: async () => {
+      const response = await fetch(`/api/exercises/${selectedExercise?.id}/recommendations?trainerMode=${isTrainerMode}`);
+      if (!response.ok) throw new Error('Failed to fetch recommendations');
+      return response.json();
+    },
     enabled: !!selectedExercise,
   });
 
@@ -35,6 +45,7 @@ export default function RecommendationEngine({
 
   // Handle the response format from the API
   const recommendations: Recommendation[] = recommendationsData?.recommendations || [];
+  const mode = recommendationsData?.mode || 'standard';
   const topRecommendation = recommendations[0];
   const alternativeRecommendations = recommendations.slice(1, 4);
 
@@ -94,18 +105,48 @@ export default function RecommendationEngine({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Smart Recommendations</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Badge variant="secondary">Exercise B</Badge>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                disabled={isLoading}
-                className="text-primary hover:text-primary-600"
-              >
-                <RefreshCw className={`w-4 h-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
+            <div className="flex items-center space-x-4">
+              {/* Trainer Mode Toggle */}
+              <div className="flex items-center space-x-2">
+                <Settings className="w-4 h-4 text-gray-500" />
+                <Label htmlFor="trainer-mode" className="text-sm font-medium">
+                  Trainer Mode
+                </Label>
+                <Switch
+                  id="trainer-mode"
+                  checked={isTrainerMode}
+                  onCheckedChange={setIsTrainerMode}
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Badge variant="secondary">Exercise B</Badge>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  disabled={isLoading}
+                  className="text-primary hover:text-primary-600"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
             </div>
+          </div>
+          
+          {/* Mode Description */}
+          <div className="text-sm text-gray-600 mt-2">
+            {isTrainerMode ? (
+              <div className="flex items-center space-x-1">
+                <Settings className="w-3 h-3" />
+                <span>Strict trainer rules - only perfect matches shown</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-1">
+                <Lightbulb className="w-3 h-3" />
+                <span>Algorithmic scoring - top 10 recommendations</span>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>

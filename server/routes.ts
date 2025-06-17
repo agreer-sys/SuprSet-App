@@ -136,6 +136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const exerciseAId = parseInt(req.params.id);
       const exerciseA = await storage.getExercise(exerciseAId);
+      const trainerMode = req.query.trainerMode === 'true';
       
       if (!exerciseA) {
         return res.status(404).json({ message: "Exercise not found" });
@@ -145,22 +146,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allExercises = await storage.getAllExercises();
       const candidateExercises = allExercises.filter(ex => ex.id !== exerciseAId);
 
-      // Calculate compatibility scores using enhanced pairing logic
-      const recommendations = candidateExercises.map(exerciseB => {
-        const { score, reasoning } = calculateCompatibilityScoreWithReasoning(exerciseA, exerciseB);
-        
-        return {
-          exercise: exerciseB,
-          compatibilityScore: score,
-          reasoning
-        };
-      });
+      let recommendations;
 
-      // Sort by compatibility score and return top recommendations
+      if (trainerMode) {
+        // Trainer Mode: Strict binary filtering
+        recommendations = candidateExercises
+          .map(exerciseB => {
+            const { isValid, score, reasoning } = calculateTrainerModeCompatibility(exerciseA, exerciseB);
+            return isValid ? {
+              exercise: exerciseB,
+              compatibilityScore: score,
+              reasoning
+            } : null;
+          })
+          .filter(rec => rec !== null);
+      } else {
+        // Standard Mode: Algorithmic scoring
+        recommendations = candidateExercises.map(exerciseB => {
+          const { score, reasoning } = calculateCompatibilityScoreWithReasoning(exerciseA, exerciseB);
+          
+          return {
+            exercise: exerciseB,
+            compatibilityScore: score,
+            reasoning
+          };
+        });
+      }
+
+      // Sort by compatibility score
       recommendations.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
       
       res.json({
-        recommendations: recommendations.slice(0, 10) // Top 10 recommendations
+        recommendations: trainerMode ? recommendations : recommendations.slice(0, 10),
+        mode: trainerMode ? 'trainer' : 'standard'
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to generate recommendations" });
@@ -201,6 +219,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Trainer Mode: Strict binary filtering with mandatory rules
+function calculateTrainerModeCompatibility(exerciseA: Exercise, exerciseB: Exercise): { isValid: boolean; score: number; reasoning: string[] } {
+  const reasons: string[] = [];
+  
+  // Rule 1: No self-pairing
+  if (exerciseA.id === exerciseB.id) {
+    return { isValid: false, score: 0, reasoning: ["Cannot pair exercise with itself"] };
+  }
+  
+  // Rule 2: No deltoid-deltoid pairings
+  const isDeltoidA = exerciseA.primaryMuscleGroup?.toLowerCase().includes('deltoid') || 
+                    exerciseA.primaryMuscleGroup?.toLowerCase().includes('shoulder') ||
+                    exerciseA.name.toLowerCase().includes('shoulder') ||
+                    exerciseA.name.toLowerCase().includes('deltoid');
+  const isDeltoidB = exerciseB.primaryMuscleGroup?.toLowerCase().includes('deltoid') || 
+                    exerciseB.primaryMuscleGroup?.toLowerCase().includes('shoulder') ||
+                    exerciseB.name.toLowerCase().includes('shoulder') ||
+                    exerciseB.name.toLowerCase().includes('deltoid');
+  
+  if (isDeltoidA && isDeltoidB) {
+    return { isValid: false, score: 0, reasoning: ["Trainer rule: No deltoid-deltoid pairings due to fatigue conflicts"] };
+  }
+  
+  // Rule 3: Anchor flow - If A is Anchored, B MUST be Mobile
+  if (exerciseA.anchorType === "Anchored" && exerciseB.anchorType !== "Mobile") {
+    return { isValid: false, score: 0, reasoning: ["Trainer rule: Anchored exercise must pair with Mobile exercise"] };
+  }
+  
+  // Rule 4: Setup time - B must be Low or Medium
+  if (exerciseB.setupTime === "High") {
+    return { isValid: false, score: 0, reasoning: ["Trainer rule: Second exercise must have Low or Medium setup time"] };
+  }
+  
+  // Rule 5: Equipment zone compatibility (Floor is universal)
+  const isFloorInvolved = exerciseA.equipmentZone?.toLowerCase() === "floor" || 
+                         exerciseB.equipmentZone?.toLowerCase() === "floor";
+  if (!isFloorInvolved && exerciseA.equipmentZone !== exerciseB.equipmentZone) {
+    return { isValid: false, score: 0, reasoning: ["Trainer rule: Different equipment zones (Floor exercises are exceptions)"] };
+  }
+  
+  // Rule 6: Best Paired With field must include A's primary muscle or function
+  const hasRecommendedPairing = exerciseB.bestPairedWith?.some(tag => 
+    exerciseA.primaryMuscleGroup?.toLowerCase().includes(tag.toLowerCase()) ||
+    exerciseA.exerciseType?.toLowerCase().includes(tag.toLowerCase()) ||
+    tag.toLowerCase().includes(exerciseA.primaryMuscleGroup?.toLowerCase() || '') ||
+    tag.toLowerCase().includes(exerciseA.exerciseType?.toLowerCase() || '')
+  );
+  
+  if (!hasRecommendedPairing) {
+    return { isValid: false, score: 0, reasoning: ["Trainer rule: Exercise B must include A's muscle/function in 'Best Paired With' field"] };
+  }
+  
+  // If all rules pass, assign score based on quality indicators
+  let score = 2; // Base perfect score
+  
+  // Quality bonuses for trainer-approved combinations
+  if (exerciseA.exerciseType === "Push" && exerciseB.exerciseType === "Pull") {
+    reasons.push("Perfect push-pull antagonist pairing");
+  }
+  if (exerciseA.anchorType === "Anchored" && exerciseB.anchorType === "Mobile") {
+    reasons.push("Optimal anchored-to-mobile flow");
+  }
+  if (exerciseA.equipmentZone === exerciseB.equipmentZone) {
+    reasons.push("Same equipment zone for efficient transitions");
+  }
+  
+  return { isValid: true, score, reasoning: reasons };
 }
 
 // Enhanced trainer-inspired pairing logic using all 22 Airtable fields
