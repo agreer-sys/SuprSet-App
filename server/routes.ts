@@ -213,6 +213,20 @@ function calculateCompatibilityScoreWithReasoning(exerciseA: Exercise, exerciseB
     return { score: 0, reasoning: [] };
   }
   
+  // Avoid pairing deltoid/shoulder exercises together (anterior and posterior deltoids create push/pull conflicts)
+  const isDeltoidExerciseA = exerciseA.primaryMuscleGroup?.toLowerCase().includes('deltoid') || 
+                            exerciseA.primaryMuscleGroup?.toLowerCase().includes('shoulder') ||
+                            exerciseA.name.toLowerCase().includes('shoulder') ||
+                            exerciseA.name.toLowerCase().includes('deltoid');
+  const isDeltoidExerciseB = exerciseB.primaryMuscleGroup?.toLowerCase().includes('deltoid') || 
+                            exerciseB.primaryMuscleGroup?.toLowerCase().includes('shoulder') ||
+                            exerciseB.name.toLowerCase().includes('shoulder') ||
+                            exerciseB.name.toLowerCase().includes('deltoid');
+  
+  if (isDeltoidExerciseA && isDeltoidExerciseB) {
+    return { score: 0, reasoning: ["Avoiding deltoid-deltoid pairing due to anterior/posterior fatigue conflicts"] };
+  }
+  
   // 1. Pairing Compatibility Tags (highest priority - 40 points)
   if (exerciseA.pairingCompatibility && exerciseB.exerciseType) {
     if (exerciseA.pairingCompatibility.includes(exerciseB.exerciseType)) {
