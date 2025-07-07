@@ -452,20 +452,38 @@ export default function GymMapping() {
 
           {/* Video Stream */}
           {isStreaming && (
-            <div className="relative">
+            <div className="relative bg-black rounded-lg overflow-hidden">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className="w-full max-w-2xl mx-auto rounded-lg border"
-                style={{ transform: 'scaleX(-1)' }} // Mirror for selfie-like experience
+                className="w-full h-64 md:h-80 object-cover rounded-lg"
               />
+              
+              {/* Camera overlay UI */}
+              <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                {isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
+              </div>
+              
+              {/* Detection overlay */}
               {isMappingMode && (
-                <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-sm">
-                  🔴 MAPPING
+                <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white p-2 rounded text-xs">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>Equipment: {detectedEquipment.length}</div>
+                    <div>People: {detectedPoses.length}</div>
+                    <div>Zones: {equipmentZones.length}</div>
+                    <div>Crowd: {crowdingLevel.toUpperCase()}</div>
+                  </div>
                 </div>
               )}
+              
+              {/* Crosshair for targeting */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-8 h-8 border-2 border-white/50 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white/50 rounded-full"></div>
+                </div>
+              </div>
             </div>
           )}
 
