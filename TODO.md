@@ -55,14 +55,24 @@
 - [ ] **Nutrition Suggestions**: Post-workout meal recommendations
 - [ ] **Recovery Tracking**: Sleep quality correlation with workout performance
 
-### 8. Business Features
+### 8. Visual AI & Spatial Intelligence
+- [ ] **Gym Floor Mapping**: Use device camera/AI to map workout environment and identify available equipment
+- [ ] **Equipment Location Tracking**: Create spatial layout of gym with precise equipment positioning
+- [ ] **Geolocation Integration**: Save gym layouts by location (GPS coordinates) for community sharing
+- [ ] **Shared Gym Database**: Allow users to access pre-mapped gym layouts created by other users at same location
+- [ ] **Equipment Availability Status**: Real-time tracking of which equipment is in use vs available
+- [ ] **Optimal Workout Flow**: Route planning through gym based on superset requirements and equipment proximity
+- [ ] **Equipment Recognition**: AI identification of specific machines, weights, and accessories
+- [ ] **Space Utilization**: Analyze gym traffic patterns and suggest optimal workout timing
+
+### 9. Business Features
 - [ ] **Subscription Tiers**: Premium features for advanced users
 - [ ] **Gym Partnerships**: White-label solutions for fitness centers
 - [ ] **Trainer Certification**: Professional pairing logic validation
 - [ ] **API Access**: Third-party integrations for fitness apps
 - [ ] **Corporate Wellness**: Team challenges and group workouts
 
-### 9. Technical Debt & Maintenance
+### 10. Technical Debt & Maintenance
 - [ ] **Code Documentation**: Comprehensive API documentation
 - [ ] **Test Coverage**: Unit tests for pairing logic and data handling
 - [ ] **Database Migration**: Move from in-memory to persistent storage
