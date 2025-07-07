@@ -1,5 +1,6 @@
-import { Dumbbell, Bell } from "lucide-react";
+import { Dumbbell, Bell, Camera, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link, useLocation } from "wouter";
 
 export default function Header() {
   return (
@@ -15,11 +16,27 @@ export default function Header() {
           </div>
           
           {/* Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
-            <a href="#" className="text-primary font-medium">Workouts</a>
-            <a href="#" className="text-gray-600 hover:text-gray-900">Exercises</a>
-            <a href="#" className="text-gray-600 hover:text-gray-900">Progress</a>
-            <a href="#" className="text-gray-600 hover:text-gray-900">Settings</a>
+          <nav className="hidden md:flex items-center space-x-4">
+            <Link href="/">
+              <Button 
+                variant={useLocation()[0] === "/" ? "default" : "ghost"} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Home className="h-4 w-4" />
+                Workouts
+              </Button>
+            </Link>
+            <Link href="/gym-mapping">
+              <Button 
+                variant={useLocation()[0] === "/gym-mapping" ? "default" : "ghost"} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Camera className="h-4 w-4" />
+                Gym Mapping
+              </Button>
+            </Link>
           </nav>
           
           {/* Profile */}
