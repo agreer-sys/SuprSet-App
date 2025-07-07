@@ -127,22 +127,74 @@ export default function GymMapping() {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
+      console.log("Starting camera with back-facing preference...");
       
-      if (videoRef.current) {
+      // Check available devices first
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      console.log("Available cameras:", videoDevices.length);
+      
+      // First try to get back-facing camera with exact constraint
+      let stream;
+      try {
+        console.log("Attempting exact back camera...");
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { exact: 'environment' }, // Force back camera
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 }
+          }
+        });
+        console.log("✅ Exact back camera successful");
+      } catch (exactError) {
+        console.warn("Exact back camera failed, trying ideal constraint:", exactError);
+        try {
+          // Fallback to ideal constraint if exact fails
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: 'environment' }, // Prefer back camera
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 }
+            }
+          });
+          console.log("✅ Ideal back camera successful");
+        } catch (idealError) {
+          console.warn("Ideal back camera failed, using default camera:", idealError);
+          // Final fallback to any available camera
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 }
+            }
+          });
+          console.log("✅ Default camera successful");
+        }
+      }
+      
+      if (videoRef.current && stream) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          if (videoRef.current) {
+            videoRef.current.play();
+            console.log("Video playing, dimensions:", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
+          }
+        };
+        
         setIsStreaming(true);
+        
+        // Log which camera is being used
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          console.log("Camera info:", track.label);
+          console.log("Camera settings:", track.getSettings());
+        }
       }
     } catch (error) {
       console.error("Camera access error:", error);
-      alert("Camera access is required for gym mapping. Please grant permission and try again.");
+      alert("Camera access is required for gym mapping. Please grant camera permission and try again.");
     }
   };
 
@@ -420,7 +472,12 @@ export default function GymMapping() {
                   autoPlay
                   playsInline
                   muted
-                  className="w-full h-64 md:h-80 object-cover rounded-lg"
+                  className="w-full h-64 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg"
+                  style={{ 
+                    minHeight: '240px',
+                    maxHeight: '480px',
+                    aspectRatio: '16/9'
+                  }}
                 />
                 
                 {/* Camera overlay UI */}
