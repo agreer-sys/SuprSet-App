@@ -225,34 +225,45 @@ export default function GymMapping() {
           videoRef.current.setAttribute('webkit-playsinline', 'true');
         }
         
-        // Wait for video to be ready with timeout
-        const videoLoadPromise = new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error("Video load timeout"));
-          }, 10000);
+        // Simple approach for iOS - just set the stream and play
+        if (isIOS) {
+          try {
+            await videoRef.current.play();
+            console.log("iOS video started playing");
+          } catch (playError) {
+            console.warn("iOS video play error:", playError);
+          }
+        } else {
+          // Wait for video to be ready with timeout for other devices
+          const videoLoadPromise = new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error("Video load timeout"));
+            }, 10000);
+            
+            videoRef.current!.onloadedmetadata = () => {
+              clearTimeout(timeout);
+              console.log("Video metadata loaded");
+              if (videoRef.current) {
+                videoRef.current.play().then(() => {
+                  console.log("Video playing, dimensions:", videoRef.current!.videoWidth, "x", videoRef.current!.videoHeight);
+                  resolve();
+                }).catch(playError => {
+                  console.error("Video play failed:", playError);
+                  reject(playError);
+                });
+              }
+            };
+            
+            videoRef.current!.onerror = (error) => {
+              clearTimeout(timeout);
+              console.error("Video error:", error);
+              reject(error);
+            };
+          });
           
-          videoRef.current!.onloadedmetadata = () => {
-            clearTimeout(timeout);
-            console.log("Video metadata loaded");
-            if (videoRef.current) {
-              videoRef.current.play().then(() => {
-                console.log("Video playing, dimensions:", videoRef.current!.videoWidth, "x", videoRef.current!.videoHeight);
-                resolve();
-              }).catch(playError => {
-                console.error("Video play failed:", playError);
-                reject(playError);
-              });
-            }
-          };
-          
-          videoRef.current!.onerror = (error) => {
-            clearTimeout(timeout);
-            console.error("Video error:", error);
-            reject(error);
-          };
-        });
+          await videoLoadPromise;
+        }
         
-        await videoLoadPromise;
         console.log("✅ Video stream set successfully");
         console.log("Setting isStreaming to true...");
         setIsStreaming(true);
@@ -526,7 +537,13 @@ export default function GymMapping() {
           <CardContent className="space-y-4">
             <div className="flex gap-2">
               {!isStreaming ? (
-                <Button onClick={startCamera} className="flex items-center gap-2">
+                <Button 
+                  onClick={() => {
+                    console.log("Start Camera button clicked");
+                    startCamera();
+                  }} 
+                  className="flex items-center gap-2"
+                >
                   <Camera className="h-4 w-4" />
                   Start Camera
                 </Button>
