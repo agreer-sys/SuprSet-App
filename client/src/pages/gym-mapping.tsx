@@ -562,54 +562,55 @@ export default function GymMapping() {
               Stream Ref: {streamRef.current ? 'Active' : 'Inactive'}
             </div>
 
-            {/* Video Stream */}
-            {isStreaming && (
-              <div className="relative bg-black rounded-lg overflow-hidden min-h-[240px] border-2 border-white">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  webkit-playsinline="true"
-                  className="w-full h-64 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg bg-gray-900"
-                  style={{ 
-                    minHeight: '240px',
-                    maxHeight: '480px',
-                    aspectRatio: '16/9',
-                    display: 'block',
-                    backgroundColor: 'black'
-                  }}
-                  onLoadedData={() => console.log("Video data loaded")}
-                  onPlay={() => console.log("Video started playing")}
-                  onError={(e) => console.error("Video error:", e)}
-                  onLoadedMetadata={() => console.log("Video metadata loaded, size:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)}
-                />
-                
-                {/* Camera overlay UI */}
-                <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                  {isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
-                </div>
-                
-                {/* Detection overlay */}
-                {isMappingMode && (
-                  <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white p-2 rounded text-xs">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>Equipment: {detectedEquipment.length}</div>
-                      <div>People: {detectedPoses.length}</div>
-                      <div>Zones: {equipmentZones.length}</div>
-                      <div>Crowd: {crowdingLevel.toUpperCase()}</div>
-                    </div>
+            {/* Video Stream Container - Always Present */}
+            <div className={`relative bg-black rounded-lg overflow-hidden min-h-[240px] border-2 ${isStreaming ? 'border-white' : 'border-gray-500'}`}>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                webkit-playsinline="true"
+                className="w-full h-64 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg bg-gray-900"
+                style={{ 
+                  minHeight: '240px',
+                  maxHeight: '480px',
+                  aspectRatio: '16/9',
+                  display: 'block',
+                  backgroundColor: 'black',
+                  opacity: isStreaming ? 1 : 0.3
+                }}
+                onLoadedData={() => console.log("Video data loaded")}
+                onPlay={() => console.log("Video started playing")}
+                onError={(e) => console.error("Video error:", e)}
+                onLoadedMetadata={() => console.log("Video metadata loaded, size:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)}
+              />
+              
+              {/* Camera status overlay */}
+              <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                {!isStreaming ? '📱 Camera Not Active' : isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
+              </div>
+              
+              {/* Detection overlay */}
+              {isStreaming && isMappingMode && (
+                <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white p-2 rounded text-xs">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>Equipment: {detectedEquipment.length}</div>
+                    <div>People: {detectedPoses.length}</div>
+                    <div>Zones: {equipmentZones.length}</div>
+                    <div>Crowd: {crowdingLevel.toUpperCase()}</div>
                   </div>
-                )}
-                
-                {/* Crosshair for targeting */}
+                </div>
+              )}
+              
+              {/* Crosshair for targeting */}
+              {isStreaming && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="w-8 h-8 border-2 border-white/50 rounded-full flex items-center justify-center">
                     <div className="w-2 h-2 bg-white/50 rounded-full"></div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Hidden canvas for frame processing */}
             <canvas ref={canvasRef} className="hidden" />
