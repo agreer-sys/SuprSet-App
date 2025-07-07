@@ -48,6 +48,8 @@ export default function GymMapping() {
   const [detectedEquipment, setDetectedEquipment] = useState<DetectedEquipment[]>([]);
   const [detectedPoses, setDetectedPoses] = useState<DetectedPose[]>([]);
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationPermission, setLocationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [gymLayout, setGymLayout] = useState<GymLayout | null>(null);
   const [modelsLoaded, setModelsLoaded] = useState({
     pose: false,
@@ -69,20 +71,67 @@ export default function GymMapping() {
     getCurrentLocation();
   }, []);
 
-  const getCurrentLocation = () => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCurrentLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-        }
-      );
+  const getCurrentLocation = async () => {
+    console.log("Requesting location permission...");
+    
+    if (!('geolocation' in navigator)) {
+      setLocationError("Geolocation not supported");
+      return;
     }
+
+    // Check permission status if available
+    if ('permissions' in navigator) {
+      try {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        console.log("Location permission status:", permission.state);
+        setLocationPermission(permission.state as 'prompt' | 'granted' | 'denied');
+        
+        if (permission.state === 'denied') {
+          setLocationError("Location access denied. Please enable in browser settings.");
+          return;
+        }
+      } catch (permError) {
+        console.log("Permission API not available, proceeding with location request");
+      }
+    }
+
+    // Request location with high accuracy
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        console.log("✅ Location obtained:", position.coords.latitude, position.coords.longitude);
+        setCurrentLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+        setLocationPermission('granted');
+        setLocationError(null);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        let errorMessage = "Unknown location error";
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied by user";
+            setLocationPermission('denied');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out";
+            break;
+        }
+        
+        setLocationError(errorMessage);
+        console.log("Location error details:", errorMessage);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // 5 minutes
+      }
+    );
   };
 
   const initializeModels = async () => {
@@ -497,13 +546,44 @@ export default function GymMapping() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {currentLocation ? (
-              <p className="text-sm">
-                📍 Location: {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Requesting location access...</p>
-            )}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${
+                  currentLocation ? 'bg-green-500' : 
+                  locationPermission === 'denied' ? 'bg-red-500' : 
+                  'bg-yellow-500'
+                }`}></div>
+                <span className="text-sm">
+                  {currentLocation ? 'Location Available' : 
+                   locationError ? 'Location Error' : 
+                   'Location Pending'}
+                </span>
+              </div>
+              
+              {currentLocation && (
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div>📍 Lat: {currentLocation.lat.toFixed(6)}</div>
+                  <div>📍 Lng: {currentLocation.lng.toFixed(6)}</div>
+                </div>
+              )}
+              
+              {locationError && (
+                <div className="text-xs text-red-600">
+                  {locationError}
+                </div>
+              )}
+              
+              {!currentLocation && (
+                <Button 
+                  onClick={getCurrentLocation}
+                  size="sm" 
+                  variant="outline"
+                  className="w-full text-xs mt-2"
+                >
+                  Request Location
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 
