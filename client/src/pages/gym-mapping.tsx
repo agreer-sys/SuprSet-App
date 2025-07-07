@@ -253,6 +253,8 @@ export default function GymMapping() {
         });
         
         await videoLoadPromise;
+        console.log("✅ Video stream set successfully");
+        console.log("Setting isStreaming to true...");
         setIsStreaming(true);
         
         // Log camera details
@@ -552,21 +554,34 @@ export default function GymMapping() {
               )}
             </div>
 
+            {/* Debug Info */}
+            <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+              Streaming: {isStreaming ? 'Yes' : 'No'} | 
+              Video Ref: {videoRef.current ? 'Ready' : 'Not Ready'} | 
+              Stream Ref: {streamRef.current ? 'Active' : 'Inactive'}
+            </div>
+
             {/* Video Stream */}
             {isStreaming && (
-              <div className="relative bg-black rounded-lg overflow-hidden">
+              <div className="relative bg-black rounded-lg overflow-hidden min-h-[240px] border-2 border-white">
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
                   webkit-playsinline="true"
-                  className="w-full h-64 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg"
+                  className="w-full h-64 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg bg-gray-900"
                   style={{ 
                     minHeight: '240px',
                     maxHeight: '480px',
-                    aspectRatio: '16/9'
+                    aspectRatio: '16/9',
+                    display: 'block',
+                    backgroundColor: 'black'
                   }}
+                  onLoadedData={() => console.log("Video data loaded")}
+                  onPlay={() => console.log("Video started playing")}
+                  onError={(e) => console.error("Video error:", e)}
+                  onLoadedMetadata={() => console.log("Video metadata loaded, size:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)}
                 />
                 
                 {/* Camera overlay UI */}
