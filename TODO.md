@@ -56,12 +56,18 @@
 - [ ] **Recovery Tracking**: Sleep quality correlation with workout performance
 
 ### 8. Visual AI & Spatial Intelligence
-- [ ] **Phase 1 - Custom Dataset Creation (Roboflow)**:
+- [x] **Phase 0 - Foundation (COMPLETE)**:
+  - [x] MediaPipe BlazePose integration (33-keypoint pose detection)
+  - [x] COCO-SSD baseline object detection
+  - [x] Spatial mapping system with equipment zones
+  - [x] Back-facing camera configuration for gym scanning
+  - [x] WebGL/WebGPU fallback system for development environments
+- [ ] **Phase 1 - Custom Dataset Creation (Roboflow) - NEXT PRIORITY**:
   - [ ] Create private Roboflow account ($49-249/month for private datasets)
   - [ ] Collect gym equipment photos (target: 1,000+ images across 20+ equipment types)
   - [ ] Use Roboflow Auto Label for AI-assisted annotation ($0.05/bounding box)
   - [ ] Train custom model for SuprSet-specific equipment detection
-  - [ ] Equipment classes: Bench Press, Squat Rack, Dumbbells, Cable Machine, Leg Press, etc.
+  - [ ] Equipment classes: Bench Press, Squat Rack, Dumbbells, Cable Machine, Leg Press, Smith Machine, Lat Pulldown, Cable Crossover, Leg Extension, Leg Curl, etc.
 - [ ] **Phase 2 - Production AI Integration**:
   - [ ] Replace COCO-SSD with custom Roboflow model via REST API
   - [ ] Maintain MediaPipe BlazePose for 33-keypoint pose estimation 
