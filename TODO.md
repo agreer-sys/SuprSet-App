@@ -56,14 +56,23 @@
 - [ ] **Recovery Tracking**: Sleep quality correlation with workout performance
 
 ### 8. Visual AI & Spatial Intelligence
-- [ ] **Gym Floor Mapping**: Use device camera/AI to map workout environment and identify available equipment
-- [ ] **Equipment Location Tracking**: Create spatial layout of gym with precise equipment positioning
-- [ ] **Geolocation Integration**: Save gym layouts by location (GPS coordinates) for community sharing
-- [ ] **Shared Gym Database**: Allow users to access pre-mapped gym layouts created by other users at same location
-- [ ] **Equipment Availability Status**: Real-time tracking of which equipment is in use vs available
-- [ ] **Optimal Workout Flow**: Route planning through gym based on superset requirements and equipment proximity
-- [ ] **Equipment Recognition**: AI identification of specific machines, weights, and accessories
-- [ ] **Space Utilization**: Analyze gym traffic patterns and suggest optimal workout timing
+- [ ] **Phase 1 - Equipment Detection Model Integration**:
+  - [ ] Integrate Roboflow Gym Equipment dataset (6,620 images, 13 equipment classes, 61.8% mAP)
+  - [ ] Add MediaPipe BlazePose for 33-keypoint pose estimation 
+  - [ ] Combine pose + equipment detection for context-aware recommendations
+  - [ ] Classes: Chest Press, Lat Pull Down, Cable Rows, Arm Curl, Chest Fly, Leg Extension, Leg Press, Smith Machine, etc.
+- [ ] **Phase 2 - Spatial Mapping**:
+  - [ ] Create spatial layout of gym with precise equipment positioning
+  - [ ] Map equipment relationships and proximity for superset optimization
+  - [ ] Implement 3D coordinate system for gym floor layout
+- [ ] **Phase 3 - Community & Geolocation**:
+  - [ ] Geolocation integration: Save gym layouts by GPS coordinates 
+  - [ ] Shared gym database: Access pre-mapped layouts from other users
+  - [ ] Real-time equipment availability status tracking
+- [ ] **Phase 4 - Intelligence & Optimization**:
+  - [ ] Optimal workout flow: Route planning based on superset requirements
+  - [ ] Space utilization analysis and optimal timing suggestions
+  - [ ] Equipment usage pattern recognition
 
 ### 9. Business Features
 - [ ] **Subscription Tiers**: Premium features for advanced users
@@ -116,6 +125,11 @@
 - **2025-01-07**: Implemented dual-mode system (Standard vs Trainer Mode) for flexibility
 - **2025-01-07**: Resolved Trainer Mode bugs through antagonist muscle pattern approach
 - **2025-01-07**: Added Visual AI & Spatial Intelligence features to roadmap - identified as key differentiator
+- **2025-01-07**: Research completed on computer vision models:
+  - **Equipment Detection**: Roboflow dataset with 6,620 images covering 13 gym equipment classes (61.8% mAP accuracy)
+  - **Pose Estimation**: MediaPipe BlazePose provides 33 keypoints with 3D coordinates, optimized for fitness
+  - **Implementation**: TensorFlow.js integration allows browser-based real-time processing
+  - **Ready-to-use APIs**: Both models available via REST APIs and JavaScript libraries
 
 ---
 
