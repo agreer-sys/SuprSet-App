@@ -91,23 +91,23 @@
 - Inconsistent results due to tagging variations
 - Too many false negatives from mismatched terminology
 
-### Current Approach (Improved)
-- **Curated Pairing Database**: Hand-selected exercise-to-exercise mappings
-- **Exact Name Matching**: "Barbell Bench Press" → ["Bent Over Barbell Row", "Lat Pulldown"]
-- **Trainer Expertise**: Each pairing reflects proven training methods
-- **Predictable Results**: Clear yes/no decisions based on professional experience
+### Current Approach (Simplified & Reliable)
+- **Curated Exact Pairs**: Hand-selected exercise-to-exercise mappings for premium combinations
+- **Exercise Type Fallback**: Push↔Pull, Squat↔Hinge, Lunge↔Hinge antagonist pairing
+- **Reliable Data Source**: Uses Airtable exercise type field (no complex name matching)
+- **Predictable Results**: Clear yes/no decisions based on proven training principles
 
-### Challenges to Address
-1. **Coverage Gaps**: Not all 196 exercises have curated pairs yet
-2. **Name Variations**: "DB Bench Press" vs "Dumbbell Bench Press" matching issues
-3. **Maintenance Overhead**: Requires manual updates for new exercises
-4. **Scaling**: Large exercise databases need extensive pairing lists
+### Resolved Issues
+1. **✅ Coverage**: Exercise type fallback ensures all exercises have potential pairs
+2. **✅ Reliability**: Direct Airtable field usage eliminates name matching errors
+3. **✅ Maintenance**: Minimal overhead with type-based logic
+4. **✅ Performance**: Fast binary filtering with clear pass/fail criteria
 
-### Alternative Approaches Worth Considering
-- **Hybrid System**: Curated pairs for common exercises, algorithmic fallback for others
-- **Exercise Families**: Group similar exercises for broader matching
-- **Fuzzy Name Matching**: Handle variations like "DB" = "Dumbbell"
-- **User-Submitted Pairs**: Allow trainers to add verified pairings
+### Future Enhancements
+- Expand curated exact pairs for premium exercise combinations
+- Add equipment zone optimization scoring
+- Include rest period considerations
+- Implement user preference learning
 
 ## Development Notes
 - Standard Mode encourages exploration and variety
