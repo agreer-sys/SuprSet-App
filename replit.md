@@ -59,6 +59,12 @@ SuprSet is a React-based web application that provides intelligent exercise supe
   - 25+ equipment classes aligned with SuprSet exercise database  
   - Cost analysis and ROI projections ($49-249/month subscription)
   - Technical integration specifications and performance targets
+- **2025-01-07**: iPhone 15 Pro Camera & Geolocation Integration:
+  - Fixed video element DOM rendering issue that prevented camera stream assignment
+  - Implemented always-present video container to resolve "videoRef: false" errors
+  - Added comprehensive geolocation handling with permission status detection
+  - Enhanced location error messaging and manual retry functionality
+  - Confirmed camera streaming working perfectly on iPhone 15 Pro with FaceTime HD Camera (1280x720)
 
 ## User Preferences
 - **Development Process**: Maintain master TODO.md list - add all discussed/suggested features to this central roadmap
