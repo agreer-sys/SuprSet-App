@@ -56,23 +56,32 @@
 - [ ] **Recovery Tracking**: Sleep quality correlation with workout performance
 
 ### 8. Visual AI & Spatial Intelligence
-- [ ] **Phase 1 - Equipment Detection Model Integration**:
-  - [ ] Integrate Roboflow Gym Equipment dataset (6,620 images, 13 equipment classes, 61.8% mAP)
-  - [ ] Add MediaPipe BlazePose for 33-keypoint pose estimation 
-  - [ ] Combine pose + equipment detection for context-aware recommendations
-  - [ ] Classes: Chest Press, Lat Pull Down, Cable Rows, Arm Curl, Chest Fly, Leg Extension, Leg Press, Smith Machine, etc.
-- [ ] **Phase 2 - Spatial Mapping**:
+- [ ] **Phase 1 - Custom Dataset Creation (Roboflow)**:
+  - [ ] Create private Roboflow account ($49-249/month for private datasets)
+  - [ ] Collect gym equipment photos (target: 1,000+ images across 20+ equipment types)
+  - [ ] Use Roboflow Auto Label for AI-assisted annotation ($0.05/bounding box)
+  - [ ] Train custom model for SuprSet-specific equipment detection
+  - [ ] Equipment classes: Bench Press, Squat Rack, Dumbbells, Cable Machine, Leg Press, etc.
+- [ ] **Phase 2 - Production AI Integration**:
+  - [ ] Replace COCO-SSD with custom Roboflow model via REST API
+  - [ ] Maintain MediaPipe BlazePose for 33-keypoint pose estimation 
+  - [ ] Combine custom equipment detection + pose data for context-aware recommendations
+  - [ ] Add equipment confidence scoring and validation
+- [ ] **Phase 3 - Spatial Mapping**:
   - [ ] Create spatial layout of gym with precise equipment positioning
   - [ ] Map equipment relationships and proximity for superset optimization
   - [ ] Implement 3D coordinate system for gym floor layout
-- [ ] **Phase 3 - Community & Geolocation**:
+  - [ ] Generate equipment zones (cardio, strength, free weights, functional)
+- [ ] **Phase 4 - Community & Geolocation**:
   - [ ] Geolocation integration: Save gym layouts by GPS coordinates 
   - [ ] Shared gym database: Access pre-mapped layouts from other users
   - [ ] Real-time equipment availability status tracking
-- [ ] **Phase 4 - Intelligence & Optimization**:
+  - [ ] Crowd level analysis using pose detection data
+- [ ] **Phase 5 - Intelligence & Optimization**:
   - [ ] Optimal workout flow: Route planning based on superset requirements
   - [ ] Space utilization analysis and optimal timing suggestions
   - [ ] Equipment usage pattern recognition
+  - [ ] Proximity-based superset recommendations
 
 ### 9. Business Features
 - [ ] **Subscription Tiers**: Premium features for advanced users
@@ -130,6 +139,11 @@
   - **Pose Estimation**: MediaPipe BlazePose provides 33 keypoints with 3D coordinates, optimized for fitness
   - **Implementation**: TensorFlow.js integration allows browser-based real-time processing
   - **Ready-to-use APIs**: Both models available via REST APIs and JavaScript libraries
+- **2025-01-07**: Roboflow platform analysis:
+  - **Private Dataset Creation**: $49-249/month for private models and datasets
+  - **AI-Assisted Labeling**: Auto Label feature reduces manual annotation work
+  - **Professional Labeling**: $0.05/bounding box for outsourced annotation
+  - **Decision**: Roboflow is optimal choice for custom gym equipment detection model
 
 ---
 
