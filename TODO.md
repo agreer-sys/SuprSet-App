@@ -89,10 +89,33 @@
 - [x] Exercise search and filtering functionality
 - [x] Basic workout timer implementation
 
+## Strategic Decision Points
+
+### Current Crossroads: Database Refinement vs Visual AI (January 2025)
+**Question**: Continue refining pairing logic/database OR pivot to Visual AI spatial awareness features?
+
+**Database Refinement Path** (Incremental value):
+- Perfect existing 194 exercise pairings
+- Add more curated trainer pairs  
+- Optimize equipment zone logic
+- Estimated effort: 2-4 weeks for substantial improvement
+
+**Visual AI Path** (Exponential value potential):
+- Camera-based gym mapping
+- Equipment recognition via computer vision
+- Geolocation + community sharing
+- Estimated effort: 2-3 months for MVP, significant technical complexity
+
+**Recommendation**: **Pivot to Visual AI MVP** 
+- Current pairing logic is functional and sufficient for user validation
+- Visual AI creates unique competitive moat and network effects
+- Technical feasibility needs research but appears viable in Replit environment
+
 ## Decision Log
 - **2025-01-07**: Simplified pairing logic from complex family matching to reliable exercise type compatibility
 - **2025-01-07**: Implemented dual-mode system (Standard vs Trainer Mode) for flexibility
 - **2025-01-07**: Resolved Trainer Mode bugs through antagonist muscle pattern approach
+- **2025-01-07**: Added Visual AI & Spatial Intelligence features to roadmap - identified as key differentiator
 
 ---
 
