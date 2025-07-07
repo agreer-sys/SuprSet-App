@@ -216,6 +216,10 @@ export default function GymMapping() {
       
       if (videoRef.current && stream) {
         console.log("Setting video source...");
+        console.log("Video element ready:", !!videoRef.current);
+        console.log("Stream tracks:", stream.getTracks().length);
+        
+        // Set the stream
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         
@@ -225,48 +229,23 @@ export default function GymMapping() {
           videoRef.current.setAttribute('webkit-playsinline', 'true');
         }
         
-        // Simple approach for iOS - just set the stream and play
-        if (isIOS) {
-          try {
-            await videoRef.current.play();
-            console.log("iOS video started playing");
-          } catch (playError) {
-            console.warn("iOS video play error:", playError);
-          }
-        } else {
-          // Wait for video to be ready with timeout for other devices
-          const videoLoadPromise = new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              reject(new Error("Video load timeout"));
-            }, 10000);
-            
-            videoRef.current!.onloadedmetadata = () => {
-              clearTimeout(timeout);
-              console.log("Video metadata loaded");
-              if (videoRef.current) {
-                videoRef.current.play().then(() => {
-                  console.log("Video playing, dimensions:", videoRef.current!.videoWidth, "x", videoRef.current!.videoHeight);
-                  resolve();
-                }).catch(playError => {
-                  console.error("Video play failed:", playError);
-                  reject(playError);
-                });
-              }
-            };
-            
-            videoRef.current!.onerror = (error) => {
-              clearTimeout(timeout);
-              console.error("Video error:", error);
-              reject(error);
-            };
-          });
-          
-          await videoLoadPromise;
-        }
-        
+        // Immediately set streaming to true and let video load in background
         console.log("✅ Video stream set successfully");
         console.log("Setting isStreaming to true...");
         setIsStreaming(true);
+        
+        // Try to play video (don't await to avoid blocking)
+        setTimeout(async () => {
+          try {
+            if (videoRef.current) {
+              console.log("Attempting to play video...");
+              await videoRef.current.play();
+              console.log("Video playing successfully");
+            }
+          } catch (playError) {
+            console.warn("Video play error (non-blocking):", playError);
+          }
+        }, 100);
         
         // Log camera details
         const track = stream.getVideoTracks()[0];
@@ -275,6 +254,11 @@ export default function GymMapping() {
           console.log("Camera settings:", track.getSettings());
           console.log("Camera capabilities:", track.getCapabilities?.());
         }
+      } else {
+        console.error("Video element or stream not available:", {
+          videoRef: !!videoRef.current,
+          stream: !!stream
+        });
       }
     } catch (error) {
       console.error("Camera access error:", error);
