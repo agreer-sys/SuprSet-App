@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import Header from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,20 +42,6 @@ interface DetectedPose {
   score: number;
 }
 
-interface GymLayout {
-  id: string;
-  name: string;
-  location: {
-    lat: number;
-    lng: number;
-  };
-  equipment: DetectedEquipment[];
-  dimensions: {
-    width: number;
-    height: number;
-  };
-}
-
 export default function GymMapping() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isMappingMode, setIsMappingMode] = useState(false);
@@ -83,7 +70,7 @@ export default function GymMapping() {
   }, []);
 
   const getCurrentLocation = () => {
-    if (navigator.geolocation) {
+    if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setCurrentLocation({
@@ -119,8 +106,6 @@ export default function GymMapping() {
         console.log("BlazePose model loaded");
       } catch (poseError) {
         console.warn("BlazePose failed to load (WebGL/WebGPU limitation in this environment):", poseError);
-        // Enable demo mode for development environment
-        setModelsLoaded(prev => ({ ...prev, pose: 'demo' as any }));
       }
 
       // Load object detection model with error handling
@@ -131,14 +116,10 @@ export default function GymMapping() {
         console.log("COCO-SSD object detection model loaded");
       } catch (objectError) {
         console.warn("COCO-SSD failed to load (WebGL/WebGPU limitation in this environment):", objectError);
-        // Enable demo mode for development environment
-        setModelsLoaded(prev => ({ ...prev, objects: 'demo' as any }));
       }
 
     } catch (error) {
-      console.error("TensorFlow.js initialization failed (expected in Replit environment):", error);
-      // Enable demo mode when WebGL/WebGPU is unavailable
-      setModelsLoaded({ pose: 'demo' as any, objects: 'demo' as any });
+      console.error("TensorFlow.js initialization failed:", error);
     } finally {
       setIsLoadingModels(false);
     }
@@ -174,26 +155,6 @@ export default function GymMapping() {
     setIsMappingMode(false);
   };
 
-  const captureFrame = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    const ctx = canvas.getContext('2d');
-    
-    if (ctx) {
-      // Set canvas dimensions to match video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      // Draw current video frame to canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // TODO: Send canvas data to computer vision service
-      processFrameForEquipment(canvas);
-    }
-  };
-
   const processFrameForEquipment = async (canvas: HTMLCanvasElement) => {
     if (!videoRef.current) return;
 
@@ -202,35 +163,18 @@ export default function GymMapping() {
       let poses: any[] = [];
       let objects: any[] = [];
       
-      // Handle real AI models or demo mode
-      if (modelsLoaded.pose === true && poseDetectorRef.current) {
+      // Run pose detection and object detection in parallel
+      if (modelsLoaded.pose && poseDetectorRef.current) {
         poses = await poseDetectorRef.current.estimatePoses(video) || [];
-      } else if (modelsLoaded.pose === 'demo') {
-        // Demo pose data for development environment
-        poses = [{
-          keypoints: [
-            { x: 100, y: 150, score: 0.9, name: 'nose' },
-            { x: 90, y: 200, score: 0.85, name: 'left_shoulder' },
-            { x: 110, y: 200, score: 0.85, name: 'right_shoulder' }
-          ],
-          score: 0.87
-        }];
       }
 
-      if (modelsLoaded.objects === true && objectDetectorRef.current) {
+      if (modelsLoaded.objects && objectDetectorRef.current) {
         objects = await objectDetectorRef.current.detect(video) || [];
-      } else if (modelsLoaded.objects === 'demo') {
-        // Demo object detection data for development environment
-        objects = [
-          { class: 'person', score: 0.92, bbox: [50, 80, 100, 200] },
-          { class: 'bench', score: 0.78, bbox: [200, 150, 150, 80] },
-          { class: 'dumbbell', score: 0.85, bbox: [350, 200, 60, 40] }
-        ];
       }
 
-      // Process pose detection results
+      // Update detected poses
       if (poses.length > 0) {
-        setDetectedPoses(poses.map(pose => ({
+        setDetectedPoses(poses.map((pose: any) => ({
           keypoints: pose.keypoints || [],
           score: pose.score || 0
         })));
@@ -245,19 +189,20 @@ export default function GymMapping() {
         gymRelevantClasses.includes(obj.class) && obj.score > 0.5
       );
 
-      // TODO: Replace with Roboflow custom model detection
-      // const roboflowPredictions = await roboflowDetector.detectEquipment(
-      //   roboflowDetector.canvasToBase64(canvas)
-      // );
-
-      const newEquipment: DetectedEquipment[] = relevantObjects.map(obj => ({
-        id: `obj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: mapToGymEquipment(obj.class),
+      // Convert to our equipment format
+      const newEquipment: DetectedEquipment[] = relevantObjects.map((obj: any, idx: number) => ({
+        id: `obj_${Date.now()}_${idx}`,
+        name: mapCocoToGymEquipment(obj.class),
         confidence: obj.score,
-        bbox: obj.bbox,
+        bbox: {
+          x: obj.bbox[0],
+          y: obj.bbox[1],
+          width: obj.bbox[2],
+          height: obj.bbox[3]
+        },
         position: {
-          x: (obj.bbox[0] + obj.bbox[2] / 2) / canvas.width * 100,
-          y: (obj.bbox[1] + obj.bbox[3] / 2) / canvas.height * 100
+          x: obj.bbox[0] + obj.bbox[2] / 2,
+          y: obj.bbox[1] + obj.bbox[3] / 2
         },
         source: 'object'
       }));
@@ -289,17 +234,36 @@ export default function GymMapping() {
       setCrowdingLevel(crowdLevel);
 
     } catch (error) {
-      console.error("Error processing frame:", error);
+      console.error("Frame processing error:", error);
     }
   };
 
-  const mapToGymEquipment = (cocoClass: string): string => {
+  const captureFrame = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    if (ctx) {
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw current video frame to canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      processFrameForEquipment(canvas);
+    }
+  };
+
+  const mapCocoToGymEquipment = (cocoClass: string): string => {
     const mapping: Record<string, string> = {
-      'person': 'Person (Trainer/User)',
-      'chair': 'Adjustable Bench',
-      'bench': 'Flat Bench',
+      'person': 'Person',
+      'chair': 'Bench/Seat',
+      'bench': 'Bench',
       'dumbbell': 'Dumbbell',
-      'sports ball': 'Exercise Ball',
+      'sports ball': 'Medicine Ball',
       'bicycle': 'Exercise Bike'
     };
     return mapping[cocoClass] || cocoClass;
@@ -310,19 +274,17 @@ export default function GymMapping() {
       alert("AI models are still loading. Please wait a moment.");
       return;
     }
-    
+
     setIsMappingMode(true);
-    setDetectedEquipment([]);
-    setDetectedPoses([]);
     
-    // Start continuous frame capture for equipment detection
+    // Start capturing frames every 1.5 seconds
     const interval = setInterval(() => {
       if (isMappingMode) {
         captureFrame();
       } else {
         clearInterval(interval);
       }
-    }, 1500); // Capture every 1.5 seconds for real-time feel
+    }, 1500);
   };
 
   const saveGymLayout = () => {
@@ -336,361 +298,280 @@ export default function GymMapping() {
       name: `Gym at ${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`,
       location: currentLocation,
       equipment: detectedEquipment,
+      zones: equipmentZones,
       dimensions: {
-        width: 100, // Would be calculated from mapping
+        width: 100,
         height: 100
-      }
+      },
+      crowdingLevel,
+      lastUpdated: Date.now(),
+      contributors: 1
     };
 
     setGymLayout(layout);
     setIsMappingMode(false);
     
-    // TODO: Save to backend/Airtable
     console.log("Gym layout created:", layout);
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">Gym Mapping Prototype</h1>
-        <p className="text-muted-foreground">
-          Computer vision-powered gym equipment detection and spatial mapping
-        </p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="container mx-auto p-4 space-y-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold">Gym Mapping Prototype</h1>
+          <p className="text-muted-foreground">
+            Computer vision-powered gym equipment detection and spatial mapping
+          </p>
+        </div>
 
-      {/* AI Models Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
-            AI Models Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${modelsLoaded.pose ? 'bg-green-500' : isLoadingModels ? 'bg-yellow-500' : 'bg-red-500'}`} />
-              <span className="text-sm">
-                MediaPipe BlazePose (33-keypoint pose detection) {modelsLoaded.pose === 'demo' && '- Demo Mode'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${modelsLoaded.objects ? 'bg-green-500' : isLoadingModels ? 'bg-yellow-500' : 'bg-red-500'}`} />
-              <span className="text-sm">
-                COCO-SSD Object Detection (gym equipment) {modelsLoaded.objects === 'demo' && '- Demo Mode'}
-              </span>
-            </div>
-            {isLoadingModels && (
-              <p className="text-sm text-amber-600">🔄 Loading AI models...</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Location Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Location Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {currentLocation ? (
-            <p className="text-sm text-green-600">
-              ✓ Location detected: {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
-            </p>
-          ) : (
-            <p className="text-sm text-amber-600">
-              ⚠ Requesting location access for gym identification...
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Camera Controls */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5" />
-            Camera & Detection
-          </CardTitle>
-          <CardDescription>
-            Use your device camera to scan and identify gym equipment
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            {!isStreaming ? (
-              <Button onClick={startCamera} className="flex items-center gap-2">
-                <Camera className="h-4 w-4" />
-                Start Camera
-              </Button>
-            ) : (
-              <>
-                <Button onClick={stopCamera} variant="outline">
-                  Stop Camera
-                </Button>
-                {!isMappingMode ? (
-                  <Button 
-                    onClick={startMapping} 
-                    className="flex items-center gap-2"
-                    disabled={!modelsLoaded.pose && !modelsLoaded.objects}
-                  >
-                    <Zap className="h-4 w-4" />
-                    Start AI Mapping {(modelsLoaded.pose === 'demo' || modelsLoaded.objects === 'demo') && '(Demo Mode)'}
-                  </Button>
-                ) : (
-                  <Button onClick={saveGymLayout} className="flex items-center gap-2">
-                    <Square className="h-4 w-4" />
-                    Save Gym Layout
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Video Stream */}
-          {isStreaming && (
-            <div className="relative bg-black rounded-lg overflow-hidden">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-64 md:h-80 object-cover rounded-lg"
-              />
-              
-              {/* Camera overlay UI */}
-              <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                {isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
-              </div>
-              
-              {/* Detection overlay */}
-              {isMappingMode && (
-                <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white p-2 rounded text-xs">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>Equipment: {detectedEquipment.length}</div>
-                    <div>People: {detectedPoses.length}</div>
-                    <div>Zones: {equipmentZones.length}</div>
-                    <div>Crowd: {crowdingLevel.toUpperCase()}</div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Crosshair for targeting */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-8 h-8 border-2 border-white/50 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white/50 rounded-full"></div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Hidden canvas for frame processing */}
-          <canvas ref={canvasRef} className="hidden" />
-        </CardContent>
-      </Card>
-
-      {/* Detected Equipment */}
-      {detectedEquipment.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Detected Equipment ({detectedEquipment.length})</CardTitle>
-            <CardDescription>
-              Equipment identified through computer vision
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {detectedEquipment.map((equipment) => (
-                <div key={equipment.id} className="flex flex-col items-center space-y-1">
-                  <Badge 
-                    variant={equipment.source === 'object' ? "default" : "secondary"} 
-                    className="text-xs"
-                  >
-                    {equipment.name}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {(equipment.confidence * 100).toFixed(0)}% ({equipment.source})
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Gym Layout Preview */}
-      {gymLayout && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Gym Layout Created</CardTitle>
-            <CardDescription>
-              Layout saved for location: {gymLayout.location.lat.toFixed(6)}, {gymLayout.location.lng.toFixed(6)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <p className="text-sm">
-                <strong>Equipment Count:</strong> {gymLayout.equipment.length}
-              </p>
-              <p className="text-sm">
-                <strong>Equipment Types:</strong> {[...new Set(gymLayout.equipment.map(e => e.name))].join(', ')}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Layout data ready for integration with SuprSet pairing logic
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Technical Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Prototype Status</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm space-y-2">
-          <p>✅ Camera access and video streaming</p>
-          <p>✅ Geolocation for gym identification</p>
-          <p>✅ Frame capture and processing pipeline</p>
-          <p>✅ MediaPipe BlazePose for 33-keypoint human pose detection</p>
-          <p>✅ COCO-SSD object detection for gym equipment (baseline)</p>
-          <p>✅ Real-time AI analysis combining pose + object detection</p>
-          <p>✅ Spatial mapping with equipment zones and crowd analysis</p>
-          <p>🔄 Next: Create private Roboflow account for custom dataset</p>
-          <p>🔄 Next: Collect 1,000+ gym equipment photos for training</p>
-          <p>🔄 Next: Train custom model for SuprSet-specific equipment</p>
-          <p>⏳ Future: Backend integration for gym layout storage</p>
-          <p>⏳ Future: Community sharing and layout retrieval</p>
-        </CardContent>
-      </Card>
-
-      {/* Spatial Intelligence Dashboard */}
-      {(equipmentZones.length > 0 || detectedPoses.length > 0) && (
+        {/* AI Models Status */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Navigation className="h-5 w-5" />
-              Spatial Intelligence
+              <Brain className="h-5 w-5" />
+              AI Models Status
             </CardTitle>
-            <CardDescription>
-              Real-time gym layout analysis and crowd monitoring
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {/* Equipment Zones */}
-              {equipmentZones.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Equipment Zones</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {equipmentZones.map(zone => (
-                      <div key={zone.id} className="bg-muted p-2 rounded">
-                        <div className="font-medium">{zone.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {zone.equipment.length} items • {zone.type}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Crowd Level */}
-              <div>
-                <h4 className="font-semibold mb-2 flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Crowd Level Analysis
-                </h4>
-                <div className="flex items-center gap-2">
-                  <Badge variant={crowdingLevel === 'low' ? 'secondary' : crowdingLevel === 'medium' ? 'default' : 'destructive'}>
-                    {crowdingLevel.toUpperCase()}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {detectedPoses.length} people detected
-                  </span>
-                </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${modelsLoaded.pose ? 'bg-green-500' : isLoadingModels ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                <span className="text-sm">
+                  MediaPipe BlazePose (33-keypoint pose detection)
+                </span>
               </div>
-
-              {/* Proximity Recommendations */}
-              {detectedEquipment.length >= 2 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Proximity-Based Supersets</h4>
-                  <div className="text-sm space-y-1">
-                    {spatialMapper.recommendSupersetsByProximity(
-                      {
-                        id: 'current',
-                        name: 'Current Gym',
-                        location: currentLocation || { lat: 0, lng: 0 },
-                        equipment: detectedEquipment,
-                        zones: equipmentZones,
-                        dimensions: { width: 100, height: 100 },
-                        crowdingLevel,
-                        lastUpdated: Date.now(),
-                        contributors: 1
-                      },
-                      'strength'
-                    ).slice(0, 3).map((rec, idx) => (
-                      <div key={idx} className="flex justify-between items-center">
-                        <span>{rec.exerciseA} + {rec.exerciseB}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {rec.distance.toFixed(1)}% apart
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${modelsLoaded.objects ? 'bg-green-500' : isLoadingModels ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                <span className="text-sm">
+                  COCO-SSD Object Detection (gym equipment)
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Roboflow Integration Plan */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Custom Dataset Plan
-          </CardTitle>
-          <CardDescription>
-            Roadmap for creating our own gym equipment detection model
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm space-y-2">
-          <div className="space-y-3">
-            <div>
-              <h4 className="font-semibold">Phase 1: Dataset Creation</h4>
-              <ul className="ml-4 space-y-1 text-muted-foreground">
-                <li>• Create private Roboflow account ($49-249/month)</li>
-                <li>• Collect 1,000+ gym equipment photos</li>
-                <li>• Target 20+ equipment classes specific to SuprSet</li>
-                <li>• Use AI-assisted labeling ($0.05/bounding box)</li>
-              </ul>
+        {/* Location Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Location Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {currentLocation ? (
+              <p className="text-sm">
+                📍 Location: {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Requesting location access...</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Camera & Detection */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5" />
+              Camera & Detection
+            </CardTitle>
+            <CardDescription>
+              Use your device camera to scan and identify gym equipment
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              {!isStreaming ? (
+                <Button onClick={startCamera} className="flex items-center gap-2">
+                  <Camera className="h-4 w-4" />
+                  Start Camera
+                </Button>
+              ) : (
+                <>
+                  <Button onClick={stopCamera} variant="outline">
+                    Stop Camera
+                  </Button>
+                  {!isMappingMode ? (
+                    <Button 
+                      onClick={startMapping} 
+                      className="flex items-center gap-2"
+                      disabled={!modelsLoaded.pose && !modelsLoaded.objects}
+                    >
+                      <Zap className="h-4 w-4" />
+                      Start AI Mapping
+                    </Button>
+                  ) : (
+                    <Button onClick={saveGymLayout} className="flex items-center gap-2">
+                      <Square className="h-4 w-4" />
+                      Save Gym Layout
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
-            <div>
-              <h4 className="font-semibold">Phase 2: Model Training</h4>
-              <ul className="ml-4 space-y-1 text-muted-foreground">
-                <li>• Train custom model on SuprSet-specific equipment</li>
-                <li>• Achieve 85%+ accuracy on gym equipment detection</li>
-                <li>• Deploy via Roboflow hosted API</li>
-                <li>• Integrate with existing pose detection pipeline</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold">Benefits Over Generic Models</h4>
-              <ul className="ml-4 space-y-1 text-muted-foreground">
-                <li>• 3x higher accuracy on gym-specific equipment</li>
-                <li>• Custom classes matched to our exercise database</li>
-                <li>• Private dataset ensures competitive advantage</li>
-                <li>• Real-time performance optimized for fitness apps</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            {/* Video Stream */}
+            {isStreaming && (
+              <div className="relative bg-black rounded-lg overflow-hidden">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-64 md:h-80 object-cover rounded-lg"
+                />
+                
+                {/* Camera overlay UI */}
+                <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                  {isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
+                </div>
+                
+                {/* Detection overlay */}
+                {isMappingMode && (
+                  <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white p-2 rounded text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>Equipment: {detectedEquipment.length}</div>
+                      <div>People: {detectedPoses.length}</div>
+                      <div>Zones: {equipmentZones.length}</div>
+                      <div>Crowd: {crowdingLevel.toUpperCase()}</div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Crosshair for targeting */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-8 h-8 border-2 border-white/50 rounded-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white/50 rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Hidden canvas for frame processing */}
+            <canvas ref={canvasRef} className="hidden" />
+          </CardContent>
+        </Card>
+
+        {/* Detected Equipment */}
+        {detectedEquipment.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Detected Equipment ({detectedEquipment.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {detectedEquipment.map(equipment => (
+                  <div key={equipment.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                    <span className="font-medium">{equipment.name}</span>
+                    <Badge variant="secondary">
+                      {Math.round(equipment.confidence * 100)}%
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Spatial Intelligence Dashboard */}
+        {(equipmentZones.length > 0 || detectedPoses.length > 0) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Navigation className="h-5 w-5" />
+                Spatial Intelligence
+              </CardTitle>
+              <CardDescription>
+                Real-time gym layout analysis and crowd monitoring
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Equipment Zones */}
+                {equipmentZones.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2">Equipment Zones</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {equipmentZones.map(zone => (
+                        <div key={zone.id} className="bg-muted p-2 rounded">
+                          <div className="font-medium">{zone.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {zone.equipment.length} items • {zone.type}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Crowd Level */}
+                <div>
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Crowd Level Analysis
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={crowdingLevel === 'low' ? 'secondary' : crowdingLevel === 'medium' ? 'default' : 'destructive'}>
+                      {crowdingLevel.toUpperCase()}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {detectedPoses.length} people detected
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Gym Layout Created */}
+        {gymLayout && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Gym Layout Created</CardTitle>
+              <CardDescription>
+                Layout saved for location: {gymLayout.location.lat.toFixed(6)}, {gymLayout.location.lng.toFixed(6)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <strong>Equipment Count:</strong> {gymLayout.equipment.length}
+                </p>
+                <p className="text-sm">
+                  <strong>Equipment Types:</strong> {[...new Set(gymLayout.equipment.map(e => e.name))].join(', ')}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Layout data ready for integration with SuprSet pairing logic
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Prototype Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Prototype Status</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-2">
+            <p>✅ Camera access and video streaming</p>
+            <p>✅ Geolocation for gym identification</p>
+            <p>✅ Frame capture and processing pipeline</p>
+            <p>✅ MediaPipe BlazePose for 33-keypoint human pose detection</p>
+            <p>✅ COCO-SSD object detection for gym equipment (baseline)</p>
+            <p>✅ Real-time AI analysis combining pose + object detection</p>
+            <p>✅ Spatial mapping with equipment zones and crowd analysis</p>
+            <p>🔄 Next: Create private Roboflow account for custom dataset</p>
+            <p>🔄 Next: Collect 1,000+ gym equipment photos for training</p>
+            <p>🔄 Next: Train custom model for SuprSet-specific equipment</p>
+            <p>⏳ Future: Backend integration for gym layout storage</p>
+            <p>⏳ Future: Community sharing and layout retrieval</p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
