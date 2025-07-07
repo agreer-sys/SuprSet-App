@@ -127,74 +127,162 @@ export default function GymMapping() {
 
   const startCamera = async () => {
     try {
-      console.log("Starting camera with back-facing preference...");
+      console.log("Starting camera on iOS device...");
+      console.log("User agent:", navigator.userAgent);
+      
+      // Check if we're on iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      console.log("iOS detected:", isIOS);
+      
+      // Check camera permissions first
+      if (navigator.permissions) {
+        try {
+          const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          console.log("Camera permission status:", permission.state);
+        } catch (permError) {
+          console.log("Permission query not supported");
+        }
+      }
       
       // Check available devices first
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      console.log("Available cameras:", videoDevices.length);
-      
-      // First try to get back-facing camera with exact constraint
-      let stream;
       try {
-        console.log("Attempting exact back camera...");
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { exact: 'environment' }, // Force back camera
-            width: { ideal: 1280, min: 640 },
-            height: { ideal: 720, min: 480 }
-          }
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        console.log("Available cameras:", videoDevices.length);
+        videoDevices.forEach((device, idx) => {
+          console.log(`Camera ${idx}:`, device.label || 'Unknown Camera', device.deviceId);
         });
-        console.log("✅ Exact back camera successful");
-      } catch (exactError) {
-        console.warn("Exact back camera failed, trying ideal constraint:", exactError);
+      } catch (deviceError) {
+        console.error("Could not enumerate devices:", deviceError);
+      }
+      
+      // For iOS, try different approaches
+      let stream;
+      if (isIOS) {
+        console.log("Using iOS-specific camera configuration...");
         try {
-          // Fallback to ideal constraint if exact fails
+          // iOS often works better with simpler constraints first
           stream = await navigator.mediaDevices.getUserMedia({
             video: {
-              facingMode: { ideal: 'environment' }, // Prefer back camera
+              facingMode: 'environment',
+              width: { ideal: 1920, max: 1920 },
+              height: { ideal: 1080, max: 1080 }
+            }
+          });
+          console.log("✅ iOS environment camera successful");
+        } catch (iosError) {
+          console.warn("iOS environment camera failed:", iosError);
+          // Fallback for iOS
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true
+          });
+          console.log("✅ iOS basic camera successful");
+        }
+      } else {
+        // Non-iOS devices
+        try {
+          console.log("Attempting exact back camera...");
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { exact: 'environment' },
               width: { ideal: 1280, min: 640 },
               height: { ideal: 720, min: 480 }
             }
           });
-          console.log("✅ Ideal back camera successful");
-        } catch (idealError) {
-          console.warn("Ideal back camera failed, using default camera:", idealError);
-          // Final fallback to any available camera
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: 1280, min: 640 },
-              height: { ideal: 720, min: 480 }
-            }
-          });
-          console.log("✅ Default camera successful");
+          console.log("✅ Exact back camera successful");
+        } catch (exactError) {
+          console.warn("Exact back camera failed, trying ideal constraint:", exactError);
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1280, min: 640 },
+                height: { ideal: 720, min: 480 }
+              }
+            });
+            console.log("✅ Ideal back camera successful");
+          } catch (idealError) {
+            console.warn("Ideal back camera failed, using default camera:", idealError);
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                width: { ideal: 1280, min: 640 },
+                height: { ideal: 720, min: 480 }
+              }
+            });
+            console.log("✅ Default camera successful");
+          }
         }
       }
       
       if (videoRef.current && stream) {
+        console.log("Setting video source...");
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         
-        // Wait for video to be ready
-        videoRef.current.onloadedmetadata = () => {
-          if (videoRef.current) {
-            videoRef.current.play();
-            console.log("Video playing, dimensions:", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
-          }
-        };
+        // iOS-specific video setup
+        if (isIOS) {
+          videoRef.current.setAttribute('playsinline', 'true');
+          videoRef.current.setAttribute('webkit-playsinline', 'true');
+        }
         
+        // Wait for video to be ready with timeout
+        const videoLoadPromise = new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error("Video load timeout"));
+          }, 10000);
+          
+          videoRef.current!.onloadedmetadata = () => {
+            clearTimeout(timeout);
+            console.log("Video metadata loaded");
+            if (videoRef.current) {
+              videoRef.current.play().then(() => {
+                console.log("Video playing, dimensions:", videoRef.current!.videoWidth, "x", videoRef.current!.videoHeight);
+                resolve();
+              }).catch(playError => {
+                console.error("Video play failed:", playError);
+                reject(playError);
+              });
+            }
+          };
+          
+          videoRef.current!.onerror = (error) => {
+            clearTimeout(timeout);
+            console.error("Video error:", error);
+            reject(error);
+          };
+        });
+        
+        await videoLoadPromise;
         setIsStreaming(true);
         
-        // Log which camera is being used
+        // Log camera details
         const track = stream.getVideoTracks()[0];
         if (track) {
-          console.log("Camera info:", track.label);
+          console.log("Active camera:", track.label);
           console.log("Camera settings:", track.getSettings());
+          console.log("Camera capabilities:", track.getCapabilities?.());
         }
       }
     } catch (error) {
       console.error("Camera access error:", error);
-      alert("Camera access is required for gym mapping. Please grant camera permission and try again.");
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        constraint: error.constraint
+      });
+      
+      let errorMessage = "Camera access failed. ";
+      if (error.name === 'NotAllowedError') {
+        errorMessage += "Please allow camera access in your browser settings and try again.";
+      } else if (error.name === 'NotFoundError') {
+        errorMessage += "No camera found on this device.";
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage += "Camera not supported in this browser.";
+      } else {
+        errorMessage += "Please check camera permissions and try again.";
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -472,6 +560,7 @@ export default function GymMapping() {
                   autoPlay
                   playsInline
                   muted
+                  webkit-playsinline="true"
                   className="w-full h-64 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg"
                   style={{ 
                     minHeight: '240px',
