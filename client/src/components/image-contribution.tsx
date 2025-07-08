@@ -144,21 +144,28 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
           ) : (
             <div className="space-y-3">
               {/* Live Camera Preview */}
-              <div className="relative border-2 border-blue-200 rounded-lg overflow-hidden bg-black">
+              <div className="relative border-2 border-blue-200 rounded-lg overflow-hidden bg-black aspect-square">
                 <video
                   ref={previewVideoRef}
                   autoPlay
                   playsInline
                   muted
-                  className="w-full h-40 object-cover"
+                  className="w-full h-full object-cover"
                 />
-                <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
                   LIVE
                 </div>
                 <div className="absolute bottom-2 left-2 right-2 text-center">
-                  <p className="text-white text-xs bg-black/50 px-2 py-1 rounded">
-                    Position equipment in frame
+                  <p className="text-white text-xs bg-black/60 px-2 py-1 rounded backdrop-blur-sm">
+                    Position equipment in center of frame
                   </p>
+                </div>
+                {/* Crosshair overlay for better targeting */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-8 h-8 border-2 border-white/50 rounded-full"></div>
+                  <div className="absolute w-4 h-0.5 bg-white/50"></div>
+                  <div className="absolute w-0.5 h-4 bg-white/50"></div>
                 </div>
               </div>
               
