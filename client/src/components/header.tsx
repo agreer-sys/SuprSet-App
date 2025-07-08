@@ -58,12 +58,33 @@ export default function Header() {
             </Button>
           </div>
           
-          {/* Desktop Profile - Simplified */}
+          {/* Desktop Profile */}
           <div className="hidden md:flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <User className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-500">Visual AI</span>
-            </div>
+            {isAuthenticated ? (
+              <>
+                <div className="flex items-center space-x-2">
+                  <div className="text-right">
+                    <div className="text-sm font-medium">{user?.name}</div>
+                    <Badge variant="outline" className="text-xs">
+                      {user?.contributions || 0} contributions
+                    </Badge>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={signOut}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <User className="w-4 h-4 text-gray-400" />
+                <span className="text-sm text-gray-500">Not signed in</span>
+              </div>
+            )}
           </div>
         </div>
         

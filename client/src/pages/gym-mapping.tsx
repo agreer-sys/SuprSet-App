@@ -17,7 +17,9 @@ import { roboflowDetector } from '@/lib/roboflow-api';
 import { spatialMapper, type GymLayout, type EquipmentZone } from '@/lib/spatial-mapping';
 import { communityModelService } from '@/lib/community-model';
 
+import AuthModal from '@/components/auth-modal';
 import ImageContribution from '@/components/image-contribution';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 
 interface DetectedEquipment {
@@ -66,9 +68,16 @@ export default function GymMapping() {
   
   // Community contribution state
   const [showContributionModal, setShowContributionModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [contributionStats, setContributionStats] = useState({ contributionCount: 0, verifiedCount: 0 });
   const [detectionPaused, setDetectionPaused] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [equipmentLabel, setEquipmentLabel] = useState("");
+  const [gymLocation, setGymLocationInput] = useState("");
+  const [notes, setNotes] = useState("");
   
+  // Authentication
+  const { user, isAuthenticated, updateUserStats } = useAuth();
   const { toast } = useToast();
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -82,8 +91,9 @@ export default function GymMapping() {
     initializeModels();
     getCurrentLocation();
     
-    // Initialize community model service
-    console.log("🚀 Community model service initialized");
+    // Load user contribution stats
+    const stats = communityModelService.getUserStats();
+    setContributionStats(stats);
   }, []);
 
   const getCurrentLocation = async () => {
@@ -662,8 +672,14 @@ export default function GymMapping() {
       console.log("📤 Submitting contribution:", data);
       const contributionId = await communityModelService.submitContribution(data);
       
-      // Log successful contribution
-      console.log("✅ Contribution processed successfully");
+      // Update user stats
+      const updatedStats = communityModelService.getUserStats();
+      setContributionStats(updatedStats);
+      
+      // Update user contribution count in auth system
+      if (updateUserStats) {
+        updateUserStats({ contributions: updatedStats.contributionCount });
+      }
       
       // Show success message
       toast({
@@ -849,12 +865,16 @@ export default function GymMapping() {
                     console.log("Starting Camera + Contribution");
                     setIsMappingMode(false); // Ensure we're NOT in mapping mode
                     await startCamera();
-                    // Show contribution modal immediately after camera starts
+                    // Show contribution modal after camera starts
                     setTimeout(() => {
                       if (videoRef.current && videoRef.current.srcObject) {
-                        setShowContributionModal(true);
+                        if (!isAuthenticated) {
+                          setShowAuthModal(true);
+                        } else {
+                          setShowContributionModal(true);
+                        }
                       }
-                    }, 500);
+                    }, 1000);
                   }}
                   variant="outline"
                   className="h-16 flex-col gap-2"
@@ -1166,8 +1186,8 @@ export default function GymMapping() {
                       {!isStreaming ? '📱 Camera Not Active' : isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
                     </div>
                 
-                    {/* Detection overlay - mobile responsive - only in mapping mode */}
-                    {isStreaming && isMappingMode && !showContributionModal && (
+                    {/* Detection overlay - mobile responsive */}
+                    {isStreaming && isMappingMode && (
                       <div className="absolute bottom-2 left-2 right-2 md:top-2 md:right-2 md:left-auto md:bottom-auto bg-black/80 text-white p-2 rounded text-xs md:max-w-32">
                         <div className="flex justify-between items-center md:flex-col md:space-y-1 md:items-end">
                           <span className="md:hidden font-medium">Detection:</span>
@@ -1225,7 +1245,103 @@ export default function GymMapping() {
           </CardContent>
         </Card>
 
+        {/* Contribution Form - Show when in contribution mode and camera is active */}
+        {showContributionModal && isStreaming && capturedImage && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Label Your Contribution
+              </CardTitle>
+              <CardDescription>
+                Help our AI learn by labeling this equipment photo
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Equipment Type Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Equipment Type *</label>
+                <select 
+                  value={equipmentLabel}
+                  onChange={(e) => setEquipmentLabel(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  required
+                >
+                  <option value="">Select equipment type...</option>
+                  <option value="Bench">Bench</option>
+                  <option value="Dumbbell Rack">Dumbbell Rack</option>
+                  <option value="Barbell">Barbell</option>
+                  <option value="Squat Rack">Squat Rack</option>
+                  <option value="Cable Machine">Cable Machine</option>
+                  <option value="Treadmill">Treadmill</option>
+                  <option value="Rowing Machine">Rowing Machine</option>
+                  <option value="Pull-up Bar">Pull-up Bar</option>
+                  <option value="Leg Press">Leg Press</option>
+                  <option value="Smith Machine">Smith Machine</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
 
+              {/* Optional Notes */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Notes (Optional)</label>
+                <textarea 
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Additional details about this equipment..."
+                  className="w-full p-2 border rounded-md h-20 resize-none"
+                />
+              </div>
+
+              {/* Submit Contribution */}
+              <div className="flex gap-2">
+                <Button 
+                  onClick={async () => {
+                    if (!capturedImage || !equipmentLabel) return;
+                    
+                    try {
+                      const contributionData = {
+                        image: capturedImage,
+                        equipment: equipmentLabel,
+                        gymLocation: gymLocation || undefined,
+                        notes: notes || undefined,
+                        confidence: 1.0
+                      };
+
+                      await communityModelService.submitContribution(contributionData);
+                      
+                      // Reset form
+                      setCapturedImage(null);
+                      setEquipmentLabel("");
+                      setNotes("");
+                      setShowContributionModal(false);
+                      
+                      console.log("✅ Contribution submitted successfully");
+                    } catch (error) {
+                      console.error("Failed to submit contribution:", error);
+                    }
+                  }}
+                  className="flex-1"
+                  disabled={!capturedImage || !equipmentLabel}
+                >
+                  <Target className="h-4 w-4 mr-2" />
+                  Submit Contribution
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setCapturedImage(null);
+                    setEquipmentLabel("");
+                    setNotes("");
+                    setShowContributionModal(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Detected Equipment - Only show in AI mapping mode */}
         {detectedEquipment.length > 0 && isMappingMode && (
@@ -1349,7 +1465,19 @@ export default function GymMapping() {
 
 
 
-
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          console.log('User authenticated successfully');
+          // Refresh contribution stats
+          const stats = communityModelService.getUserStats();
+          setContributionStats(stats);
+          // Show contribution modal after successful auth
+          setShowContributionModal(true);
+        }}
+      />
 
       {/* Image Contribution Modal */}
       <ImageContribution
