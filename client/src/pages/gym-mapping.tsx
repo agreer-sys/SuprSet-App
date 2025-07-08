@@ -17,9 +17,7 @@ import { roboflowDetector } from '@/lib/roboflow-api';
 import { spatialMapper, type GymLayout, type EquipmentZone } from '@/lib/spatial-mapping';
 import { communityModelService } from '@/lib/community-model';
 
-import AuthModal from '@/components/auth-modal';
 import ImageContribution from '@/components/image-contribution';
-import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 
 interface DetectedEquipment {
@@ -68,13 +66,9 @@ export default function GymMapping() {
   
   // Community contribution state
   const [showContributionModal, setShowContributionModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [contributionStats, setContributionStats] = useState({ contributionCount: 0, verifiedCount: 0 });
   const [detectionPaused, setDetectionPaused] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   
-  // Authentication
-  const { user, isAuthenticated, updateUserStats } = useAuth();
   const { toast } = useToast();
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -88,9 +82,8 @@ export default function GymMapping() {
     initializeModels();
     getCurrentLocation();
     
-    // Load user contribution stats
-    const stats = communityModelService.getUserStats();
-    setContributionStats(stats);
+    // Initialize community model service
+    console.log("🚀 Community model service initialized");
   }, []);
 
   const getCurrentLocation = async () => {
@@ -669,14 +662,8 @@ export default function GymMapping() {
       console.log("📤 Submitting contribution:", data);
       const contributionId = await communityModelService.submitContribution(data);
       
-      // Update user stats
-      const updatedStats = communityModelService.getUserStats();
-      setContributionStats(updatedStats);
-      
-      // Update user contribution count in auth system
-      if (updateUserStats) {
-        updateUserStats({ contributions: updatedStats.contributionCount });
-      }
+      // Log successful contribution
+      console.log("✅ Contribution processed successfully");
       
       // Show success message
       toast({
@@ -862,16 +849,12 @@ export default function GymMapping() {
                     console.log("Starting Camera + Contribution");
                     setIsMappingMode(false); // Ensure we're NOT in mapping mode
                     await startCamera();
-                    // Show contribution modal after camera starts
+                    // Show contribution modal immediately after camera starts
                     setTimeout(() => {
                       if (videoRef.current && videoRef.current.srcObject) {
-                        if (!isAuthenticated) {
-                          setShowAuthModal(true);
-                        } else {
-                          setShowContributionModal(true);
-                        }
+                        setShowContributionModal(true);
                       }
-                    }, 1000);
+                    }, 500);
                   }}
                   variant="outline"
                   className="h-16 flex-col gap-2"
@@ -1183,8 +1166,8 @@ export default function GymMapping() {
                       {!isStreaming ? '📱 Camera Not Active' : isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
                     </div>
                 
-                    {/* Detection overlay - mobile responsive */}
-                    {isStreaming && isMappingMode && (
+                    {/* Detection overlay - mobile responsive - only in mapping mode */}
+                    {isStreaming && isMappingMode && !showContributionModal && (
                       <div className="absolute bottom-2 left-2 right-2 md:top-2 md:right-2 md:left-auto md:bottom-auto bg-black/80 text-white p-2 rounded text-xs md:max-w-32">
                         <div className="flex justify-between items-center md:flex-col md:space-y-1 md:items-end">
                           <span className="md:hidden font-medium">Detection:</span>
@@ -1366,19 +1349,7 @@ export default function GymMapping() {
 
 
 
-      {/* Authentication Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {
-          console.log('User authenticated successfully');
-          // Refresh contribution stats
-          const stats = communityModelService.getUserStats();
-          setContributionStats(stats);
-          // Show contribution modal after successful auth
-          setShowContributionModal(true);
-        }}
-      />
+
 
       {/* Image Contribution Modal */}
       <ImageContribution
