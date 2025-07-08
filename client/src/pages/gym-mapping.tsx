@@ -1073,7 +1073,7 @@ export default function GymMapping() {
                 ) : (
                   /* AI MAPPING MODE: Standard video view with detection overlays */
                   <div 
-                    className="relative bg-black rounded-lg overflow-hidden min-h-[240px] border-2 border-gray-300"
+                    className="relative rounded-lg overflow-hidden border-2 border-gray-300"
                     data-mapping-active={isMappingMode ? "true" : "false"}
                   >
                     <canvas
@@ -1133,13 +1133,12 @@ export default function GymMapping() {
                           }
                         }
                       }}
-                      className="w-full h-auto object-contain rounded-lg bg-gray-900"
+                      className="w-full h-auto object-contain rounded-lg"
                       style={{ 
                         maxWidth: '100%',
                         maxHeight: '480px',
                         aspectRatio: '16/9',
-                        display: 'block',
-                        backgroundColor: 'black'
+                        display: 'block'
                       }}
                     />
                 
