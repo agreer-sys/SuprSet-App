@@ -88,6 +88,12 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
     canvas.width = cropSize;
     canvas.height = cropSize;
     
+    console.log("🖼️ Canvas configured:", {
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      isSquare: canvas.width === canvas.height
+    });
+    
     // Draw cropped square from center of video
     ctx.drawImage(
       videoElement,
@@ -96,7 +102,24 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
     );
     
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log("🖼️ Captured image data length:", imageData.length);
+    console.log("🖼️ Image data generated:", {
+      dataLength: imageData.length,
+      dataStart: imageData.substring(0, 50) + "...",
+      canvasFinalSize: `${canvas.width}x${canvas.height}`
+    });
+    
+    // Create a temporary image to verify actual dimensions
+    const testImg = new Image();
+    testImg.onload = () => {
+      console.log("🔍 Actual image dimensions:", {
+        width: testImg.width,
+        height: testImg.height,
+        aspectRatio: testImg.width / testImg.height,
+        isSquare: testImg.width === testImg.height
+      });
+    };
+    testImg.src = imageData;
+    
     setCapturedImage(imageData);
   };
 
@@ -159,7 +182,7 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
               <img 
                 src={capturedImage} 
                 alt="Captured equipment" 
-                className="w-full h-32 sm:h-48 object-cover rounded-lg border"
+                className="w-full aspect-square object-contain rounded-lg border bg-gray-100"
               />
               <Button 
                 variant="outline" 
