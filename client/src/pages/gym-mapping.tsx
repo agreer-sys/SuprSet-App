@@ -1151,14 +1151,33 @@ export default function GymMapping() {
                       {!isStreaming ? '📱 Camera Not Active' : isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
                     </div>
                 
-                    {/* Detection overlay - positioned at top right corner */}
+                    {/* Detection overlay - mobile responsive */}
                     {isStreaming && isMappingMode && (
-                      <div className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded text-xs max-w-32">
-                        <div className="space-y-1 text-right">
-                          <div>📱 {detectedEquipment.length}</div>
-                          <div>👥 {detectedPoses.length}</div>
-                          <div>🏠 {equipmentZones.length}</div>
-                          <div>📊 {crowdingLevel.charAt(0).toUpperCase()}</div>
+                      <div className="absolute bottom-2 left-2 right-2 md:top-2 md:right-2 md:left-auto md:bottom-auto bg-black/80 text-white p-2 rounded text-xs md:max-w-32">
+                        <div className="flex justify-between items-center md:flex-col md:space-y-1 md:items-end">
+                          <span className="md:hidden font-medium">Detection:</span>
+                          <div className="flex space-x-4 md:space-x-0 md:space-y-1 md:flex-col md:text-right">
+                            <div className="flex items-center space-x-1">
+                              <span className="hidden md:inline">📱</span>
+                              <span className="md:hidden">Equipment:</span>
+                              <span>{detectedEquipment.length}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <span className="hidden md:inline">👥</span>
+                              <span className="md:hidden">People:</span>
+                              <span>{detectedPoses.length}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <span className="hidden md:inline">🏠</span>
+                              <span className="md:hidden">Zones:</span>
+                              <span>{equipmentZones.length}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <span className="hidden md:inline">📊</span>
+                              <span className="md:hidden">Crowd:</span>
+                              <span>{crowdingLevel.charAt(0).toUpperCase()}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
