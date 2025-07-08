@@ -506,14 +506,29 @@ export default function GymMapping() {
     setIsMappingMode(true);
     
     // Start capturing frames every 2 seconds for better processing
+    console.log("Setting up frame capture interval...");
+    
+    // Use a different approach to avoid closure issues
+    let frameCount = 0;
     const interval = setInterval(() => {
-      if (isMappingMode) {
+      frameCount++;
+      console.log(`⏰ Frame ${frameCount} - checking mapping status...`);
+      
+      // Check current state instead of closure variable
+      const mappingActive = document.querySelector('[data-mapping-active="true"]') !== null;
+      console.log("Mapping active:", mappingActive);
+      
+      if (mappingActive) {
         console.log("📸 Capturing frame for AI analysis...");
         captureFrame();
       } else {
+        console.log("Mapping not active, stopping interval");
         clearInterval(interval);
       }
     }, 2000);
+    
+    // Store interval reference for cleanup
+    (window as any).mappingInterval = interval;
   };
 
   const saveGymLayout = () => {
@@ -709,7 +724,10 @@ export default function GymMapping() {
               />
               
               {/* Camera status overlay */}
-              <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+              <div 
+                className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs"
+                data-mapping-active={isMappingMode ? "true" : "false"}
+              >
                 {!isStreaming ? '📱 Camera Not Active' : isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
               </div>
               
