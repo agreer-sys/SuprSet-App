@@ -786,83 +786,129 @@ export default function GymMapping() {
               Camera & Detection
             </CardTitle>
             <CardDescription>
-              Use your device camera to scan and identify gym equipment
+              Start camera for AI mapping or photo contribution
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              {!isStreaming ? (
-                <Button 
-                  onClick={() => {
-                    console.log("Start Camera button clicked");
-                    startCamera();
-                  }} 
-                  className="flex items-center gap-2"
-                >
-                  <Camera className="h-4 w-4" />
-                  Start Camera
-                </Button>
-              ) : (
-                <>
-                  <Button onClick={stopCamera} variant="outline">
-                    Stop Camera
-                  </Button>
-                  {!isMappingMode ? (
-                    <Button 
-                      onClick={startMapping} 
-                      className="flex items-center gap-2"
-                      disabled={!modelsLoaded.pose && !modelsLoaded.objects}
-                    >
-                      <Zap className="h-4 w-4" />
-                      Start AI Mapping
-                    </Button>
-                  ) : (
-                    <Button onClick={saveGymLayout} className="flex items-center gap-2">
-                      <Square className="h-4 w-4" />
-                      Save Gym Layout
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Community Contribution Section */}
-            {isStreaming && (
-              <div className="border-t pt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-semibold">Community Model</h4>
-                    <p className="text-xs text-muted-foreground">
-                      {isAuthenticated 
-                        ? `Welcome ${user?.name || 'Contributor'}!` 
-                        : 'Help improve AI for everyone'
+            {!isStreaming ? (
+              /* Initial Choice: Camera + AI Mapping OR Camera + Contribution */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button
+                  onClick={async () => {
+                    console.log("Starting Camera + AI Mapping");
+                    await startCamera();
+                    // Auto-start AI mapping after camera starts
+                    setTimeout(() => {
+                      if (videoRef.current && videoRef.current.srcObject) {
+                        startMapping();
                       }
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {isAuthenticated 
-                      ? `${user?.contributions || 0} by you` 
-                      : `${contributionStats.contributionCount} total`
-                    }
-                  </Badge>
-                </div>
-                <Button 
-                  onClick={() => {
-                    if (!isAuthenticated) {
-                      setShowAuthModal(true);
-                    } else {
-                      handleContributionModalToggle(true);
-                    }
+                    }, 1000);
                   }}
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
+                  variant="default"
+                  className="h-16 flex-col gap-2"
                 >
-                  <Target className="h-4 w-4 mr-2" />
-                  {isAuthenticated ? 'Contribute Equipment Photo' : 'Sign In to Contribute'}
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-5 w-5" />
+                    <Camera className="h-4 w-4" />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-medium">Start AI Mapping</div>
+                    <div className="text-xs opacity-75">Analyze gym equipment & layout</div>
+                  </div>
+                </Button>
+                
+                <Button
+                  onClick={async () => {
+                    console.log("Starting Camera + Contribution");
+                    await startCamera();
+                    // Show contribution modal after camera starts
+                    setTimeout(() => {
+                      if (videoRef.current && videoRef.current.srcObject) {
+                        if (!isAuthenticated) {
+                          setShowAuthModal(true);
+                        } else {
+                          setShowContributionModal(true);
+                        }
+                      }
+                    }, 1000);
+                  }}
+                  variant="outline"
+                  className="h-16 flex-col gap-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    <Camera className="h-4 w-4" />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-medium">Contribute Equipment Photo</div>
+                    <div className="text-xs opacity-75">Help improve our AI model</div>
+                  </div>
                 </Button>
               </div>
+            ) : (
+              /* Camera Active: Show current mode and stop option */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-muted rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="font-medium">
+                      {isMappingMode ? 'AI Mapping Active' : 'Camera Ready'}
+                    </span>
+                  </div>
+                  <Button
+                    onClick={stopCamera}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    <Square className="h-4 w-4 mr-2" />
+                    Stop Camera
+                  </Button>
+                </div>
+                
+                {/* Switch modes if camera is active but not in desired mode */}
+                {isStreaming && !isMappingMode && !showContributionModal && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Button
+                      onClick={startMapping}
+                      variant="default"
+                      size="sm"
+                      disabled={!modelsLoaded.pose && !modelsLoaded.objects}
+                    >
+                      <Brain className="h-4 w-4 mr-2" />
+                      Start AI Mapping
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          setShowAuthModal(true);
+                        } else {
+                          setShowContributionModal(true);
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Target className="h-4 w-4 mr-2" />
+                      Contribute Photo
+                    </Button>
+                  </div>
+                )}
+
+                {/* Save layout button when mapping is active */}
+                {isMappingMode && (
+                  <Button 
+                    onClick={saveGymLayout} 
+                    className="w-full"
+                    variant="secondary"
+                  >
+                    <Square className="h-4 w-4 mr-2" />
+                    Save Gym Layout
+                  </Button>
+                )}
+              </div>
             )}
+
+
 
             {/* Debug Info */}
             <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
@@ -1056,7 +1102,7 @@ export default function GymMapping() {
       <div data-contribution-modal={showContributionModal ? "true" : "false"}>
         <ImageContribution
           isVisible={showContributionModal}
-          onClose={() => handleContributionModalToggle(false)}
+          onClose={() => setShowContributionModal(false)}
           onContribute={async (contributionData) => {
           try {
             // Add current frame if video is available
@@ -1104,6 +1150,8 @@ export default function GymMapping() {
           // Refresh contribution stats
           const stats = communityModelService.getUserStats();
           setContributionStats(stats);
+          // Show contribution modal after successful auth
+          setShowContributionModal(true);
         }}
       />
     </div>
