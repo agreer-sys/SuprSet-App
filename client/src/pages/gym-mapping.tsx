@@ -371,6 +371,8 @@ export default function GymMapping() {
     }
     setIsStreaming(false);
     setIsMappingMode(false);
+    setShowContributionModal(false);
+    setCapturedImage(null);
   };
 
   const processFrameForEquipment = async (canvas: HTMLCanvasElement) => {
@@ -800,6 +802,7 @@ export default function GymMapping() {
                 <Button
                   onClick={async () => {
                     console.log("Starting Camera + AI Mapping");
+                    setShowContributionModal(false); // Ensure we're NOT in contribution mode
                     await startCamera();
                     // Auto-start AI mapping after camera starts
                     setTimeout(() => {
@@ -824,6 +827,7 @@ export default function GymMapping() {
                 <Button
                   onClick={async () => {
                     console.log("Starting Camera + Contribution");
+                    setIsMappingMode(false); // Ensure we're NOT in mapping mode
                     await startCamera();
                     // Show contribution modal after camera starts
                     setTimeout(() => {
@@ -918,7 +922,9 @@ export default function GymMapping() {
             <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
               Streaming: {isStreaming ? 'Yes' : 'No'} | 
               Video Ref: {videoRef.current ? 'Ready' : 'Not Ready'} | 
-              Stream Ref: {streamRef.current ? 'Active' : 'Inactive'}
+              Stream Ref: {streamRef.current ? 'Active' : 'Inactive'} | 
+              Mapping Mode: {isMappingMode ? 'Yes' : 'No'} | 
+              Contribution Modal: {showContributionModal ? 'Yes' : 'No'}
             </div>
 
             {/* Video Stream Container - Conditional based on mode */}
