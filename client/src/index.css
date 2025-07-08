@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide development error overlays */
+#vite-error-overlay,
+.vite-error-overlay,
+[data-vite-error-overlay],
+.replit-runtime-error-modal,
+[data-runtime-error],
+.runtime-error-plugin {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 :root {
   --background: 0 0% 100%;
   --foreground: 20 14.3% 4.1%;
