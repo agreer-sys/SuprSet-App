@@ -615,7 +615,7 @@ export default function GymMapping() {
       // Check current state instead of closure variable
       const mappingActive = document.querySelector('[data-mapping-active="true"]') !== null;
       const contributionModalOpen = document.querySelector('[data-contribution-modal="true"]') !== null;
-      console.log("Mapping active:", mappingActive, "| Contribution modal:", contributionModalOpen);
+      console.log("🔍 Frame", frameCount, "- Mapping active:", mappingActive, "| Contribution modal:", contributionModalOpen);
       
       if (mappingActive && !contributionModalOpen) {
         console.log("📸 Capturing frame for AI analysis...");
@@ -633,9 +633,17 @@ export default function GymMapping() {
   };
 
   const handleContributionModalToggle = (isOpen: boolean) => {
+    console.log("🎯 Modal toggle called:", isOpen);
     setShowContributionModal(isOpen);
     setDetectionPaused(isOpen);
     console.log(isOpen ? "🔒 AI detection paused for contribution" : "🔓 AI detection resumed");
+    
+    // Force update DOM attribute immediately
+    const videoContainer = document.querySelector('[data-mapping-active]');
+    if (videoContainer) {
+      videoContainer.setAttribute('data-contribution-modal', isOpen ? 'true' : 'false');
+      console.log("📝 DOM attribute updated:", videoContainer.getAttribute('data-contribution-modal'));
+    }
   };
 
   const saveGymLayout = () => {
@@ -852,7 +860,10 @@ export default function GymMapping() {
             </div>
 
             {/* Video Stream Container - Always Present */}
-            <div className={`relative bg-black rounded-lg overflow-hidden min-h-[240px] border-2 ${isStreaming ? 'border-white' : 'border-gray-500'}`}>
+            <div 
+              className={`relative bg-black rounded-lg overflow-hidden min-h-[240px] border-2 ${isStreaming ? 'border-white' : 'border-gray-500'}`}
+              data-mapping-active={isMappingMode ? "true" : "false"}
+            >
               <video
                 ref={videoRef}
                 autoPlay

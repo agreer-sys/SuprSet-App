@@ -46,7 +46,10 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
   const captureFromMainVideo = () => {
     const videoElement = previewVideoRef.current || document.querySelector('video') as HTMLVideoElement;
     if (videoElement && canvasRef.current) {
+      console.log("🎯 Capturing from video:", videoElement.videoWidth, "x", videoElement.videoHeight);
       captureFromVideo(videoElement);
+    } else {
+      console.error("❌ No video element found for capture");
     }
   };
 
@@ -67,10 +70,19 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
     const videoWidth = videoElement.videoWidth;
     const videoHeight = videoElement.videoHeight;
     
+    console.log("📐 Video dimensions:", videoWidth, "x", videoHeight);
+    
     // Calculate square crop dimensions (use smaller dimension)
     const cropSize = Math.min(videoWidth, videoHeight);
     const cropX = (videoWidth - cropSize) / 2;
     const cropY = (videoHeight - cropSize) / 2;
+    
+    console.log("✂️ Crop settings:", {
+      cropSize,
+      cropX,
+      cropY,
+      sourceRect: `${cropX}, ${cropY}, ${cropSize}, ${cropSize}`
+    });
     
     // Set canvas to square
     canvas.width = cropSize;
@@ -84,6 +96,7 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
     );
     
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    console.log("🖼️ Captured image data length:", imageData.length);
     setCapturedImage(imageData);
   };
 
