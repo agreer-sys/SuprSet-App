@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,10 +28,23 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Function to capture from the main video element (passed from parent)
+  // Setup camera preview in modal
+  useEffect(() => {
+    if (isVisible && previewVideoRef.current) {
+      const mainVideo = document.querySelector('video') as HTMLVideoElement;
+      if (mainVideo && mainVideo.srcObject) {
+        // Clone the stream to the preview video
+        previewVideoRef.current.srcObject = mainVideo.srcObject;
+        previewVideoRef.current.play().catch(console.error);
+      }
+    }
+  }, [isVisible]);
+
+  // Function to capture from the preview video element
   const captureFromMainVideo = () => {
-    const videoElement = document.querySelector('video') as HTMLVideoElement;
+    const videoElement = previewVideoRef.current || document.querySelector('video') as HTMLVideoElement;
     if (videoElement && canvasRef.current) {
       captureFromVideo(videoElement);
     }
@@ -130,15 +143,23 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
             </div>
           ) : (
             <div className="space-y-3">
-              {/* Camera Preview Area */}
-              <div className="relative border-2 border-dashed border-blue-200 rounded-lg p-3 text-center bg-blue-50">
-                <Camera className="h-6 w-6 mx-auto mb-2 text-blue-400" />
-                <p className="text-sm text-blue-700 mb-1 font-medium">
-                  Ready to capture equipment
-                </p>
-                <p className="text-xs text-blue-600">
-                  Camera is active above - position equipment in view and capture
-                </p>
+              {/* Live Camera Preview */}
+              <div className="relative border-2 border-blue-200 rounded-lg overflow-hidden bg-black">
+                <video
+                  ref={previewVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-40 object-cover"
+                />
+                <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                  LIVE
+                </div>
+                <div className="absolute bottom-2 left-2 right-2 text-center">
+                  <p className="text-white text-xs bg-black/50 px-2 py-1 rounded">
+                    Position equipment in frame
+                  </p>
+                </div>
               </div>
               
               {/* Capture Button - Separate from preview area */}
