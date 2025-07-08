@@ -63,9 +63,25 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width = videoElement.videoWidth;
-    canvas.height = videoElement.videoHeight;
-    ctx.drawImage(videoElement, 0, 0);
+    // Get video dimensions
+    const videoWidth = videoElement.videoWidth;
+    const videoHeight = videoElement.videoHeight;
+    
+    // Calculate square crop dimensions (use smaller dimension)
+    const cropSize = Math.min(videoWidth, videoHeight);
+    const cropX = (videoWidth - cropSize) / 2;
+    const cropY = (videoHeight - cropSize) / 2;
+    
+    // Set canvas to square
+    canvas.width = cropSize;
+    canvas.height = cropSize;
+    
+    // Draw cropped square from center of video
+    ctx.drawImage(
+      videoElement,
+      cropX, cropY, cropSize, cropSize, // Source crop
+      0, 0, cropSize, cropSize          // Destination square
+    );
     
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
     setCapturedImage(imageData);
