@@ -104,6 +104,22 @@ export class SpatialMapper {
     return names[type];
   }
 
+  categorizeEquipment(equipmentName: string): EquipmentZone['type'] {
+    const cardio = ['Treadmill', 'Exercise Bike', 'Elliptical', 'Rowing Machine'];
+    const strength = ['Chest Press Machine', 'Leg Press Machine', 'Lat Pulldown Machine', 'Smith Machine'];
+    const freeWeights = ['Dumbbell', 'Barbell', 'Squat Rack', 'Flat Bench', 'Weight Plate', 'Kettlebell'];
+    const functional = ['TRX', 'Battle Ropes', 'Medicine Ball', 'Bosu Ball', 'Person', 'Bench/Seat', 'cup'];
+    const stretching = ['Yoga Mat', 'Foam Roller', 'Balance Ball'];
+
+    if (cardio.some(item => equipmentName.includes(item))) return 'cardio';
+    if (strength.some(item => equipmentName.includes(item))) return 'strength';
+    if (freeWeights.some(item => equipmentName.includes(item))) return 'free_weights';
+    if (functional.some(item => equipmentName.includes(item))) return 'functional';
+    if (stretching.some(item => equipmentName.includes(item))) return 'stretching';
+    
+    return 'functional'; // Default fallback for unrecognized equipment
+  }
+
   // Calculate optimal workout flow between equipment
   calculateOptimalPath(exerciseA: string, exerciseB: string, layout: GymLayout): {
     path: SpatialPoint[];

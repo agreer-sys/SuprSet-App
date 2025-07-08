@@ -24,15 +24,29 @@ interface RoboflowResponse {
 export class RoboflowGymDetector {
   private apiKey: string;
   private modelEndpoint: string;
+  private isEnabled: boolean;
 
   constructor() {
-    // Using the gym equipment dataset endpoint
-    this.apiKey = "your-roboflow-api-key"; // Will be provided by user
-    this.modelEndpoint = "https://detect.roboflow.com/gym-equipment-object-detection/1";
+    // These would come from environment variables in production
+    this.apiKey = import.meta.env.VITE_ROBOFLOW_API_KEY || '';
+    this.modelEndpoint = import.meta.env.VITE_ROBOFLOW_MODEL_ENDPOINT || 'https://detect.roboflow.com/gym-equipment-object-detection/1';
+    this.isEnabled = !!(this.apiKey && this.modelEndpoint);
+    
+    console.log('Roboflow integration:', this.isEnabled ? 'Enabled' : 'Disabled (no API key)');
+  }
+
+  isReady(): boolean {
+    return this.isEnabled;
   }
 
   async detectEquipment(imageBase64: string): Promise<RoboflowPrediction[]> {
+    if (!this.isEnabled) {
+      console.log("Roboflow not configured, skipping detection");
+      return [];
+    }
+
     try {
+      console.log("🤖 Running Roboflow gym equipment detection...");
       const response = await fetch(`${this.modelEndpoint}?api_key=${this.apiKey}`, {
         method: "POST",
         headers: {
@@ -46,6 +60,13 @@ export class RoboflowGymDetector {
       }
 
       const data: RoboflowResponse = await response.json();
+      console.log(`Roboflow detected ${data.predictions.length} gym equipment items`);
+      
+      // Log detected equipment for debugging
+      data.predictions.forEach((pred, idx) => {
+        console.log(`Equipment ${idx + 1}: ${pred.class} (${(pred.confidence * 100).toFixed(1)}%)`);
+      });
+      
       return data.predictions;
     } catch (error) {
       console.error("Roboflow detection error:", error);

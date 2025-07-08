@@ -375,6 +375,33 @@ export default function GymMapping() {
         });
       }
 
+      // Add Roboflow gym equipment detection if available
+      let roboflowEquipment: any[] = [];
+      if (roboflowDetector.isReady()) {
+        try {
+          // Create canvas from video for Roboflow
+          const roboflowCanvas = document.createElement('canvas');
+          roboflowCanvas.width = video.videoWidth;
+          roboflowCanvas.height = video.videoHeight;
+          const roboflowCtx = roboflowCanvas.getContext('2d');
+          roboflowCtx?.drawImage(video, 0, 0);
+          
+          const base64Image = roboflowDetector.canvasToBase64(roboflowCanvas);
+          const roboflowPredictions = await roboflowDetector.detectEquipment(base64Image);
+          
+          // Convert Roboflow predictions to our format
+          roboflowEquipment = roboflowPredictions.map(pred => ({
+            class: roboflowDetector.mapToExerciseEquipment(pred.class),
+            score: pred.confidence,
+            bbox: [pred.x - pred.width/2, pred.y - pred.height/2, pred.width, pred.height]
+          }));
+          
+          console.log(`Roboflow detected ${roboflowEquipment.length} gym equipment items`);
+        } catch (error) {
+          console.error("Roboflow detection failed:", error);
+        }
+      }
+
       // Update detected poses
       if (poses.length > 0) {
         setDetectedPoses(poses.map((pose: any) => ({
@@ -408,9 +435,9 @@ export default function GymMapping() {
         });
       }
 
-      // Convert to our equipment format
-      const newEquipment: DetectedEquipment[] = relevantObjects.map((obj: any, idx: number) => ({
-        id: `obj_${Date.now()}_${idx}`,
+      // Convert to our equipment format - combine COCO-SSD and Roboflow
+      const cocoEquipment: DetectedEquipment[] = relevantObjects.map((obj: any, idx: number) => ({
+        id: `coco_${Date.now()}_${idx}`,
         name: mapCocoToGymEquipment(obj.class),
         confidence: obj.score,
         bbox: {
@@ -425,6 +452,26 @@ export default function GymMapping() {
         },
         source: 'object'
       }));
+
+      // Add Roboflow equipment detections
+      const roboflowEquipmentFormatted: DetectedEquipment[] = roboflowEquipment.map((equipment: any, idx: number) => ({
+        id: `roboflow_${Date.now()}_${idx}`,
+        name: equipment.class,
+        confidence: equipment.score,
+        bbox: {
+          x: equipment.bbox[0],
+          y: equipment.bbox[1],
+          width: equipment.bbox[2],
+          height: equipment.bbox[3]
+        },
+        position: {
+          x: equipment.bbox[0] + equipment.bbox[2] / 2,
+          y: equipment.bbox[1] + equipment.bbox[3] / 2
+        },
+        source: 'roboflow'
+      }));
+
+      const newEquipment = [...cocoEquipment, ...roboflowEquipmentFormatted];
 
       // Update detected equipment (avoid duplicates)
       setDetectedEquipment(prev => {
@@ -589,6 +636,12 @@ export default function GymMapping() {
                 <div className={`w-3 h-3 rounded-full ${modelsLoaded.objects ? 'bg-green-500' : isLoadingModels ? 'bg-yellow-500' : 'bg-red-500'}`} />
                 <span className="text-sm">
                   COCO-SSD Object Detection (gym equipment)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${roboflowDetector.isReady() ? 'bg-green-500' : 'bg-gray-400'}`} />
+                <span className="text-sm">
+                  Roboflow Gym Equipment Detection {roboflowDetector.isReady() ? '(Active)' : '(Not Configured)'}
                 </span>
               </div>
             </div>
