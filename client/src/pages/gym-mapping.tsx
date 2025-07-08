@@ -457,20 +457,30 @@ export default function GymMapping() {
 
   const startMapping = () => {
     if (!modelsLoaded.pose && !modelsLoaded.objects) {
+      console.log("❌ AI models not ready:", modelsLoaded);
       alert("AI models are still loading. Please wait a moment.");
       return;
     }
 
+    console.log("🚀 Starting AI mapping mode...");
+    console.log("Available models:", {
+      pose: modelsLoaded.pose,
+      objects: modelsLoaded.objects,
+      poseDetector: !!poseDetectorRef.current,
+      objectDetector: !!objectDetectorRef.current
+    });
+    
     setIsMappingMode(true);
     
-    // Start capturing frames every 1.5 seconds
+    // Start capturing frames every 2 seconds for better processing
     const interval = setInterval(() => {
       if (isMappingMode) {
+        console.log("📸 Capturing frame for AI analysis...");
         captureFrame();
       } else {
         clearInterval(interval);
       }
-    }, 1500);
+    }, 2000);
   };
 
   const saveGymLayout = () => {
