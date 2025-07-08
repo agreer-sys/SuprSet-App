@@ -15,6 +15,8 @@ import * as cocoSsd from '@tensorflow-models/coco-ssd';
 // Import our custom AI services
 import { roboflowDetector } from '@/lib/roboflow-api';
 import { spatialMapper, type GymLayout, type EquipmentZone } from '@/lib/spatial-mapping';
+import { communityModelService } from '@/lib/community-model';
+import ImageContribution from '@/components/image-contribution';
 
 interface DetectedEquipment {
   id: string;
@@ -60,6 +62,10 @@ export default function GymMapping() {
   const [equipmentZones, setEquipmentZones] = useState<EquipmentZone[]>([]);
   const [crowdingLevel, setCrowdingLevel] = useState<'low' | 'medium' | 'high'>('low');
   
+  // Community contribution state
+  const [showContributionModal, setShowContributionModal] = useState(false);
+  const [contributionStats, setContributionStats] = useState({ contributionCount: 0, verifiedCount: 0 });
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -70,6 +76,10 @@ export default function GymMapping() {
   useEffect(() => {
     initializeModels();
     getCurrentLocation();
+    
+    // Load user contribution stats
+    const stats = communityModelService.getUserStats();
+    setContributionStats(stats);
   }, []);
 
   const getCurrentLocation = async () => {
@@ -955,14 +965,51 @@ export default function GymMapping() {
             <p>✅ COCO-SSD object detection for gym equipment (baseline)</p>
             <p>✅ Real-time AI analysis combining pose + object detection</p>
             <p>✅ Spatial mapping with equipment zones and crowd analysis</p>
-            <p>🔄 Next: Create private Roboflow account for custom dataset</p>
-            <p>🔄 Next: Collect 1,000+ gym equipment photos for training</p>
-            <p>🔄 Next: Train custom model for SuprSet-specific equipment</p>
+            <p>✅ Community image contribution system active</p>
+            <p>✅ Quality control and crowdsourced labeling framework</p>
+            <p>🔄 Next: Collect 1,000+ gym equipment photos via community</p>
+            <p>🔄 Next: Train custom model from community contributions</p>
             <p>⏳ Future: Backend integration for gym layout storage</p>
             <p>⏳ Future: Community sharing and layout retrieval</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Community Contribution Modal */}
+      <ImageContribution
+        isVisible={showContributionModal}
+        onClose={() => setShowContributionModal(false)}
+        onContribute={async (contributionData) => {
+          try {
+            // Add current frame if video is available
+            if (videoRef.current && canvasRef.current) {
+              const video = videoRef.current;
+              const canvas = canvasRef.current;
+              const ctx = canvas.getContext('2d');
+              
+              if (ctx) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                contributionData.image = canvas.toDataURL('image/jpeg', 0.8);
+              }
+            }
+
+            // Submit to community model service
+            const contributionId = await communityModelService.submitContribution(contributionData);
+            console.log(`✅ Community contribution submitted: ${contributionId}`);
+            
+            // Update user stats
+            const updatedStats = communityModelService.getUserStats();
+            setContributionStats(updatedStats);
+            
+            return contributionId;
+          } catch (error) {
+            console.error("Failed to submit contribution:", error);
+            throw error;
+          }
+        }}
+      />
     </div>
   );
 }
