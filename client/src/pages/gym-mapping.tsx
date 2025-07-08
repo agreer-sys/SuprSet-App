@@ -427,6 +427,14 @@ export default function GymMapping() {
       
       console.log(`Found ${relevantObjects.length} relevant objects out of ${objects.length} total`);
       
+      // Also show Roboflow detection count
+      if (roboflowEquipment.length > 0) {
+        console.log(`Roboflow detected ${roboflowEquipment.length} gym equipment items:`);
+        roboflowEquipment.forEach((eq, idx) => {
+          console.log(`  🏋️ ${eq.class}: ${(eq.score * 100).toFixed(1)}%`);
+        });
+      }
+      
       // Also log ALL objects for debugging (regardless of relevance)
       if (objects.length > 0) {
         console.log("All detected objects:");
@@ -473,23 +481,37 @@ export default function GymMapping() {
 
       const newEquipment = [...cocoEquipment, ...roboflowEquipmentFormatted];
 
-      // Update detected equipment (avoid duplicates)
+      // Update detected equipment with improved duplicate filtering
       setDetectedEquipment(prev => {
         const updated = [...prev];
+        
         newEquipment.forEach(newEq => {
+          // More strict duplicate detection - closer proximity and confidence thresholds
           const exists = updated.some(eq => 
-            Math.abs(eq.position.x - newEq.position.x) < 10 &&
-            Math.abs(eq.position.y - newEq.position.y) < 10 &&
-            eq.name === newEq.name
+            Math.abs(eq.position.x - newEq.position.x) < 30 &&
+            Math.abs(eq.position.y - newEq.position.y) < 30 &&
+            eq.name === newEq.name &&
+            Math.abs(eq.confidence - newEq.confidence) < 0.15
           );
           
-          if (!exists) {
+          if (!exists && newEq.confidence > 0.4) { // Higher confidence threshold
             updated.push(newEq);
           }
         });
         
-        // Keep only recent detections (last 20)
-        return updated.slice(-20);
+        // Remove duplicates and keep only recent high-confidence detections
+        const deduplicated = updated.filter((eq, index, arr) => {
+          // Keep first occurrence of each unique equipment at each location
+          return arr.findIndex(other => 
+            Math.abs(other.position.x - eq.position.x) < 40 &&
+            Math.abs(other.position.y - eq.position.y) < 40 &&
+            other.name === eq.name
+          ) === index;
+        });
+        
+        return deduplicated
+          .filter(eq => eq.confidence > 0.3)
+          .slice(-12); // Limit to 12 most recent items
       });
 
       // Analyze spatial layout and crowd levels
