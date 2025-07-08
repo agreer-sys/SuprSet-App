@@ -8,10 +8,13 @@
 - [x] **Quality Control**: Image validation and duplicate detection systems
 - [x] **Data Privacy**: Gym location anonymization and user consent management
 - [x] **Incentive System**: Better recommendations for active contributors
+- [x] **User Authentication**: Sign up/sign in with contribution tracking
+- [x] **Session Management**: Persistent user sessions and profile display
 - [ ] **Model Training Pipeline**: Automated retraining with new community data
 - [ ] **Model Performance Tracking**: Accuracy metrics and user feedback loops
 - [ ] **Backend Integration**: Store contributions in persistent database
 - [ ] **Verification System**: Community voting on contribution accuracy
+- [ ] **Phase 3 Integration**: Upload community dataset to custom Roboflow model
 
 ### 2. User Experience Enhancements
 - [ ] **Workout History Tracking**: Save completed superset sessions with timing data
