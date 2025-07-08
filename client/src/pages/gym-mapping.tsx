@@ -390,6 +390,7 @@ export default function GymMapping() {
       let roboflowEquipment: any[] = [];
       if (roboflowDetector.isReady()) {
         try {
+          console.log("🤖 Running Roboflow gym equipment detection...");
           // Create canvas from video for Roboflow
           const roboflowCanvas = document.createElement('canvas');
           roboflowCanvas.width = video.videoWidth;
