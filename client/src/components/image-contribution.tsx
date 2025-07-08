@@ -94,8 +94,13 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <Card className="w-full sm:max-w-md bg-white max-h-[85vh] sm:max-h-[95vh] overflow-y-auto sm:rounded-lg rounded-t-xl">
+    <>
+      {/* Transparent overlay for camera area */}
+      <div className="fixed inset-0 z-40 pointer-events-none" />
+      
+      {/* Bottom sheet modal */}
+      <div className="fixed bottom-0 left-0 right-0 z-50">
+        <Card className="w-full bg-white rounded-t-xl shadow-lg max-h-[70vh] overflow-y-auto border-t">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <CardTitle className="text-base font-semibold">
             Contribute Equipment Photo
@@ -132,7 +137,7 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
                   Ready to capture equipment
                 </p>
                 <p className="text-xs text-blue-600">
-                  Camera is active behind this modal - position equipment clearly in view
+                  Camera is active above - position equipment in view and capture
                 </p>
               </div>
               
@@ -227,10 +232,11 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
             Location data is used only for model training and never shared.
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
       
       {/* Hidden canvas for image processing */}
       <canvas ref={canvasRef} className="hidden" />
-    </div>
+    </>
   );
 }
