@@ -8,6 +8,7 @@ import { Camera, Square, MapPin, Zap, Brain, Target, Navigation, Users } from "l
 // Import TensorFlow.js and models
 import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
+import '@tensorflow/tfjs-backend-cpu';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
 
@@ -137,9 +138,19 @@ export default function GymMapping() {
   const initializeModels = async () => {
     setIsLoadingModels(true);
     try {
-      // Initialize TensorFlow.js backend with fallback
-      await tf.ready();
-      console.log("TensorFlow.js backend initialized");
+      // Initialize TensorFlow.js backend with CPU fallback
+      console.log("Initializing TensorFlow.js...");
+      
+      try {
+        await tf.setBackend('webgl');
+        await tf.ready();
+        console.log("TensorFlow.js WebGL backend initialized");
+      } catch (webglError) {
+        console.log("WebGL not available, falling back to CPU backend");
+        await tf.setBackend('cpu');
+        await tf.ready();
+        console.log("TensorFlow.js CPU backend initialized");
+      }
 
       // Load pose detection model with error handling
       try {
@@ -152,9 +163,9 @@ export default function GymMapping() {
         );
         poseDetectorRef.current = poseDetector;
         setModelsLoaded(prev => ({ ...prev, pose: true }));
-        console.log("BlazePose model loaded");
+        console.log("BlazePose model loaded successfully");
       } catch (poseError) {
-        console.warn("BlazePose failed to load (WebGL/WebGPU limitation in this environment):", poseError);
+        console.log("BlazePose model not available in this environment, continuing with object detection");
       }
 
       // Load object detection model with error handling
@@ -162,9 +173,9 @@ export default function GymMapping() {
         const objectDetector = await cocoSsd.load();
         objectDetectorRef.current = objectDetector;
         setModelsLoaded(prev => ({ ...prev, objects: true }));
-        console.log("COCO-SSD object detection model loaded");
+        console.log("COCO-SSD object detection model loaded successfully");
       } catch (objectError) {
-        console.warn("COCO-SSD failed to load (WebGL/WebGPU limitation in this environment):", objectError);
+        console.log("COCO-SSD model not available in this environment");
       }
 
     } catch (error) {
