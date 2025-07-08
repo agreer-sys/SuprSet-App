@@ -16,7 +16,7 @@ import * as cocoSsd from '@tensorflow-models/coco-ssd';
 import { roboflowDetector } from '@/lib/roboflow-api';
 import { spatialMapper, type GymLayout, type EquipmentZone } from '@/lib/spatial-mapping';
 import { communityModelService } from '@/lib/community-model';
-import ImageContribution from '@/components/image-contribution';
+
 import AuthModal from '@/components/auth-modal';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -69,6 +69,10 @@ export default function GymMapping() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [contributionStats, setContributionStats] = useState({ contributionCount: 0, verifiedCount: 0 });
   const [detectionPaused, setDetectionPaused] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [equipmentLabel, setEquipmentLabel] = useState("");
+  const [gymLocation, setGymLocationInput] = useState("");
+  const [notes, setNotes] = useState("");
   
   // Authentication
   const { user, isAuthenticated, updateUserStats } = useAuth();
@@ -978,8 +982,106 @@ export default function GymMapping() {
           </CardContent>
         </Card>
 
-        {/* Detected Equipment */}
-        {detectedEquipment.length > 0 && (
+        {/* Contribution Form - Show when in contribution mode and camera is active */}
+        {showContributionModal && isStreaming && capturedImage && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Label Your Contribution
+              </CardTitle>
+              <CardDescription>
+                Help our AI learn by labeling this equipment photo
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Equipment Type Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Equipment Type *</label>
+                <select 
+                  value={equipmentLabel}
+                  onChange={(e) => setEquipmentLabel(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  required
+                >
+                  <option value="">Select equipment type...</option>
+                  <option value="Bench">Bench</option>
+                  <option value="Dumbbell Rack">Dumbbell Rack</option>
+                  <option value="Barbell">Barbell</option>
+                  <option value="Squat Rack">Squat Rack</option>
+                  <option value="Cable Machine">Cable Machine</option>
+                  <option value="Treadmill">Treadmill</option>
+                  <option value="Rowing Machine">Rowing Machine</option>
+                  <option value="Pull-up Bar">Pull-up Bar</option>
+                  <option value="Leg Press">Leg Press</option>
+                  <option value="Smith Machine">Smith Machine</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              {/* Optional Notes */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Notes (Optional)</label>
+                <textarea 
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Additional details about this equipment..."
+                  className="w-full p-2 border rounded-md h-20 resize-none"
+                />
+              </div>
+
+              {/* Submit Contribution */}
+              <div className="flex gap-2">
+                <Button 
+                  onClick={async () => {
+                    if (!capturedImage || !equipmentLabel) return;
+                    
+                    try {
+                      const contributionData = {
+                        image: capturedImage,
+                        equipment: equipmentLabel,
+                        gymLocation: gymLocation || undefined,
+                        notes: notes || undefined,
+                        confidence: 1.0
+                      };
+
+                      await communityModelService.submitContribution(contributionData);
+                      
+                      // Reset form
+                      setCapturedImage(null);
+                      setEquipmentLabel("");
+                      setNotes("");
+                      setShowContributionModal(false);
+                      
+                      console.log("✅ Contribution submitted successfully");
+                    } catch (error) {
+                      console.error("Failed to submit contribution:", error);
+                    }
+                  }}
+                  className="flex-1"
+                  disabled={!capturedImage || !equipmentLabel}
+                >
+                  <Target className="h-4 w-4 mr-2" />
+                  Submit Contribution
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setCapturedImage(null);
+                    setEquipmentLabel("");
+                    setNotes("");
+                    setShowContributionModal(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Detected Equipment - Only show in AI mapping mode */}
+        {detectedEquipment.length > 0 && isMappingMode && (
           <Card>
             <CardHeader>
               <CardTitle>Detected Equipment ({detectedEquipment.length})</CardTitle>
@@ -999,8 +1101,8 @@ export default function GymMapping() {
           </Card>
         )}
 
-        {/* Spatial Intelligence Dashboard */}
-        {(equipmentZones.length > 0 || detectedPoses.length > 0) && (
+        {/* Spatial Intelligence Dashboard - Only show in AI mapping mode */}
+        {(equipmentZones.length > 0 || detectedPoses.length > 0) && isMappingMode && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1098,48 +1200,7 @@ export default function GymMapping() {
         </Card>
       </div>
 
-      {/* Community Contribution Modal */}
-      <div data-contribution-modal={showContributionModal ? "true" : "false"}>
-        <ImageContribution
-          isVisible={showContributionModal}
-          onClose={() => setShowContributionModal(false)}
-          onContribute={async (contributionData) => {
-          try {
-            // Add current frame if video is available
-            if (videoRef.current && canvasRef.current) {
-              const video = videoRef.current;
-              const canvas = canvasRef.current;
-              const ctx = canvas.getContext('2d');
-              
-              if (ctx) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                ctx.drawImage(video, 0, 0);
-                contributionData.image = canvas.toDataURL('image/jpeg', 0.8);
-              }
-            }
 
-            // Submit to community model service
-            const contributionId = await communityModelService.submitContribution(contributionData);
-            console.log(`✅ Community contribution submitted: ${contributionId}`);
-            
-            // Update user stats
-            const updatedStats = communityModelService.getUserStats();
-            setContributionStats(updatedStats);
-            
-            // Update authenticated user stats
-            if (user) {
-              updateUserStats(user.contributions + 1, user.verifiedContributions);
-            }
-            
-            return contributionId;
-          } catch (error) {
-            console.error("Failed to submit contribution:", error);
-            throw error;
-          }
-        }}
-        />
-      </div>
 
       {/* Authentication Modal */}
       <AuthModal
