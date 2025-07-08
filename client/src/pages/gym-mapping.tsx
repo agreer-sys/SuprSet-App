@@ -3,7 +3,7 @@ import Header from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Camera, Square, MapPin, Zap, Brain, Target, Navigation, Users } from "lucide-react";
+import { Camera, Square, MapPin, Zap, Brain, Target, Navigation, Users, Video } from "lucide-react";
 
 // Import TensorFlow.js and models
 import * as tf from '@tensorflow/tfjs-core';
@@ -921,61 +921,158 @@ export default function GymMapping() {
               Stream Ref: {streamRef.current ? 'Active' : 'Inactive'}
             </div>
 
-            {/* Video Stream Container - Always Present */}
-            <div 
-              className={`relative bg-black rounded-lg overflow-hidden min-h-[240px] border-2 ${isStreaming ? 'border-white' : 'border-gray-500'}`}
-              data-mapping-active={isMappingMode ? "true" : "false"}
-            >
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                webkit-playsinline="true"
-                className="w-full h-64 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg bg-gray-900"
-                style={{ 
-                  minHeight: '240px',
-                  maxHeight: '480px',
-                  aspectRatio: '16/9',
-                  display: 'block',
-                  backgroundColor: 'black',
-                  opacity: isStreaming ? 1 : 0.3
-                }}
-                onLoadedData={() => console.log("Video data loaded")}
-                onPlay={() => console.log("Video started playing")}
-                onError={(e) => console.error("Video error:", e)}
-                onLoadedMetadata={() => console.log("Video metadata loaded, size:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)}
-              />
-              
-              {/* Camera status overlay */}
+            {/* Video Stream Container - Conditional based on mode */}
+            {showContributionModal && isStreaming ? (
+              /* CONTRIBUTION MODE: Square camera view with capture interface */
+              <div className="space-y-4">
+                {!capturedImage ? (
+                  /* Live camera preview for capture */
+                  <div className="relative w-full aspect-square bg-black rounded-lg overflow-hidden border-2 border-blue-200">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      webkit-playsinline="true"
+                      className="w-full h-full object-cover"
+                      style={{ transform: 'scaleX(-1)' }}
+                    />
+                    
+                    {/* Square crop overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-full h-full border-2 border-blue-300 border-dashed bg-blue-500/10">
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-sm bg-black/50 px-2 py-1 rounded">
+                          Square Crop Area
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Captured image preview */
+                  <div className="space-y-2">
+                    <img 
+                      src={capturedImage} 
+                      alt="Captured equipment" 
+                      className="w-full aspect-square object-contain rounded-lg border bg-gray-100"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setCapturedImage(null)}
+                      className="w-full"
+                    >
+                      Retake Photo
+                    </Button>
+                  </div>
+                )}
+
+                {/* Capture Button */}
+                {!capturedImage && (
+                  <Button 
+                    onClick={() => {
+                      const canvas = document.createElement('canvas');
+                      const ctx = canvas.getContext('2d');
+                      if (!ctx || !videoRef.current) return;
+
+                      const video = videoRef.current;
+                      const videoWidth = video.videoWidth;
+                      const videoHeight = video.videoHeight;
+                      const cropSize = Math.min(videoWidth, videoHeight);
+                      const cropX = (videoWidth - cropSize) / 2;
+                      const cropY = (videoHeight - cropSize) / 2;
+
+                      console.log("📱 Capture button clicked");
+                      console.log("🎯 Capturing from video:", videoWidth, "x", videoHeight);
+                      console.log("✂️ Crop settings:", { cropSize, cropX, cropY });
+                      
+                      canvas.width = cropSize;
+                      canvas.height = cropSize;
+                      
+                      ctx.drawImage(
+                        video,
+                        cropX, cropY, cropSize, cropSize,
+                        0, 0, cropSize, cropSize
+                      );
+                      
+                      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+                      console.log("🖼️ Square image captured:", `${canvas.width}x${canvas.height}`);
+                      setCapturedImage(imageData);
+                    }}
+                    className="w-full h-12"
+                    variant="default"
+                  >
+                    <Camera className="h-5 w-5 mr-2" />
+                    Capture Square Photo
+                  </Button>
+                )}
+              </div>
+            ) : (
+              /* AI MAPPING MODE: Standard video view with detection overlays */
               <div 
-                className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs"
+                className={`relative bg-black rounded-lg overflow-hidden min-h-[240px] border-2 ${isStreaming ? 'border-white' : 'border-gray-500'}`}
                 data-mapping-active={isMappingMode ? "true" : "false"}
               >
-                {!isStreaming ? '📱 Camera Not Active' : isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  webkit-playsinline="true"
+                  className="w-full h-64 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg bg-gray-900"
+                  style={{ 
+                    minHeight: '240px',
+                    maxHeight: '480px',
+                    aspectRatio: '16/9',
+                    display: 'block',
+                    backgroundColor: 'black',
+                    opacity: isStreaming ? 1 : 0.3
+                  }}
+                  onLoadedData={() => console.log("Video data loaded")}
+                  onPlay={() => console.log("Video started playing")}
+                  onError={(e) => console.error("Video error:", e)}
+                  onLoadedMetadata={() => console.log("Video metadata loaded, size:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)}
+                />
+                
+                {/* Camera status overlay */}
+                <div 
+                  className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs"
+                  data-mapping-active={isMappingMode ? "true" : "false"}
+                >
+                  {!isStreaming ? '📱 Camera Not Active' : isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
+                </div>
+                
+                {/* Detection overlay */}
+                {isStreaming && isMappingMode && (
+                  <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white p-2 rounded text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>Equipment: {detectedEquipment.length}</div>
+                      <div>People: {detectedPoses.length}</div>
+                      <div>Zones: {equipmentZones.length}</div>
+                      <div>Crowd: {crowdingLevel.toUpperCase()}</div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Crosshair for targeting */}
+                {isStreaming && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-8 h-8 border-2 border-white/50 rounded-full flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white/50 rounded-full"></div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Placeholder when not streaming */}
+                {!isStreaming && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white">
+                    <div className="text-center">
+                      <Video className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm opacity-75">Camera not active</p>
+                    </div>
+                  </div>
+                )}
               </div>
-              
-              {/* Detection overlay */}
-              {isStreaming && isMappingMode && (
-                <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white p-2 rounded text-xs">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>Equipment: {detectedEquipment.length}</div>
-                    <div>People: {detectedPoses.length}</div>
-                    <div>Zones: {equipmentZones.length}</div>
-                    <div>Crowd: {crowdingLevel.toUpperCase()}</div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Crosshair for targeting */}
-              {isStreaming && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-8 h-8 border-2 border-white/50 rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white/50 rounded-full"></div>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Hidden canvas for frame processing */}
             <canvas ref={canvasRef} className="hidden" />
