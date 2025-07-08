@@ -955,19 +955,43 @@ export default function GymMapping() {
                             if (canvas && videoRef.current && isStreaming) {
                               const ctx = canvas.getContext('2d');
                               if (ctx) {
-                                // High resolution for better quality
                                 const rect = canvas.getBoundingClientRect();
-                                canvas.width = rect.width * window.devicePixelRatio;
-                                canvas.height = rect.height * window.devicePixelRatio;
-                                canvas.style.width = rect.width + 'px';
-                                canvas.style.height = rect.height + 'px';
+                                const size = Math.min(rect.width, rect.height);
+                                
+                                // Set canvas to square dimensions for contribution mode
+                                canvas.width = size * window.devicePixelRatio;
+                                canvas.height = size * window.devicePixelRatio;
+                                canvas.style.width = size + 'px';
+                                canvas.style.height = size + 'px';
                                 ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
                                 
                                 const drawFrame = () => {
                                   if (videoRef.current && videoRef.current.readyState >= 2) {
-                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                    // Remove mirror effect - show normal orientation
-                                    ctx.drawImage(videoRef.current, 0, 0, rect.width, rect.height);
+                                    ctx.clearRect(0, 0, size, size);
+                                    
+                                    // Calculate video dimensions for center crop
+                                    const videoWidth = videoRef.current.videoWidth;
+                                    const videoHeight = videoRef.current.videoHeight;
+                                    const videoAspect = videoWidth / videoHeight;
+                                    
+                                    let sourceX = 0, sourceY = 0, sourceWidth = videoWidth, sourceHeight = videoHeight;
+                                    
+                                    // Center crop to square
+                                    if (videoAspect > 1) {
+                                      // Video is wider than tall - crop horizontally
+                                      sourceWidth = videoHeight;
+                                      sourceX = (videoWidth - videoHeight) / 2;
+                                    } else {
+                                      // Video is taller than wide - crop vertically
+                                      sourceHeight = videoWidth;
+                                      sourceY = (videoHeight - videoWidth) / 2;
+                                    }
+                                    
+                                    ctx.drawImage(
+                                      videoRef.current,
+                                      sourceX, sourceY, sourceWidth, sourceHeight,
+                                      0, 0, size, size
+                                    );
                                   }
                                   requestAnimationFrame(drawFrame);
                                 };
@@ -975,7 +999,7 @@ export default function GymMapping() {
                               }
                             }
                           }}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                         
                         {/* Square crop overlay */}
@@ -1057,18 +1081,51 @@ export default function GymMapping() {
                         if (canvas && videoRef.current && isStreaming) {
                           const ctx = canvas.getContext('2d');
                           if (ctx) {
-                            // High resolution for better quality
                             const rect = canvas.getBoundingClientRect();
-                            canvas.width = rect.width * window.devicePixelRatio;
-                            canvas.height = rect.height * window.devicePixelRatio;
-                            canvas.style.width = rect.width + 'px';
-                            canvas.style.height = rect.height + 'px';
+                            
+                            // Set canvas to 16:9 aspect ratio for AI mapping mode
+                            const targetAspect = 16 / 9;
+                            let canvasWidth = rect.width;
+                            let canvasHeight = rect.width / targetAspect;
+                            
+                            if (canvasHeight > rect.height) {
+                              canvasHeight = rect.height;
+                              canvasWidth = rect.height * targetAspect;
+                            }
+                            
+                            canvas.width = canvasWidth * window.devicePixelRatio;
+                            canvas.height = canvasHeight * window.devicePixelRatio;
+                            canvas.style.width = canvasWidth + 'px';
+                            canvas.style.height = canvasHeight + 'px';
                             ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
                             
                             const drawFrame = () => {
                               if (videoRef.current && videoRef.current.readyState >= 2) {
-                                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                ctx.drawImage(videoRef.current, 0, 0, rect.width, rect.height);
+                                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                                
+                                // Calculate video dimensions for proper aspect ratio
+                                const videoWidth = videoRef.current.videoWidth;
+                                const videoHeight = videoRef.current.videoHeight;
+                                const videoAspect = videoWidth / videoHeight;
+                                
+                                let sourceX = 0, sourceY = 0, sourceWidth = videoWidth, sourceHeight = videoHeight;
+                                
+                                // Maintain aspect ratio with letterboxing if needed
+                                if (videoAspect > targetAspect) {
+                                  // Video is wider - crop horizontally
+                                  sourceWidth = videoHeight * targetAspect;
+                                  sourceX = (videoWidth - sourceWidth) / 2;
+                                } else if (videoAspect < targetAspect) {
+                                  // Video is taller - crop vertically
+                                  sourceHeight = videoWidth / targetAspect;
+                                  sourceY = (videoHeight - sourceHeight) / 2;
+                                }
+                                
+                                ctx.drawImage(
+                                  videoRef.current,
+                                  sourceX, sourceY, sourceWidth, sourceHeight,
+                                  0, 0, canvasWidth, canvasHeight
+                                );
                               }
                               requestAnimationFrame(drawFrame);
                             };
@@ -1076,9 +1133,9 @@ export default function GymMapping() {
                           }
                         }
                       }}
-                      className="w-full h-64 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg bg-gray-900"
+                      className="w-full h-auto object-contain rounded-lg bg-gray-900"
                       style={{ 
-                        minHeight: '240px',
+                        maxWidth: '100%',
                         maxHeight: '480px',
                         aspectRatio: '16/9',
                         display: 'block',
