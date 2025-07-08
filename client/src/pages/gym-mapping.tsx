@@ -1151,14 +1151,14 @@ export default function GymMapping() {
                       {!isStreaming ? '📱 Camera Not Active' : isMappingMode ? '🔴 AI Mapping Active' : '📷 Camera Ready'}
                     </div>
                 
-                    {/* Detection overlay */}
+                    {/* Detection overlay - positioned at top right corner */}
                     {isStreaming && isMappingMode && (
-                      <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white p-2 rounded text-xs">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>Equipment: {detectedEquipment.length}</div>
-                          <div>People: {detectedPoses.length}</div>
-                          <div>Zones: {equipmentZones.length}</div>
-                          <div>Crowd: {crowdingLevel.toUpperCase()}</div>
+                      <div className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded text-xs max-w-32">
+                        <div className="space-y-1 text-right">
+                          <div>📱 {detectedEquipment.length}</div>
+                          <div>👥 {detectedPoses.length}</div>
+                          <div>🏠 {equipmentZones.length}</div>
+                          <div>📊 {crowdingLevel.charAt(0).toUpperCase()}</div>
                         </div>
                       </div>
                     )}
