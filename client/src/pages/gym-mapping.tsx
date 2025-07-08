@@ -594,6 +594,10 @@ export default function GymMapping() {
     }
 
     console.log("🚀 Starting AI mapping mode...");
+    
+    // Initialize global detection state
+    (window as any).detectionActive = true;
+    
     console.log("Available models:", {
       pose: modelsLoaded.pose,
       objects: modelsLoaded.objects,
@@ -606,22 +610,26 @@ export default function GymMapping() {
     // Start capturing frames every 2 seconds for better processing
     console.log("Setting up frame capture interval...");
     
-    // Use a different approach to avoid closure issues
+    // Use a different approach to avoid closure issues with React state
     let frameCount = 0;
     const interval = setInterval(() => {
       frameCount++;
       console.log(`⏰ Frame ${frameCount} - checking mapping status...`);
       
-      // Check current state instead of closure variable
-      const mappingActive = document.querySelector('[data-mapping-active="true"]') !== null;
-      const contributionModalOpen = document.querySelector('[data-contribution-modal="true"]') !== null;
-      console.log("🔍 Frame", frameCount, "- Mapping active:", mappingActive, "| Contribution modal:", contributionModalOpen);
+      // Check DOM and global state directly to avoid React closure issues
+      const currentMappingState = document.querySelector('[data-mapping-active="true"]') !== null;
+      const modalVisible = document.querySelector('[data-contribution-modal="true"]') !== null;
+      const isDetectionActive = (window as any).detectionActive !== false;
       
-      if (mappingActive && !contributionModalOpen) {
+      console.log("🔍 Frame", frameCount, "- Mapping:", currentMappingState, "| Modal:", modalVisible, "| Detection Active:", isDetectionActive);
+      
+      if (currentMappingState && !modalVisible && isDetectionActive) {
         console.log("📸 Capturing frame for AI analysis...");
         captureFrame();
-      } else if (contributionModalOpen) {
+      } else if (modalVisible) {
         console.log("⏸️ Detection paused - contribution modal active");
+      } else if (!isDetectionActive) {
+        console.log("⏸️ Detection paused - detection disabled");
       } else {
         console.log("Mapping not active, stopping interval");
         clearInterval(interval);
@@ -636,13 +644,17 @@ export default function GymMapping() {
     console.log("🎯 Modal toggle called:", isOpen);
     setShowContributionModal(isOpen);
     setDetectionPaused(isOpen);
+    
+    // Set global flag to avoid React closure issues
+    (window as any).detectionActive = !isOpen;
+    
     console.log(isOpen ? "🔒 AI detection paused for contribution" : "🔓 AI detection resumed");
     
-    // Force update DOM attribute immediately
-    const videoContainer = document.querySelector('[data-mapping-active]');
-    if (videoContainer) {
-      videoContainer.setAttribute('data-contribution-modal', isOpen ? 'true' : 'false');
-      console.log("📝 DOM attribute updated:", videoContainer.getAttribute('data-contribution-modal'));
+    // Force update DOM attribute immediately for modal tracking
+    const contributionModal = document.querySelector('[data-contribution-modal]');
+    if (contributionModal) {
+      contributionModal.setAttribute('data-contribution-modal', isOpen ? 'true' : 'false');
+      console.log("📝 Modal DOM attribute updated:", contributionModal.getAttribute('data-contribution-modal'));
     }
   };
 

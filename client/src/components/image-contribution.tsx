@@ -200,7 +200,10 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
               
               {/* Capture Button - Separate from preview area */}
               <Button 
-                onClick={captureFromMainVideo}
+                onClick={() => {
+                  console.log("📱 Capture button clicked");
+                  captureFromMainVideo();
+                }}
                 variant="default"
                 size="default"
                 className="w-full flex items-center justify-center gap-2 h-10"
