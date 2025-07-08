@@ -68,6 +68,7 @@ export default function GymMapping() {
   const [showContributionModal, setShowContributionModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [contributionStats, setContributionStats] = useState({ contributionCount: 0, verifiedCount: 0 });
+  const [detectionPaused, setDetectionPaused] = useState(false);
   
   // Authentication
   const { user, isAuthenticated, updateUserStats } = useAuth();
@@ -613,11 +614,14 @@ export default function GymMapping() {
       
       // Check current state instead of closure variable
       const mappingActive = document.querySelector('[data-mapping-active="true"]') !== null;
-      console.log("Mapping active:", mappingActive);
+      const contributionModalOpen = document.querySelector('[data-contribution-modal="true"]') !== null;
+      console.log("Mapping active:", mappingActive, "| Contribution modal:", contributionModalOpen);
       
-      if (mappingActive) {
+      if (mappingActive && !contributionModalOpen) {
         console.log("📸 Capturing frame for AI analysis...");
         captureFrame();
+      } else if (contributionModalOpen) {
+        console.log("⏸️ Detection paused - contribution modal active");
       } else {
         console.log("Mapping not active, stopping interval");
         clearInterval(interval);
@@ -626,6 +630,12 @@ export default function GymMapping() {
     
     // Store interval reference for cleanup
     (window as any).mappingInterval = interval;
+  };
+
+  const handleContributionModalToggle = (isOpen: boolean) => {
+    setShowContributionModal(isOpen);
+    setDetectionPaused(isOpen);
+    console.log(isOpen ? "🔒 AI detection paused for contribution" : "🔓 AI detection resumed");
   };
 
   const saveGymLayout = () => {
@@ -821,7 +831,7 @@ export default function GymMapping() {
                     if (!isAuthenticated) {
                       setShowAuthModal(true);
                     } else {
-                      setShowContributionModal(true);
+                      handleContributionModalToggle(true);
                     }
                   }}
                   variant="outline" 
@@ -1020,10 +1030,11 @@ export default function GymMapping() {
       </div>
 
       {/* Community Contribution Modal */}
-      <ImageContribution
-        isVisible={showContributionModal}
-        onClose={() => setShowContributionModal(false)}
-        onContribute={async (contributionData) => {
+      <div data-contribution-modal={showContributionModal ? "true" : "false"}>
+        <ImageContribution
+          isVisible={showContributionModal}
+          onClose={() => handleContributionModalToggle(false)}
+          onContribute={async (contributionData) => {
           try {
             // Add current frame if video is available
             if (videoRef.current && canvasRef.current) {
@@ -1058,7 +1069,8 @@ export default function GymMapping() {
             throw error;
           }
         }}
-      />
+        />
+      </div>
 
       {/* Authentication Modal */}
       <AuthModal
