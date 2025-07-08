@@ -955,16 +955,19 @@ export default function GymMapping() {
                             if (canvas && videoRef.current && isStreaming) {
                               const ctx = canvas.getContext('2d');
                               if (ctx) {
-                                canvas.width = canvas.offsetWidth;
-                                canvas.height = canvas.offsetHeight;
+                                // High resolution for better quality
+                                const rect = canvas.getBoundingClientRect();
+                                canvas.width = rect.width * window.devicePixelRatio;
+                                canvas.height = rect.height * window.devicePixelRatio;
+                                canvas.style.width = rect.width + 'px';
+                                canvas.style.height = rect.height + 'px';
+                                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
                                 
                                 const drawFrame = () => {
                                   if (videoRef.current && videoRef.current.readyState >= 2) {
                                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                    ctx.save();
-                                    ctx.scale(-1, 1); // Mirror effect
-                                    ctx.drawImage(videoRef.current, -canvas.width, 0, canvas.width, canvas.height);
-                                    ctx.restore();
+                                    // Remove mirror effect - show normal orientation
+                                    ctx.drawImage(videoRef.current, 0, 0, rect.width, rect.height);
                                   }
                                   requestAnimationFrame(drawFrame);
                                 };
@@ -1054,13 +1057,18 @@ export default function GymMapping() {
                         if (canvas && videoRef.current && isStreaming) {
                           const ctx = canvas.getContext('2d');
                           if (ctx) {
-                            canvas.width = canvas.offsetWidth;
-                            canvas.height = canvas.offsetHeight;
+                            // High resolution for better quality
+                            const rect = canvas.getBoundingClientRect();
+                            canvas.width = rect.width * window.devicePixelRatio;
+                            canvas.height = rect.height * window.devicePixelRatio;
+                            canvas.style.width = rect.width + 'px';
+                            canvas.style.height = rect.height + 'px';
+                            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
                             
                             const drawFrame = () => {
                               if (videoRef.current && videoRef.current.readyState >= 2) {
                                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                                ctx.drawImage(videoRef.current, 0, 0, rect.width, rect.height);
                               }
                               requestAnimationFrame(drawFrame);
                             };
