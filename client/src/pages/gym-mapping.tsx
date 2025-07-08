@@ -345,17 +345,34 @@ export default function GymMapping() {
     if (!videoRef.current) return;
 
     try {
+      console.log("🔍 Processing frame for AI detection...");
       const video = videoRef.current;
       let poses: any[] = [];
       let objects: any[] = [];
       
+      console.log("Models status:", {
+        pose: modelsLoaded.pose,
+        objects: modelsLoaded.objects,
+        poseDetectorRef: !!poseDetectorRef.current,
+        objectDetectorRef: !!objectDetectorRef.current
+      });
+      
       // Run pose detection and object detection in parallel
       if (modelsLoaded.pose && poseDetectorRef.current) {
+        console.log("🧍 Running BlazePose detection...");
         poses = await poseDetectorRef.current.estimatePoses(video) || [];
+        console.log("BlazePose result:", poses.length, "poses detected");
       }
 
       if (modelsLoaded.objects && objectDetectorRef.current) {
+        console.log("🏋️ Running COCO-SSD detection...");
         objects = await objectDetectorRef.current.detect(video) || [];
+        console.log("COCO-SSD result:", objects.length, "objects detected");
+        
+        // Log all detected objects for debugging
+        objects.forEach((obj, idx) => {
+          console.log(`Object ${idx}: ${obj.class} (confidence: ${(obj.score * 100).toFixed(1)}%)`);
+        });
       }
 
       // Update detected poses
@@ -368,12 +385,28 @@ export default function GymMapping() {
 
       // Process object detection results  
       const gymRelevantClasses = [
-        'person', 'chair', 'bench', 'dumbbell', 'sports ball', 'bicycle'
+        'person', 'chair', 'bench', 'dumbbell', 'sports ball', 'bicycle',
+        'bottle', 'cup', 'cell phone', 'laptop', 'tv', 'backpack', 'handbag'
       ];
       
-      const relevantObjects = objects.filter(obj => 
-        gymRelevantClasses.includes(obj.class) && obj.score > 0.5
-      );
+      console.log("Filtering objects for gym relevance...");
+      const relevantObjects = objects.filter(obj => {
+        const isRelevant = gymRelevantClasses.includes(obj.class) && obj.score > 0.3; // Lower threshold
+        if (isRelevant) {
+          console.log(`✅ Relevant object: ${obj.class} (${(obj.score * 100).toFixed(1)}%)`);
+        }
+        return isRelevant;
+      });
+      
+      console.log(`Found ${relevantObjects.length} relevant objects out of ${objects.length} total`);
+      
+      // Also log ALL objects for debugging (regardless of relevance)
+      if (objects.length > 0) {
+        console.log("All detected objects:");
+        objects.forEach((obj, idx) => {
+          console.log(`  ${idx + 1}. ${obj.class}: ${(obj.score * 100).toFixed(1)}%`);
+        });
+      }
 
       // Convert to our equipment format
       const newEquipment: DetectedEquipment[] = relevantObjects.map((obj: any, idx: number) => ({
