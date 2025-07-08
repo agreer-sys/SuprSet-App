@@ -927,6 +927,20 @@ export default function GymMapping() {
               Contribution Modal: {showContributionModal ? 'Yes' : 'No'}
             </div>
 
+            {/* Hidden video element for stream assignment - Always present */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              webkit-playsinline="true"
+              className="hidden"
+              onLoadedData={() => console.log("Video data loaded")}
+              onPlay={() => console.log("Video started playing")}
+              onError={(e) => console.error("Video error:", e)}
+              onLoadedMetadata={() => console.log("Video metadata loaded, size:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)}
+            />
+
             {/* Video Stream Container - Always render when streaming */}
             {isStreaming && (
               <div className="space-y-4">
@@ -936,14 +950,29 @@ export default function GymMapping() {
                     {!capturedImage ? (
                       /* Live camera preview for capture */
                       <div className="relative w-full aspect-square bg-black rounded-lg overflow-hidden border-2 border-blue-200">
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          webkit-playsinline="true"
+                        <canvas
+                          ref={(canvas) => {
+                            if (canvas && videoRef.current && isStreaming) {
+                              const ctx = canvas.getContext('2d');
+                              if (ctx) {
+                                canvas.width = canvas.offsetWidth;
+                                canvas.height = canvas.offsetHeight;
+                                
+                                const drawFrame = () => {
+                                  if (videoRef.current && videoRef.current.readyState >= 2) {
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    ctx.save();
+                                    ctx.scale(-1, 1); // Mirror effect
+                                    ctx.drawImage(videoRef.current, -canvas.width, 0, canvas.width, canvas.height);
+                                    ctx.restore();
+                                  }
+                                  requestAnimationFrame(drawFrame);
+                                };
+                                drawFrame();
+                              }
+                            }
+                          }}
                           className="w-full h-full object-cover"
-                          style={{ transform: 'scaleX(-1)' }}
                         />
                         
                         {/* Square crop overlay */}
@@ -1020,12 +1049,25 @@ export default function GymMapping() {
                     className="relative bg-black rounded-lg overflow-hidden min-h-[240px] border-2 border-gray-300"
                     data-mapping-active={isMappingMode ? "true" : "false"}
                   >
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      webkit-playsinline="true"
+                    <canvas
+                      ref={(canvas) => {
+                        if (canvas && videoRef.current && isStreaming) {
+                          const ctx = canvas.getContext('2d');
+                          if (ctx) {
+                            canvas.width = canvas.offsetWidth;
+                            canvas.height = canvas.offsetHeight;
+                            
+                            const drawFrame = () => {
+                              if (videoRef.current && videoRef.current.readyState >= 2) {
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                              }
+                              requestAnimationFrame(drawFrame);
+                            };
+                            drawFrame();
+                          }
+                        }
+                      }}
                       className="w-full h-64 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg bg-gray-900"
                       style={{ 
                         minHeight: '240px',
@@ -1034,10 +1076,6 @@ export default function GymMapping() {
                         display: 'block',
                         backgroundColor: 'black'
                       }}
-                      onLoadedData={() => console.log("Video data loaded")}
-                      onPlay={() => console.log("Video started playing")}
-                      onError={(e) => console.error("Video error:", e)}
-                      onLoadedMetadata={() => console.log("Video metadata loaded, size:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)}
                     />
                 
                     {/* Camera status overlay */}
