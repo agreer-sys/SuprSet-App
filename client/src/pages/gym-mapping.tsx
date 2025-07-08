@@ -18,7 +18,9 @@ import { spatialMapper, type GymLayout, type EquipmentZone } from '@/lib/spatial
 import { communityModelService } from '@/lib/community-model';
 
 import AuthModal from '@/components/auth-modal';
+import ImageContribution from '@/components/image-contribution';
 import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface DetectedEquipment {
   id: string;
@@ -76,6 +78,7 @@ export default function GymMapping() {
   
   // Authentication
   const { user, isAuthenticated, updateUserStats } = useAuth();
+  const { toast } = useToast();
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -661,6 +664,39 @@ export default function GymMapping() {
     if (contributionModal) {
       contributionModal.setAttribute('data-contribution-modal', isOpen ? 'true' : 'false');
       console.log("📝 Modal DOM attribute updated:", contributionModal.getAttribute('data-contribution-modal'));
+    }
+  };
+
+  const handleContribution = async (data: any) => {
+    try {
+      console.log("📤 Submitting contribution:", data);
+      const contributionId = await communityModelService.submitContribution(data);
+      
+      // Update user stats
+      const updatedStats = communityModelService.getUserStats();
+      setContributionStats(updatedStats);
+      
+      // Update user contribution count in auth system
+      if (updateUserStats) {
+        updateUserStats({ contributions: updatedStats.contributionCount });
+      }
+      
+      // Show success message
+      toast({
+        title: "Contribution Submitted!",
+        description: `Your ${data.equipment} photo has been added to the community dataset.`,
+        variant: "default"
+      });
+      
+      console.log("✅ Contribution successful:", contributionId);
+      
+    } catch (error) {
+      console.error("❌ Contribution failed:", error);
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your contribution. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1441,6 +1477,13 @@ export default function GymMapping() {
           // Show contribution modal after successful auth
           setShowContributionModal(true);
         }}
+      />
+
+      {/* Image Contribution Modal */}
+      <ImageContribution
+        isVisible={showContributionModal}
+        onClose={() => setShowContributionModal(false)}
+        onContribute={handleContribution}
       />
     </div>
   );
