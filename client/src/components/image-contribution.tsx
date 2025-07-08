@@ -94,18 +94,18 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <Card className="w-full max-w-md bg-white max-h-[95vh] overflow-y-auto">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-lg font-semibold">
-            Contribute Equipment Data
+    <div className="fixed inset-0 bg-black/30 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <Card className="w-full sm:max-w-md bg-white max-h-[85vh] sm:max-h-[95vh] overflow-y-auto sm:rounded-lg rounded-t-xl">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <CardTitle className="text-base font-semibold">
+            Contribute Equipment Photo
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </CardHeader>
         
-        <CardContent className="space-y-3 px-4 sm:px-6">
+        <CardContent className="space-y-4 px-4 sm:px-6 pb-4">
           {/* Image Capture Area */}
           {capturedImage ? (
             <div className="space-y-2">
@@ -124,23 +124,28 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
               </Button>
             </div>
           ) : (
-            <div className="text-center py-4 sm:py-6 border-2 border-dashed border-gray-300 rounded-lg">
-              <Camera className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-              <p className="text-sm text-gray-600 mb-2">
-                Capture equipment from camera feed
-              </p>
+            <div className="space-y-3">
+              {/* Camera Preview Area */}
+              <div className="relative border-2 border-dashed border-blue-200 rounded-lg p-3 text-center bg-blue-50">
+                <Camera className="h-6 w-6 mx-auto mb-2 text-blue-400" />
+                <p className="text-sm text-blue-700 mb-1 font-medium">
+                  Ready to capture equipment
+                </p>
+                <p className="text-xs text-blue-600">
+                  Camera is active behind this modal - position equipment clearly in view
+                </p>
+              </div>
+              
+              {/* Capture Button - Separate from preview area */}
               <Button 
                 onClick={captureFromMainVideo}
                 variant="default"
-                size="sm"
-                className="flex items-center gap-2"
+                size="default"
+                className="w-full flex items-center justify-center gap-2 h-10"
               >
                 <Camera className="h-4 w-4" />
-                Capture Now
+                Capture Equipment Photo
               </Button>
-              <p className="text-xs text-gray-500 mt-2">
-                Position equipment clearly in main camera view
-              </p>
             </div>
           )}
 
