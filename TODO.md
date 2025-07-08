@@ -2,21 +2,30 @@
 
 ## High Priority Features
 
-### 1. User Experience Enhancements
+### 1. Community-Driven AI Model (Strategic Priority)
+- [ ] **Image Contribution System**: Users submit gym equipment photos during workouts
+- [ ] **Crowdsourced Labeling**: Gamified equipment tagging with accuracy rewards
+- [ ] **Model Training Pipeline**: Automated retraining with new community data
+- [ ] **Quality Control**: Image validation and duplicate detection systems
+- [ ] **Data Privacy**: Gym location anonymization and user consent management
+- [ ] **Incentive System**: Better recommendations for active contributors
+- [ ] **Model Performance Tracking**: Accuracy metrics and user feedback loops
+
+### 2. User Experience Enhancements
 - [ ] **Workout History Tracking**: Save completed superset sessions with timing data
 - [ ] **Personal Preferences**: Remember user's favorite equipment/muscle groups
 - [ ] **Exercise Instructions Modal**: Enhanced viewing with images/videos from Airtable
 - [ ] **Mobile Responsiveness**: Optimize layout for phone/tablet usage
 - [ ] **Workout Export**: Share or save workout plans as PDF/text
 
-### 2. Pairing Logic Improvements
+### 3. Pairing Logic Improvements
 - [ ] **Equipment Zone Optimization**: Prioritize exercises in same gym area
 - [ ] **Rest Period Matching**: Pair exercises with compatible rest requirements
 - [ ] **Setup Time Considerations**: Avoid complex equipment transitions
 - [ ] **User Feedback Learning**: Track which pairs users actually complete
 - [ ] **Expand Curated Pairs**: Add more trainer-approved exact combinations
 
-### 3. Performance & Data
+### 4. Performance & Data
 - [ ] **Airtable Caching Strategy**: Reduce API calls with intelligent refresh
 - [ ] **Search Performance**: Optimize autocomplete for 194+ exercises
 - [ ] **Offline Mode**: Cache essential data for gym use without internet
@@ -25,21 +34,21 @@
 
 ## Medium Priority Features
 
-### 4. Advanced Workout Features
+### 5. Advanced Workout Features
 - [ ] **Custom Workout Builder**: Multi-superset session planning
 - [ ] **Progressive Overload Tracking**: Weight/rep progression over time
 - [ ] **Workout Templates**: Pre-built routines (Upper/Lower, Push/Pull/Legs)
 - [ ] **Timer Customization**: Adjustable rest periods and work intervals
 - [ ] **Exercise Substitutions**: Alternative exercises for equipment unavailability
 
-### 5. Social & Sharing
+### 6. Social & Sharing
 - [ ] **Workout Sharing**: Share favorite supersets with friends
 - [ ] **Community Pairs**: User-submitted pairing recommendations
 - [ ] **Trainer Integration**: Professional trainer can create client workouts
 - [ ] **Progress Photos**: Before/after tracking with workout correlation
 - [ ] **Achievement System**: Badges for workout consistency/milestones
 
-### 6. Analytics & Insights
+### 7. Analytics & Insights
 - [ ] **Workout Analytics**: Time spent, calories estimated, volume tracking
 - [ ] **Pairing Success Rate**: Which combinations users complete vs skip
 - [ ] **Equipment Usage Patterns**: Most/least used equipment identification

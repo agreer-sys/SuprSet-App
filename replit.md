@@ -83,6 +83,7 @@ SuprSet is a React-based web application that provides intelligent exercise supe
 - **Development Process**: Maintain master TODO.md list - add all discussed/suggested features to this central roadmap
 - **Feedback Style**: Continue challenging assumptions and providing counterpoints on pairing logic and design decisions
 - **Testing Requirements**: Always confirm all adjustments work properly on mobile browser before reporting completion - mobile-first validation mandatory
+- **Strategic Vision**: Build community-driven AI model rather than relying on generic solutions - create competitive moat through proprietary datasets
 
 ## Technical Decisions
 
