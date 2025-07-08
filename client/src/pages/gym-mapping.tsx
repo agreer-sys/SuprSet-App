@@ -17,6 +17,8 @@ import { roboflowDetector } from '@/lib/roboflow-api';
 import { spatialMapper, type GymLayout, type EquipmentZone } from '@/lib/spatial-mapping';
 import { communityModelService } from '@/lib/community-model';
 import ImageContribution from '@/components/image-contribution';
+import AuthModal from '@/components/auth-modal';
+import { useAuth } from '@/hooks/use-auth';
 
 interface DetectedEquipment {
   id: string;
@@ -64,7 +66,11 @@ export default function GymMapping() {
   
   // Community contribution state
   const [showContributionModal, setShowContributionModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [contributionStats, setContributionStats] = useState({ contributionCount: 0, verifiedCount: 0 });
+  
+  // Authentication
+  const { user, isAuthenticated, updateUserStats } = useAuth();
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -790,6 +796,44 @@ export default function GymMapping() {
               )}
             </div>
 
+            {/* Community Contribution Section */}
+            {isStreaming && (
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold">Community Model</h4>
+                    <p className="text-xs text-muted-foreground">
+                      {isAuthenticated 
+                        ? `Welcome ${user?.name || 'Contributor'}!` 
+                        : 'Help improve AI for everyone'
+                      }
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {isAuthenticated 
+                      ? `${user?.contributions || 0} by you` 
+                      : `${contributionStats.contributionCount} total`
+                    }
+                  </Badge>
+                </div>
+                <Button 
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      setShowAuthModal(true);
+                    } else {
+                      setShowContributionModal(true);
+                    }
+                  }}
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                >
+                  <Target className="h-4 w-4 mr-2" />
+                  {isAuthenticated ? 'Contribute Equipment Photo' : 'Sign In to Contribute'}
+                </Button>
+              </div>
+            )}
+
             {/* Debug Info */}
             <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
               Streaming: {isStreaming ? 'Yes' : 'No'} | 
@@ -1003,11 +1047,28 @@ export default function GymMapping() {
             const updatedStats = communityModelService.getUserStats();
             setContributionStats(updatedStats);
             
+            // Update authenticated user stats
+            if (user) {
+              updateUserStats(user.contributions + 1, user.verifiedContributions);
+            }
+            
             return contributionId;
           } catch (error) {
             console.error("Failed to submit contribution:", error);
             throw error;
           }
+        }}
+      />
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          console.log('User authenticated successfully');
+          // Refresh contribution stats
+          const stats = communityModelService.getUserStats();
+          setContributionStats(stats);
         }}
       />
     </div>

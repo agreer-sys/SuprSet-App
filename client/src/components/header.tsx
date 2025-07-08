@@ -1,11 +1,14 @@
-import { Dumbbell, Bell, Camera, Home, Menu } from "lucide-react";
+import { Dumbbell, Bell, Camera, Home, Menu, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [location] = useLocation();
+  const { user, isAuthenticated, signOut } = useAuth();
   
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -57,10 +60,31 @@ export default function Header() {
           
           {/* Desktop Profile */}
           <div className="hidden md:flex items-center space-x-3">
-            <Button variant="ghost" size="icon" className="text-gray-400 hover:text-gray-600">
-              <Bell className="w-4 h-4" />
-            </Button>
-            <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
+            {isAuthenticated ? (
+              <>
+                <div className="flex items-center space-x-2">
+                  <div className="text-right">
+                    <div className="text-sm font-medium">{user?.name}</div>
+                    <Badge variant="outline" className="text-xs">
+                      {user?.contributions || 0} contributions
+                    </Badge>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={signOut}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <User className="w-4 h-4 text-gray-400" />
+                <span className="text-sm text-gray-500">Not signed in</span>
+              </div>
+            )}
           </div>
         </div>
         
