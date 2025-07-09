@@ -25,22 +25,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Contribution routes
   app.post('/api/contributions', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('=== CONTRIBUTION REQUEST ===');
+      console.log('User:', req.user?.claims?.sub);
+      console.log('Request body keys:', Object.keys(req.body));
+      console.log('Equipment:', req.body.equipment);
+      console.log('Image data length:', req.body.imageData?.length);
+      
       const userId = req.user.claims.sub;
       const contributionData = insertContributionSchema.parse({
         ...req.body,
         userId
       });
 
+      console.log('Schema validation passed');
       const contribution = await storage.createContribution(contributionData);
       
-      console.log(`User ${userId} contributed: ${contribution.equipment}`);
+      console.log(`✅ User ${userId} contributed: ${contribution.equipment}`);
       res.status(201).json({
         id: contribution.id,
         message: "Contribution submitted successfully"
       });
     } catch (error) {
-      console.error("Error creating contribution:", error);
+      console.error("❌ Error creating contribution:", error);
       if (error.name === 'ZodError') {
+        console.log('Zod validation errors:', error.issues);
         res.status(400).json({ message: "Invalid contribution data", details: error.issues });
       } else {
         res.status(500).json({ message: "Failed to submit contribution" });

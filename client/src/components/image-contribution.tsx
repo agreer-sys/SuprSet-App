@@ -155,13 +155,7 @@ export default function ImageContribution({ isVisible, onClose, onSuccess }: Ima
         confidence: 1.0 // User-verified, highest confidence
       };
 
-      await apiRequest("/api/contributions", {
-        method: "POST",
-        body: JSON.stringify(contributionData),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      await apiRequest("POST", "/api/contributions", contributionData);
 
       toast({
         title: "Contribution Submitted",
