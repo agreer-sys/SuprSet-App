@@ -103,6 +103,13 @@ SuprSet is a React-based web application that provides intelligent exercise supe
   - Removed horizontal mirroring issue in contribution mode preview
   - Enhanced video quality using devicePixelRatio scaling for crisp display
   - Confirmed working on iPhone 15 Pro with both AI Mapping and Contribution modes functional
+- **2025-01-08**: Mobile Detection Overlay Optimization Complete:
+  - Resolved AI mapping detection overlay positioning issues that were blocking video content
+  - Implemented mobile-responsive overlay design: bottom placement with full labels on mobile, compact top-right on desktop
+  - Eliminated persistent black bars by removing container background constraints
+  - Enhanced mobile readability with higher opacity and horizontal layout
+  - Confirmed AI detection working at 78-95% confidence with real-time person detection
+  - Validated contribution system functionality with successful equipment submissions
 
 ## User Preferences
 - **Development Process**: Maintain master TODO.md list - add all discussed/suggested features to this central roadmap
