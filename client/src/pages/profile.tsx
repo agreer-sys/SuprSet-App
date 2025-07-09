@@ -17,9 +17,16 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import Header from "@/components/header";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Profile() {
   const { user, isAuthenticated, isLoading } = useAuth();
+  
+  // Fetch contribution stats
+  const { data: contributionStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["/api/contributions/stats"],
+    enabled: isAuthenticated && !!user,
+  });
 
   if (isLoading) {
     return (
@@ -126,9 +133,11 @@ export default function Profile() {
               <Camera className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {statsLoading ? "..." : (contributionStats?.total || 0)}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Photos contributed to the community
+                Photos contributed for AI training
               </p>
             </CardContent>
           </Card>
@@ -139,22 +148,26 @@ export default function Profile() {
               <Trophy className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold text-green-600">
+                {statsLoading ? "..." : (contributionStats?.verified || 0)}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Contributions verified by community
+                Quality-approved contributions
               </p>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Community Rank</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Impact Score</CardTitle>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">New</div>
+              <div className="text-2xl font-bold text-purple-600">
+                {statsLoading ? "..." : contributionStats ? Math.round((contributionStats.verified / Math.max(contributionStats.total, 1)) * 100) + "%" : "0%"}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Start contributing to gain rank
+                Approval rate for contributions
               </p>
             </CardContent>
           </Card>

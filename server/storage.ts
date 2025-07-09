@@ -61,6 +61,8 @@ export class AirtableStorage implements IStorage {
   private workoutSessions: Map<number, WorkoutSession> = new Map();
   private exercisePairings: Map<number, ExercisePairing> = new Map();
   private users: Map<string, User> = new Map(); // In-memory user storage for auth
+  private contributions: Map<string, Contribution> = new Map(); // In-memory contribution storage
+  private userContributions: Map<string, number> = new Map(); // Track user contribution counts
   private currentSessionId: number = 1;
   private currentPairingId: number = 1;
   private cacheExpiry: number = 0;
@@ -313,13 +315,21 @@ export class AirtableStorage implements IStorage {
       updatedAt: new Date(),
     };
 
+    // Store in memory (for now)
+    this.contributions.set(contribution.id, contribution);
+
+    // Update user contribution count
+    const currentCount = this.userContributions.get(contribution.userId) || 0;
+    this.userContributions.set(contribution.userId, currentCount + 1);
+
     console.log('New contribution created:', {
       id: contribution.id,
       userId: contribution.userId,
       equipment: contribution.equipment,
       confidence: contribution.confidence,
       trainingSet: contribution.trainingSet,
-      tags: contribution.tags
+      tags: contribution.tags,
+      totalUserContributions: currentCount + 1
     });
 
     return contribution;
@@ -366,19 +376,28 @@ export class AirtableStorage implements IStorage {
   }
 
   async getUserContributions(userId: string): Promise<Contribution[]> {
-    return [];
+    return Array.from(this.contributions.values()).filter(c => c.userId === userId);
   }
 
   async getContributionStats(userId: string): Promise<{ total: number; verified: number }> {
-    return { total: 0, verified: 0 };
+    const userContributions = Array.from(this.contributions.values()).filter(c => c.userId === userId);
+    const verified = userContributions.filter(c => c.verified === true).length;
+    return { 
+      total: userContributions.length, 
+      verified 
+    };
   }
 
   // Training data export methods for AI model development
   async exportTrainingData(dataset?: string): Promise<Contribution[]> {
-    // In production, this would query the database with proper filters
-    // For now, return empty array - will be populated when users start contributing
-    console.log(`Exporting training data for dataset: ${dataset || 'all'}`);
-    return [];
+    const allContributions = Array.from(this.contributions.values());
+    
+    if (dataset && dataset !== 'all') {
+      return allContributions.filter(c => c.trainingSet === dataset);
+    }
+    
+    console.log(`Exporting training data for dataset: ${dataset || 'all'} - ${allContributions.length} contributions`);
+    return allContributions;
   }
 
   async getTrainingDataStats(): Promise<{
@@ -387,16 +406,24 @@ export class AirtableStorage implements IStorage {
     byEquipment: Record<string, number>;
     byDataset: Record<string, number>;
   }> {
-    // In production, this would aggregate data from the database
-    return {
-      total: 0,
-      verified: 0,
-      byEquipment: {},
-      byDataset: {
-        train: 0,
-        validation: 0,
-        test: 0
+    const allContributions = Array.from(this.contributions.values());
+    const verified = allContributions.filter(c => c.verified === true).length;
+    
+    const byEquipment: Record<string, number> = {};
+    const byDataset: Record<string, number> = { train: 0, validation: 0, test: 0 };
+    
+    allContributions.forEach(c => {
+      byEquipment[c.equipment] = (byEquipment[c.equipment] || 0) + 1;
+      if (c.trainingSet) {
+        byDataset[c.trainingSet] = (byDataset[c.trainingSet] || 0) + 1;
       }
+    });
+    
+    return {
+      total: allContributions.length,
+      verified,
+      byEquipment,
+      byDataset
     };
   }
 }
