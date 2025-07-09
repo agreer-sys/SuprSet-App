@@ -63,14 +63,19 @@ export default function Header() {
             {isAuthenticated ? (
               <>
                 <div className="flex items-center space-x-2">
-                  <div className="text-right">
-                    <div className="text-sm font-medium">
-                      {user?.firstName || user?.email?.split('@')[0] || 'User'}
+                  <Link href="/profile">
+                    <div className="flex items-center space-x-2 cursor-pointer hover:opacity-80">
+                      <div className="text-right">
+                        <div className="text-sm font-medium">
+                          {user?.firstName || user?.email?.split('@')[0] || 'User'}
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          Authenticated
+                        </Badge>
+                      </div>
+                      <User className="w-4 h-4 text-gray-400" />
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      Authenticated
-                    </Badge>
-                  </div>
+                  </Link>
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -123,6 +128,50 @@ export default function Header() {
                   Gym Mapping
                 </Button>
               </Link>
+              
+              {/* Mobile Authentication */}
+              <div className="pt-2 border-t border-gray-100">
+                {isAuthenticated ? (
+                  <>
+                    <Link href="/profile">
+                      <Button 
+                        variant={location === "/profile" ? "default" : "ghost"} 
+                        size="sm"
+                        className="w-full justify-start gap-2"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <User className="h-4 w-4" />
+                        Profile
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="w-full justify-start gap-2 text-red-600 hover:text-red-700"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        signOut();
+                      }}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      window.location.href = '/api/login';
+                    }}
+                  >
+                    <User className="h-4 w-4" />
+                    Sign In
+                  </Button>
+                )}
+              </div>
             </nav>
           </div>
         )}
