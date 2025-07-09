@@ -16,6 +16,8 @@ import {
   type InsertContribution
 } from "@shared/schema";
 import { airtableService } from "./airtable";
+import { db } from "./db";
+import { eq, and, sql, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Exercise methods
@@ -55,14 +57,9 @@ export interface IStorage {
   }>;
 }
 
-export class AirtableStorage implements IStorage {
+export class DatabaseStorage implements IStorage {
   private exerciseCache: Map<number, Exercise> = new Map();
   private exerciseOrder: Exercise[] = []; // Preserve original order from Airtable
-  private workoutSessions: Map<number, WorkoutSession> = new Map();
-  private exercisePairings: Map<number, ExercisePairing> = new Map();
-  private users: Map<string, User> = new Map(); // In-memory user storage for auth
-  private contributions: Map<string, Contribution> = new Map(); // In-memory contribution storage
-  private userContributions: Map<string, number> = new Map(); // Track user contribution counts
   private currentSessionId: number = 1;
   private currentPairingId: number = 1;
   private cacheExpiry: number = 0;
@@ -228,51 +225,54 @@ export class AirtableStorage implements IStorage {
   }
 
   async getWorkoutSession(id: number): Promise<WorkoutSession | undefined> {
-    return this.workoutSessions.get(id);
+    const [session] = await db.select().from(workoutSessions).where(eq(workoutSessions.id, id));
+    return session;
   }
 
   async createWorkoutSession(insertSession: InsertWorkoutSession): Promise<WorkoutSession> {
-    const id = this.currentSessionId++;
-    const session: WorkoutSession = { ...insertSession, id };
-    this.workoutSessions.set(id, session);
+    const [session] = await db.insert(workoutSessions).values(insertSession).returning();
     return session;
   }
 
   async updateWorkoutSession(id: number, updates: Partial<WorkoutSession>): Promise<WorkoutSession | undefined> {
-    const session = this.workoutSessions.get(id);
-    if (!session) return undefined;
-    
-    const updatedSession = { ...session, ...updates };
-    this.workoutSessions.set(id, updatedSession);
+    const [updatedSession] = await db
+      .update(workoutSessions)
+      .set(updates)
+      .where(eq(workoutSessions.id, id))
+      .returning();
     return updatedSession;
   }
 
   async getExercisePairings(exerciseAId: number): Promise<ExercisePairing[]> {
-    return Array.from(this.exercisePairings.values()).filter(
-      pairing => pairing.exerciseAId === exerciseAId
-    );
+    return await db
+      .select()
+      .from(exercisePairings)
+      .where(eq(exercisePairings.exerciseAId, exerciseAId));
   }
 
   async createExercisePairing(insertPairing: InsertExercisePairing): Promise<ExercisePairing> {
-    const id = this.currentPairingId++;
-    const pairing: ExercisePairing = { ...insertPairing, id };
-    this.exercisePairings.set(id, pairing);
+    const [pairing] = await db.insert(exercisePairings).values(insertPairing).returning();
     return pairing;
   }
 
   // User methods for Replit Auth
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const existingUser = this.users.get(userData.id);
-    const user: User = {
-      ...userData,
-      createdAt: existingUser?.createdAt || new Date(),
-      updatedAt: new Date(),
-    };
-    this.users.set(userData.id, user);
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
     return user;
   }
 
@@ -299,7 +299,7 @@ export class AirtableStorage implements IStorage {
     // Generate equipment tags for better categorization
     const equipmentTags = this.generateEquipmentTags(insertContribution.equipment);
     
-    const contribution: Contribution = {
+    const contributionData = {
       ...insertContribution,
       id,
       verified: false,
@@ -309,27 +309,24 @@ export class AirtableStorage implements IStorage {
       imageSize,
       imageWidth,
       imageHeight,
-      moderationStatus: 'pending',
+      moderationStatus: 'pending' as const,
       trainingSet: this.assignTrainingSet(), // Auto-assign to train/validation/test
-      createdAt: new Date(),
-      updatedAt: new Date(),
     };
 
-    // Store in memory (for now)
-    this.contributions.set(contribution.id, contribution);
+    // Store in database
+    const [contribution] = await db
+      .insert(contributions)
+      .values(contributionData)
+      .returning();
 
-    // Update user contribution count
-    const currentCount = this.userContributions.get(contribution.userId) || 0;
-    this.userContributions.set(contribution.userId, currentCount + 1);
-
-    console.log('New contribution created:', {
+    console.log('New contribution created in database:', {
       id: contribution.id,
       userId: contribution.userId,
       equipment: contribution.equipment,
       confidence: contribution.confidence,
       trainingSet: contribution.trainingSet,
       tags: contribution.tags,
-      totalUserContributions: currentCount + 1
+      imageSize: contribution.imageSize
     });
 
     return contribution;
@@ -376,11 +373,15 @@ export class AirtableStorage implements IStorage {
   }
 
   async getUserContributions(userId: string): Promise<Contribution[]> {
-    return Array.from(this.contributions.values()).filter(c => c.userId === userId);
+    return await db
+      .select()
+      .from(contributions)
+      .where(eq(contributions.userId, userId))
+      .orderBy(desc(contributions.createdAt));
   }
 
   async getContributionStats(userId: string): Promise<{ total: number; verified: number }> {
-    const userContributions = Array.from(this.contributions.values()).filter(c => c.userId === userId);
+    const userContributions = await this.getUserContributions(userId);
     const verified = userContributions.filter(c => c.verified === true).length;
     return { 
       total: userContributions.length, 
@@ -390,12 +391,13 @@ export class AirtableStorage implements IStorage {
 
   // Training data export methods for AI model development
   async exportTrainingData(dataset?: string): Promise<Contribution[]> {
-    const allContributions = Array.from(this.contributions.values());
+    let query = db.select().from(contributions);
     
     if (dataset && dataset !== 'all') {
-      return allContributions.filter(c => c.trainingSet === dataset);
+      query = query.where(eq(contributions.trainingSet, dataset as any));
     }
     
+    const allContributions = await query;
     console.log(`Exporting training data for dataset: ${dataset || 'all'} - ${allContributions.length} contributions`);
     return allContributions;
   }
@@ -406,7 +408,7 @@ export class AirtableStorage implements IStorage {
     byEquipment: Record<string, number>;
     byDataset: Record<string, number>;
   }> {
-    const allContributions = Array.from(this.contributions.values());
+    const allContributions = await db.select().from(contributions);
     const verified = allContributions.filter(c => c.verified === true).length;
     
     const byEquipment: Record<string, number> = {};
@@ -428,4 +430,4 @@ export class AirtableStorage implements IStorage {
   }
 }
 
-export const storage = new AirtableStorage();
+export const storage = new DatabaseStorage();
