@@ -106,11 +106,14 @@ export default function ImageContribution({ isVisible, onClose, onSuccess }: Ima
       0, 0, cropSize, cropSize          // Destination square
     );
     
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log("🖼️ Image data generated:", {
-      dataLength: imageData.length,
-      dataStart: imageData.substring(0, 50) + "...",
-      canvasFinalSize: `${canvas.width}x${canvas.height}`
+    // Compress for AI training: resize to 640x640 and optimize quality  
+    const originalImageData = canvas.toDataURL('image/jpeg', 0.8);
+    const compressedImageData = compressImageForTraining(canvas);
+    console.log("🖼️ Image compressed for AI training:", {
+      originalSize: originalImageData.length,
+      compressedSize: compressedImageData.length,
+      compressionRatio: ((originalImageData.length - compressedImageData.length) / originalImageData.length * 100).toFixed(1) + "%",
+      finalDimensions: "640x640"
     });
     
     // Create a temporary image to verify actual dimensions
@@ -123,9 +126,38 @@ export default function ImageContribution({ isVisible, onClose, onSuccess }: Ima
         isSquare: testImg.width === testImg.height
       });
     };
-    testImg.src = imageData;
+    testImg.src = compressedImageData;
     
-    setCapturedImage(imageData);
+    setCapturedImage(compressedImageData);
+  };
+
+  // Compress image for optimal AI training while maintaining quality
+  const compressImageForTraining = (canvas: HTMLCanvasElement): string => {
+    // For AI training, we want consistent 640x640 images with good quality
+    const targetSize = 640;
+    const compressionCanvas = document.createElement('canvas');
+    const ctx = compressionCanvas.getContext('2d');
+    
+    compressionCanvas.width = targetSize;
+    compressionCanvas.height = targetSize;
+    
+    // Fill with white background
+    ctx!.fillStyle = 'white';
+    ctx!.fillRect(0, 0, targetSize, targetSize);
+    
+    // Calculate scaling to fit image within square while maintaining aspect ratio
+    const scale = Math.min(targetSize / canvas.width, targetSize / canvas.height);
+    const scaledWidth = canvas.width * scale;
+    const scaledHeight = canvas.height * scale;
+    
+    // Center the image
+    const x = (targetSize - scaledWidth) / 2;
+    const y = (targetSize - scaledHeight) / 2;
+    
+    ctx!.drawImage(canvas, x, y, scaledWidth, scaledHeight);
+    
+    // Use JPEG with 70% quality for good compression while maintaining training quality
+    return compressionCanvas.toDataURL('image/jpeg', 0.7);
   };
 
   const handleEquipmentSelect = (equipment: string) => {
