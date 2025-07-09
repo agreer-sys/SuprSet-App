@@ -67,6 +67,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's contributions (metadata only, no image data)
+  app.get('/api/contributions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const contributions = await storage.getUserContributions(userId);
+      
+      // Return metadata only for viewing
+      const contributionMetadata = contributions.map(c => ({
+        id: c.id,
+        equipment: c.equipment,
+        confidence: c.confidence,
+        trainingSet: c.trainingSet,
+        tags: c.tags,
+        verified: c.verified,
+        votes: c.votes,
+        moderationStatus: c.moderationStatus,
+        imageSize: c.imageSize,
+        notes: c.notes,
+        createdAt: c.createdAt
+      }));
+      
+      console.log(`📊 Returning ${contributionMetadata.length} contributions for user ${userId}`);
+      res.json(contributionMetadata);
+    } catch (error) {
+      console.error("Error fetching user contributions:", error);
+      res.status(500).json({ message: "Failed to fetch contributions" });
+    }
+  });
+
+  // Debug endpoint to view all contributions in memory (admin/development use)
+  app.get('/api/debug/contributions', async (req, res) => {
+    try {
+      const allContributions = await storage.exportTrainingData('all');
+      const contributionSummary = allContributions.map(c => ({
+        id: c.id,
+        userId: c.userId,
+        equipment: c.equipment,
+        confidence: c.confidence,
+        trainingSet: c.trainingSet,
+        tags: c.tags,
+        imageSize: c.imageSize,
+        moderationStatus: c.moderationStatus,
+        createdAt: c.createdAt,
+        notes: c.notes || 'No notes'
+      }));
+      
+      res.json({
+        total: contributionSummary.length,
+        contributions: contributionSummary
+      });
+    } catch (error) {
+      console.error("Error fetching debug contributions:", error);
+      res.status(500).json({ message: "Failed to fetch debug contributions" });
+    }
+  });
+
   // Training data export endpoints for AI model development
   app.get('/api/training/export', isAuthenticated, async (req: any, res) => {
     try {

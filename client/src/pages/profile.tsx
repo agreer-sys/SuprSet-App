@@ -28,6 +28,12 @@ export default function Profile() {
     enabled: isAuthenticated && !!user,
   });
 
+  // Fetch user contributions
+  const { data: contributions, isLoading: contributionsLoading } = useQuery({
+    queryKey: ["/api/contributions"],
+    enabled: isAuthenticated && !!user,
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -178,26 +184,99 @@ export default function Profile() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              Recent Activity
+              Recent Contributions
             </CardTitle>
             <CardDescription>
-              Your latest contributions to the SuprSet community
+              Your latest AI training photo contributions
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-gray-500">
-              <Camera className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium mb-2">No activity yet</p>
-              <p className="text-sm">
-                Start by visiting the Gym Mapping page to contribute photos of gym equipment
-              </p>
-              <Link href="/gym-mapping">
-                <Button className="mt-4" variant="outline">
-                  <Camera className="h-4 w-4 mr-2" />
-                  Start Contributing
-                </Button>
-              </Link>
-            </div>
+            {contributionsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="animate-pulse flex space-x-4">
+                    <div className="rounded bg-gray-200 h-12 w-12"></div>
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : !contributions || contributions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Camera className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">No contributions yet</p>
+                <p className="text-sm">
+                  Start by visiting the Gym Mapping page to contribute photos of gym equipment
+                </p>
+                <Link href="/gym-mapping">
+                  <Button className="mt-4" variant="outline">
+                    <Camera className="h-4 w-4 mr-2" />
+                    Start Contributing
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {contributions.slice(0, 5).map((contribution: any) => (
+                  <div key={contribution.id} className="flex items-center space-x-4 p-3 border rounded-lg">
+                    <div className="flex-shrink-0">
+                      <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Camera className="h-5 w-5 text-blue-600" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">
+                        {contribution.equipment}
+                      </p>
+                      <div className="flex items-center space-x-2 text-xs text-gray-500">
+                        <span>{new Date(contribution.createdAt).toLocaleDateString()}</span>
+                        <span>•</span>
+                        <Badge variant="outline" className="text-xs">
+                          {contribution.trainingSet}
+                        </Badge>
+                        <span>•</span>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          contribution.moderationStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                          contribution.moderationStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {contribution.moderationStatus}
+                        </span>
+                      </div>
+                      {contribution.tags && contribution.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {contribution.tags.slice(0, 3).map((tag: string, index: number) => (
+                            <span key={index} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                              {tag}
+                            </span>
+                          ))}
+                          {contribution.tags.length > 3 && (
+                            <span className="text-xs text-gray-500">+{contribution.tags.length - 3}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-shrink-0">
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-gray-900">
+                          {Math.round(contribution.confidence * 100)}%
+                        </div>
+                        <div className="text-xs text-gray-500">confidence</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {contributions.length > 5 && (
+                  <div className="text-center pt-4">
+                    <p className="text-sm text-gray-500">
+                      Showing 5 of {contributions.length} contributions
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
