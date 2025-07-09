@@ -15,10 +15,13 @@ import * as cocoSsd from '@tensorflow-models/coco-ssd';
 // Import our custom AI services
 import { roboflowDetector } from '@/lib/roboflow-api';
 import { spatialMapper, type GymLayout, type EquipmentZone } from '@/lib/spatial-mapping';
-import { communityModelService } from '@/lib/community-model';
+// Removed community model service - now using real API endpoints
 
 import AuthModal from '@/components/auth-modal';
+import ImageContribution from '@/components/image-contribution';
 import { useAuth } from '@/hooks/use-auth';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface DetectedEquipment {
   id: string;
@@ -75,7 +78,8 @@ export default function GymMapping() {
   const [notes, setNotes] = useState("");
   
   // Authentication
-  const { user, isAuthenticated, updateUserStats } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -89,9 +93,23 @@ export default function GymMapping() {
     getCurrentLocation();
     
     // Load user contribution stats
-    const stats = communityModelService.getUserStats();
-    setContributionStats(stats);
-  }, []);
+    loadContributionStats();
+  }, [isAuthenticated]);
+
+  const loadContributionStats = async () => {
+    if (!isAuthenticated) {
+      setContributionStats({ contributionCount: 0, verifiedCount: 0 });
+      return;
+    }
+
+    try {
+      const stats = await apiRequest('/api/contributions/stats');
+      setContributionStats(stats);
+    } catch (error) {
+      console.error('Failed to load contribution stats:', error);
+      setContributionStats({ contributionCount: 0, verifiedCount: 0 });
+    }
+  };
 
   const getCurrentLocation = async () => {
     console.log("Requesting location permission...");
@@ -1436,10 +1454,23 @@ export default function GymMapping() {
         onSuccess={() => {
           console.log('User authenticated successfully');
           // Refresh contribution stats
-          const stats = communityModelService.getUserStats();
-          setContributionStats(stats);
+          loadContributionStats();
           // Show contribution modal after successful auth
           setShowContributionModal(true);
+        }}
+      />
+
+      {/* Image Contribution Modal */}
+      <ImageContribution
+        isVisible={showContributionModal}
+        onClose={() => {
+          setShowContributionModal(false);
+          setDetectionPaused(false);
+          (window as any).detectionActive = true;
+        }}
+        onSuccess={() => {
+          // Refresh contribution stats after successful submission
+          loadContributionStats();
         }}
       />
     </div>

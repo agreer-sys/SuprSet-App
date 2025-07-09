@@ -3,6 +3,7 @@ import {
   workoutSessions, 
   exercisePairings,
   users,
+  contributions,
   type Exercise, 
   type InsertExercise,
   type WorkoutSession,
@@ -10,7 +11,9 @@ import {
   type ExercisePairing,
   type InsertExercisePairing,
   type User,
-  type UpsertUser
+  type UpsertUser,
+  type Contribution,
+  type InsertContribution
 } from "@shared/schema";
 import { airtableService } from "./airtable";
 
@@ -36,6 +39,11 @@ export interface IStorage {
   // User methods (for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Contribution methods
+  createContribution(contribution: InsertContribution): Promise<Contribution>;
+  getUserContributions(userId: string): Promise<Contribution[]>;
+  getContributionStats(userId: string): Promise<{ total: number; verified: number }>;
 }
 
 export class AirtableStorage implements IStorage {
@@ -255,6 +263,34 @@ export class AirtableStorage implements IStorage {
     };
     this.users.set(userData.id, user);
     return user;
+  }
+
+  // Contribution methods
+  async createContribution(insertContribution: InsertContribution): Promise<Contribution> {
+    const id = `contrib_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const contribution: Contribution = {
+      ...insertContribution,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    console.log('New contribution created:', {
+      id: contribution.id,
+      userId: contribution.userId,
+      equipment: contribution.equipment,
+      confidence: contribution.confidence
+    });
+
+    return contribution;
+  }
+
+  async getUserContributions(userId: string): Promise<Contribution[]> {
+    return [];
+  }
+
+  async getContributionStats(userId: string): Promise<{ total: number; verified: number }> {
+    return { total: 0, verified: 0 };
   }
 }
 

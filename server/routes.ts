@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertWorkoutSessionSchema, type Exercise } from "@shared/schema";
+import { insertWorkoutSessionSchema, insertContributionSchema, type Exercise } from "@shared/schema";
 import { z } from "zod";
 import { isTrainerApprovedPair } from "./trainer-pairs";
 
@@ -19,6 +19,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Contribution routes
+  app.post('/api/contributions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const contributionData = insertContributionSchema.parse({
+        ...req.body,
+        userId
+      });
+
+      const contribution = await storage.createContribution(contributionData);
+      
+      console.log(`User ${userId} contributed: ${contribution.equipment}`);
+      res.status(201).json({
+        id: contribution.id,
+        message: "Contribution submitted successfully"
+      });
+    } catch (error) {
+      console.error("Error creating contribution:", error);
+      res.status(500).json({ message: "Failed to submit contribution" });
+    }
+  });
+
+  app.get('/api/contributions/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const stats = await storage.getContributionStats(userId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching contribution stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
     }
   });
 

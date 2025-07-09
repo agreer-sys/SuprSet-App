@@ -6,9 +6,12 @@ import { Camera, Upload, Check, X, Tag, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface ContributionData {
-  image: string;
+  imageData: string;
   equipment: string;
   gymLocation?: string;
   notes?: string;
@@ -16,12 +19,14 @@ interface ContributionData {
 }
 
 interface ImageContributionProps {
-  onContribute: (data: ContributionData) => void;
   isVisible: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export default function ImageContribution({ onContribute, isVisible, onClose }: ImageContributionProps) {
+export default function ImageContribution({ isVisible, onClose, onSuccess }: ImageContributionProps) {
+  const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [equipmentLabel, setEquipmentLabel] = useState("");
   const [gymLocation, setGymLocation] = useState("");
@@ -130,27 +135,54 @@ export default function ImageContribution({ onContribute, isVisible, onClose }: 
   const handleSubmit = async () => {
     if (!capturedImage || !equipmentLabel) return;
 
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to contribute equipment photos",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
       const contributionData: ContributionData = {
-        image: capturedImage,
+        imageData: capturedImage,
         equipment: equipmentLabel,
         gymLocation: gymLocation || undefined,
         notes: notes || undefined,
         confidence: 1.0 // User-verified, highest confidence
       };
 
-      await onContribute(contributionData);
+      await apiRequest("/api/contributions", {
+        method: "POST",
+        body: JSON.stringify(contributionData),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      toast({
+        title: "Contribution Submitted",
+        description: `Your ${equipmentLabel} photo has been added to the community database`,
+      });
       
       // Reset form
       setCapturedImage(null);
       setEquipmentLabel("");
       setGymLocation("");
       setNotes("");
+      
+      onSuccess?.();
       onClose();
     } catch (error) {
       console.error("Failed to submit contribution:", error);
+      toast({
+        title: "Submission Failed",
+        description: "Unable to submit your contribution. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }

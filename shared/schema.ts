@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, real, json, varchar, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, real, json, varchar, timestamp, jsonb, index, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -97,6 +97,28 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Image contributions for community AI training
+export const contributions = pgTable("contributions", {
+  id: varchar("id").primaryKey().notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  imageData: text("image_data").notNull(), // base64 encoded image
+  equipment: varchar("equipment").notNull(),
+  gymLocation: varchar("gym_location"),
+  notes: text("notes"),
+  confidence: real("confidence").notNull(),
+  verified: boolean("verified").default(false),
+  votes: integer("votes").default(0),
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertContributionSchema = createInsertSchema(contributions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
@@ -106,3 +128,5 @@ export type WorkoutSession = typeof workoutSessions.$inferSelect;
 export type InsertWorkoutSession = z.infer<typeof insertWorkoutSessionSchema>;
 export type ExercisePairing = typeof exercisePairings.$inferSelect;
 export type InsertExercisePairing = z.infer<typeof insertExercisePairingSchema>;
+export type Contribution = typeof contributions.$inferSelect;
+export type InsertContribution = z.infer<typeof insertContributionSchema>;
