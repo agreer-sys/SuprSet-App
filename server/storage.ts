@@ -2,12 +2,15 @@ import {
   exercises, 
   workoutSessions, 
   exercisePairings,
+  users,
   type Exercise, 
   type InsertExercise,
   type WorkoutSession,
   type InsertWorkoutSession,
   type ExercisePairing,
-  type InsertExercisePairing
+  type InsertExercisePairing,
+  type User,
+  type UpsertUser
 } from "@shared/schema";
 import { airtableService } from "./airtable";
 
@@ -29,6 +32,10 @@ export interface IStorage {
   // Exercise pairing methods
   getExercisePairings(exerciseAId: number): Promise<ExercisePairing[]>;
   createExercisePairing(pairing: InsertExercisePairing): Promise<ExercisePairing>;
+  
+  // User methods (for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
 }
 
 export class AirtableStorage implements IStorage {
@@ -36,6 +43,7 @@ export class AirtableStorage implements IStorage {
   private exerciseOrder: Exercise[] = []; // Preserve original order from Airtable
   private workoutSessions: Map<number, WorkoutSession> = new Map();
   private exercisePairings: Map<number, ExercisePairing> = new Map();
+  private users: Map<string, User> = new Map(); // In-memory user storage for auth
   private currentSessionId: number = 1;
   private currentPairingId: number = 1;
   private cacheExpiry: number = 0;
@@ -231,6 +239,22 @@ export class AirtableStorage implements IStorage {
     const pairing: ExercisePairing = { ...insertPairing, id };
     this.exercisePairings.set(id, pairing);
     return pairing;
+  }
+
+  // User methods for Replit Auth
+  async getUser(id: string): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const existingUser = this.users.get(userData.id);
+    const user: User = {
+      ...userData,
+      createdAt: existingUser?.createdAt || new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(userData.id, user);
+    return user;
   }
 }
 

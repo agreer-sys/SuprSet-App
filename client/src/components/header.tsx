@@ -64,9 +64,11 @@ export default function Header() {
               <>
                 <div className="flex items-center space-x-2">
                   <div className="text-right">
-                    <div className="text-sm font-medium">{user?.name}</div>
+                    <div className="text-sm font-medium">
+                      {user?.firstName || user?.email?.split('@')[0] || 'User'}
+                    </div>
                     <Badge variant="outline" className="text-xs">
-                      {user?.contributions || 0} contributions
+                      Authenticated
                     </Badge>
                   </div>
                   <Button 
@@ -81,8 +83,15 @@ export default function Header() {
               </>
             ) : (
               <div className="flex items-center space-x-2">
-                <User className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-500">Not signed in</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.location.href = '/api/login'}
+                  className="flex items-center gap-2"
+                >
+                  <User className="w-4 h-4" />
+                  Sign In
+                </Button>
               </div>
             )}
           </div>

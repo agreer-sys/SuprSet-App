@@ -1,10 +1,11 @@
 interface User {
   id: string;
-  email: string;
-  name: string;
-  contributions: number;
-  verifiedContributions: number;
-  joinedAt: number;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  profileImageUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface AuthState {
@@ -26,32 +27,43 @@ class UserAuthService {
   }
 
   private loadSessionFromStorage() {
+    // Check if user is authenticated via API
+    this.checkAuthStatus();
+  }
+
+  private async checkAuthStatus() {
     try {
-      const storedUser = localStorage.getItem('suprset_user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
+      const response = await fetch('/api/auth/user', {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const user = await response.json();
         this.authState = {
           user,
           isAuthenticated: true
         };
-        this.notifyListeners();
+      } else {
+        this.authState = {
+          user: null,
+          isAuthenticated: false
+        };
       }
     } catch (error) {
-      console.error('Failed to load user session:', error);
-      this.clearSession();
+      this.authState = {
+        user: null,
+        isAuthenticated: false
+      };
     }
+    
+    this.notifyListeners();
   }
 
   private saveSessionToStorage(user: User) {
-    try {
-      localStorage.setItem('suprset_user', JSON.stringify(user));
-    } catch (error) {
-      console.error('Failed to save user session:', error);
-    }
+    // No longer needed - session is handled server-side
   }
 
   private clearSession() {
-    localStorage.removeItem('suprset_user');
     this.authState = {
       user: null,
       isAuthenticated: false
@@ -75,65 +87,25 @@ class UserAuthService {
   }
 
   async signUp(email: string, name: string): Promise<User> {
-    // Simulate account creation
-    const user: User = {
-      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      email,
-      name,
-      contributions: 0,
-      verifiedContributions: 0,
-      joinedAt: Date.now()
-    };
-
-    this.authState = {
-      user,
-      isAuthenticated: true
-    };
-
-    this.saveSessionToStorage(user);
-    this.notifyListeners();
-    
-    console.log('User signed up:', user);
-    return user;
+    // Redirect to Replit Auth login
+    window.location.href = '/api/login';
+    throw new Error('Redirecting to login');
   }
 
   async signIn(email: string): Promise<User | null> {
-    // Simulate sign in - in real app would validate credentials
-    // For now, check if user exists in localStorage with this email
-    
-    const user: User = {
-      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      email,
-      name: email.split('@')[0], // Use email prefix as name
-      contributions: 0,
-      verifiedContributions: 0,
-      joinedAt: Date.now()
-    };
-
-    this.authState = {
-      user,
-      isAuthenticated: true
-    };
-
-    this.saveSessionToStorage(user);
-    this.notifyListeners();
-    
-    console.log('User signed in:', user);
-    return user;
+    // Redirect to Replit Auth login
+    window.location.href = '/api/login';
+    throw new Error('Redirecting to login');
   }
 
   signOut() {
-    this.clearSession();
-    console.log('User signed out');
+    window.location.href = '/api/logout';
   }
 
   updateUserStats(contributions: number, verifiedContributions: number) {
-    if (this.authState.user) {
-      this.authState.user.contributions = contributions;
-      this.authState.user.verifiedContributions = verifiedContributions;
-      this.saveSessionToStorage(this.authState.user);
-      this.notifyListeners();
-    }
+    // User stats are now handled server-side with real authentication
+    // This method is kept for backward compatibility but does nothing
+    console.log('User stats updated:', { contributions, verifiedContributions });
   }
 
   getCurrentUser(): User | null {
