@@ -97,18 +97,47 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Image contributions for community AI training
+// Image contributions for community AI training - optimized for model training
 export const contributions = pgTable("contributions", {
   id: varchar("id").primaryKey().notNull(),
   userId: varchar("user_id").notNull().references(() => users.id),
   imageData: text("image_data").notNull(), // base64 encoded image
-  equipment: varchar("equipment").notNull(),
+  equipment: varchar("equipment").notNull(), // Primary label for training
   gymLocation: varchar("gym_location"),
   notes: text("notes"),
   confidence: real("confidence").notNull(),
   verified: boolean("verified").default(false),
   votes: integer("votes").default(0),
   tags: text("tags").array(),
+  
+  // AI Training specific fields
+  imageHash: varchar("image_hash"), // For duplicate detection
+  imageSize: integer("image_size"), // File size in bytes
+  imageWidth: integer("image_width"), // Original image dimensions
+  imageHeight: integer("image_height"),
+  boundingBoxes: jsonb("bounding_boxes").$type<Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    label: string;
+    confidence: number;
+  }>>(), // Object detection annotations
+  
+  // Training dataset management
+  trainingSet: varchar("training_set", { enum: ["train", "validation", "test"] }),
+  lastTrainingRun: timestamp("last_training_run"),
+  modelAccuracy: real("model_accuracy"), // Accuracy when used in training
+  
+  // Quality control
+  moderationStatus: varchar("moderation_status", { enum: ["pending", "approved", "rejected"] }).default("pending"),
+  moderatorId: varchar("moderator_id").references(() => users.id),
+  moderationNotes: text("moderation_notes"),
+  
+  // Roboflow integration preparation
+  roboflowId: varchar("roboflow_id"), // For Phase 3 Roboflow migration
+  roboflowVersion: varchar("roboflow_version"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

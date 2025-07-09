@@ -40,7 +40,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error creating contribution:", error);
-      res.status(500).json({ message: "Failed to submit contribution" });
+      if (error.name === 'ZodError') {
+        res.status(400).json({ message: "Invalid contribution data", details: error.issues });
+      } else {
+        res.status(500).json({ message: "Failed to submit contribution" });
+      }
     }
   });
 
@@ -52,6 +56,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching contribution stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // Training data export endpoints for AI model development
+  app.get('/api/training/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const { format = 'roboflow', dataset = 'all' } = req.query;
+      const trainingData = await storage.exportTrainingData(dataset as string);
+      
+      if (format === 'roboflow') {
+        // Format for Roboflow Phase 3 integration
+        const roboflowData = {
+          version: "1.0",
+          dataset: dataset,
+          exported_at: new Date().toISOString(),
+          total_images: trainingData.length,
+          classes: [...new Set(trainingData.map(d => d.equipment))],
+          images: trainingData.map(contribution => ({
+            id: contribution.id,
+            filename: `${contribution.id}.jpg`,
+            width: contribution.imageWidth || 640,
+            height: contribution.imageHeight || 480,
+            annotations: contribution.boundingBoxes || [{
+              x: 0,
+              y: 0,
+              width: contribution.imageWidth || 640,
+              height: contribution.imageHeight || 480,
+              label: contribution.equipment,
+              confidence: contribution.confidence
+            }]
+          }))
+        };
+        
+        res.json(roboflowData);
+      } else {
+        // Raw format
+        res.json(trainingData);
+      }
+    } catch (error) {
+      console.error("Error exporting training data:", error);
+      res.status(500).json({ message: "Failed to export training data" });
+    }
+  });
+
+  app.get('/api/training/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const stats = await storage.getTrainingDataStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching training stats:", error);
+      res.status(500).json({ message: "Failed to fetch training stats" });
     }
   });
 

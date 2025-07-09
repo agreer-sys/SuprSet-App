@@ -44,6 +44,15 @@ export interface IStorage {
   createContribution(contribution: InsertContribution): Promise<Contribution>;
   getUserContributions(userId: string): Promise<Contribution[]>;
   getContributionStats(userId: string): Promise<{ total: number; verified: number }>;
+  
+  // Training data export methods
+  exportTrainingData(dataset?: string): Promise<Contribution[]>;
+  getTrainingDataStats(): Promise<{
+    total: number;
+    verified: number;
+    byEquipment: Record<string, number>;
+    byDataset: Record<string, number>;
+  }>;
 }
 
 export class AirtableStorage implements IStorage {
@@ -268,9 +277,38 @@ export class AirtableStorage implements IStorage {
   // Contribution methods
   async createContribution(insertContribution: InsertContribution): Promise<Contribution> {
     const id = `contrib_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Process image data for AI training optimization
+    const imageData = insertContribution.imageData;
+    let imageWidth = 640;
+    let imageHeight = 480;
+    let imageSize = imageData.length;
+    
+    // Extract image dimensions from base64 data if possible
+    if (imageData.startsWith('data:image/')) {
+      try {
+        const base64Data = imageData.split(',')[1];
+        imageSize = Math.floor(base64Data.length * 0.75); // Approximate size
+      } catch (e) {
+        console.warn('Failed to process image data:', e);
+      }
+    }
+    
+    // Generate equipment tags for better categorization
+    const equipmentTags = this.generateEquipmentTags(insertContribution.equipment);
+    
     const contribution: Contribution = {
       ...insertContribution,
       id,
+      verified: false,
+      votes: 0,
+      tags: equipmentTags,
+      imageHash: this.generateImageHash(imageData),
+      imageSize,
+      imageWidth,
+      imageHeight,
+      moderationStatus: 'pending',
+      trainingSet: this.assignTrainingSet(), // Auto-assign to train/validation/test
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -279,10 +317,52 @@ export class AirtableStorage implements IStorage {
       id: contribution.id,
       userId: contribution.userId,
       equipment: contribution.equipment,
-      confidence: contribution.confidence
+      confidence: contribution.confidence,
+      trainingSet: contribution.trainingSet,
+      tags: contribution.tags
     });
 
     return contribution;
+  }
+
+  private generateEquipmentTags(equipment: string): string[] {
+    const tags = [equipment.toLowerCase()];
+    
+    // Add category tags based on equipment type
+    const categoryMap: Record<string, string[]> = {
+      'bench': ['pressing', 'chest', 'upper_body'],
+      'squat rack': ['squatting', 'legs', 'lower_body', 'compound'],
+      'dumbbell': ['free_weights', 'versatile', 'unilateral'],
+      'barbell': ['free_weights', 'compound', 'bilateral'],
+      'cable': ['variable_resistance', 'isolation', 'controlled'],
+      'machine': ['guided_motion', 'safety', 'isolation']
+    };
+    
+    for (const [key, additionalTags] of Object.entries(categoryMap)) {
+      if (equipment.toLowerCase().includes(key)) {
+        tags.push(...additionalTags);
+      }
+    }
+    
+    return [...new Set(tags)]; // Remove duplicates
+  }
+
+  private generateImageHash(imageData: string): string {
+    // Simple hash generation for duplicate detection
+    let hash = 0;
+    for (let i = 0; i < imageData.length; i++) {
+      const char = imageData.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return hash.toString(36);
+  }
+
+  private assignTrainingSet(): 'train' | 'validation' | 'test' {
+    const rand = Math.random();
+    if (rand < 0.7) return 'train';      // 70% for training
+    if (rand < 0.85) return 'validation'; // 15% for validation
+    return 'test';                        // 15% for testing
   }
 
   async getUserContributions(userId: string): Promise<Contribution[]> {
@@ -291,6 +371,33 @@ export class AirtableStorage implements IStorage {
 
   async getContributionStats(userId: string): Promise<{ total: number; verified: number }> {
     return { total: 0, verified: 0 };
+  }
+
+  // Training data export methods for AI model development
+  async exportTrainingData(dataset?: string): Promise<Contribution[]> {
+    // In production, this would query the database with proper filters
+    // For now, return empty array - will be populated when users start contributing
+    console.log(`Exporting training data for dataset: ${dataset || 'all'}`);
+    return [];
+  }
+
+  async getTrainingDataStats(): Promise<{
+    total: number;
+    verified: number;
+    byEquipment: Record<string, number>;
+    byDataset: Record<string, number>;
+  }> {
+    // In production, this would aggregate data from the database
+    return {
+      total: 0,
+      verified: 0,
+      byEquipment: {},
+      byDataset: {
+        train: 0,
+        validation: 0,
+        test: 0
+      }
+    };
   }
 }
 
