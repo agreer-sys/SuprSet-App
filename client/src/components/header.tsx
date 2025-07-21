@@ -1,4 +1,4 @@
-import { Dumbbell, Bell, Camera, Home, Menu, User, LogOut } from "lucide-react";
+import { Dumbbell, Bell, Camera, Home, Menu, User, LogOut, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
@@ -8,7 +8,11 @@ import { useAuth } from "@/hooks/use-auth";
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [location] = useLocation();
-  const { user, isAuthenticated, signOut } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  
+  const signOut = () => {
+    window.location.href = '/api/logout';
+  };
   
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -41,9 +45,22 @@ export default function Header() {
                 className="flex items-center gap-2"
               >
                 <Camera className="h-4 w-4" />
-                Gym Mapping
+                AI Mapping
               </Button>
             </Link>
+            
+            {isAuthenticated && (
+              <Link href="/batch-contribute">
+                <Button 
+                  variant={location === "/batch-contribute" ? "default" : "ghost"} 
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Batch Upload
+                </Button>
+              </Link>
+            )}
           </nav>
           
           {/* Mobile Menu Button */}
@@ -128,6 +145,20 @@ export default function Header() {
                   Gym Mapping
                 </Button>
               </Link>
+              
+              {isAuthenticated && (
+                <Link href="/batch-contribute">
+                  <Button 
+                    variant={location === "/batch-contribute" ? "default" : "ghost"} 
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Batch Upload
+                  </Button>
+                </Link>
+              )}
               
               {/* Mobile Authentication */}
               <div className="pt-2 border-t border-gray-100">

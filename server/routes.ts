@@ -386,6 +386,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced contribution analytics for personal data collection
+  app.get('/api/contributions/analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userContributions = await storage.getUserContributions(userId);
+      
+      // Equipment distribution analysis
+      const equipmentCount: Record<string, number> = {};
+      const dailyContributions: Record<string, number> = {};
+      const qualityMetrics = {
+        totalContributions: userContributions.length,
+        averageConfidence: 0,
+        verifiedCount: 0,
+        trainingSetDistribution: { train: 0, validation: 0, test: 0 }
+      };
+
+      userContributions.forEach(contribution => {
+        // Equipment count
+        equipmentCount[contribution.equipment] = (equipmentCount[contribution.equipment] || 0) + 1;
+        
+        // Daily contributions
+        const date = contribution.createdAt.toISOString().split('T')[0];
+        dailyContributions[date] = (dailyContributions[date] || 0) + 1;
+        
+        // Quality metrics
+        qualityMetrics.averageConfidence += contribution.confidence;
+        if (contribution.verified) qualityMetrics.verifiedCount++;
+        if (contribution.trainingSet) {
+          qualityMetrics.trainingSetDistribution[contribution.trainingSet]++;
+        }
+      });
+
+      if (userContributions.length > 0) {
+        qualityMetrics.averageConfidence /= userContributions.length;
+      }
+
+      res.json({
+        equipmentCount,
+        dailyContributions,
+        qualityMetrics,
+        recentContributions: userContributions.slice(0, 10) // Last 10 contributions
+      });
+    } catch (error: any) {
+      console.error("Error fetching contribution analytics:", error);
+      res.status(500).json({ message: "Failed to fetch contribution analytics" });
+    }
+  });
+
+  // Batch contribution endpoint for optimized uploads
+  app.post('/api/contributions/batch', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { contributions } = req.body;
+
+      if (!Array.isArray(contributions) || contributions.length === 0) {
+        return res.status(400).json({ message: "No contributions provided" });
+      }
+
+      const results = [];
+      const errors = [];
+
+      for (let i = 0; i < contributions.length; i++) {
+        try {
+          const contributionData = insertContributionSchema.parse({
+            ...contributions[i],
+            userId
+          });
+
+          const contribution = await storage.createContribution(contributionData);
+          results.push({ index: i, success: true, id: contribution.id });
+        } catch (error: any) {
+          console.error(`Batch contribution ${i} failed:`, error);
+          errors.push({ index: i, error: error.message });
+          results.push({ index: i, success: false, error: error.message });
+        }
+      }
+
+      res.json({
+        totalSubmitted: contributions.length,
+        successful: results.filter(r => r.success).length,
+        failed: errors.length,
+        results,
+        errors
+      });
+    } catch (error: any) {
+      console.error("Batch contribution error:", error);
+      res.status(500).json({ message: "Failed to process batch contributions" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

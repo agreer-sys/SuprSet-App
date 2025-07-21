@@ -8,6 +8,7 @@ import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 import GymMapping from "@/pages/gym-mapping";
 import Profile from "@/pages/profile";
+import BatchContribute from "@/pages/batch-contribute";
 
 function Router() {
   return (
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/gym-mapping" component={GymMapping} />
       <Route path="/profile" component={Profile} />
+      <Route path="/batch-contribute" component={BatchContribute} />
       <Route component={NotFound} />
     </Switch>
   );
