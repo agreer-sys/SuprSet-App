@@ -54,17 +54,29 @@ export default function BatchContribute() {
 
   const batchUploadMutation = useMutation({
     mutationFn: async (contributions: BatchContribution[]) => {
+      console.log('🚀 Sending request to server...', { contributionsCount: contributions.length });
+      
       const response = await fetch('/api/contributions/batch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contributions })
+        headers: { 
+          'Content-Type': 'application/json',
+          'credentials': 'include'
+        },
+        body: JSON.stringify({ contributions }),
+        credentials: 'include'
       });
       
+      console.log('📡 Server response:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ Server error:', errorText);
+        throw new Error(`Upload failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
       
-      return await response.json();
+      const result = await response.json();
+      console.log('✅ Upload successful:', result);
+      return result;
     },
     onSuccess: (data: any) => {
       setResults(data.results);
@@ -178,7 +190,7 @@ export default function BatchContribute() {
       await batchUploadMutation.mutateAsync(contributions);
       setUploadProgress(100);
       console.log('🎉 Upload complete!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Batch upload error:', error);
       toast({
         title: "Upload Error",
