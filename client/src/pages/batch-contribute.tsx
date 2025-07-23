@@ -154,6 +154,8 @@ export default function BatchContribute() {
   };
 
   const handleBatchUpload = async () => {
+    console.log('🔄 Starting batch upload...', { selectedEquipment, filesCount: selectedFiles.length });
+    
     if (!selectedEquipment || selectedFiles.length === 0) {
       toast({
         title: "Missing Information",
@@ -168,13 +170,21 @@ export default function BatchContribute() {
     setResults([]);
 
     try {
+      console.log('📸 Processing images...');
       const contributions = await processImages();
+      console.log('✅ Images processed, uploading to server...', contributions.length);
       setUploadProgress(75); // Processing complete
       
       await batchUploadMutation.mutateAsync(contributions);
       setUploadProgress(100);
+      console.log('🎉 Upload complete!');
     } catch (error) {
-      console.error('Batch upload error:', error);
+      console.error('❌ Batch upload error:', error);
+      toast({
+        title: "Upload Error",
+        description: error.message || "Failed to upload images",
+        variant: "destructive"
+      });
     } finally {
       setIsProcessing(false);
     }
