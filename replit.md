@@ -161,6 +161,13 @@ SuprSet is a React-based web application that provides intelligent exercise supe
   - Database persistence working with permanent PostgreSQL storage
   - Real-time analytics updating with contribution statistics
   - Ready for scaled personal data collection phase (target: 1000+ images)
+- **2025-01-10**: Enhanced User Tagging System Complete:
+  - Added userTags field to contribution schema supporting custom descriptive tags
+  - Enhanced batch upload interface with tag input field and helpful examples
+  - Updated image processing to parse comma-separated user tags alongside automatic categorization
+  - Integrated user-defined tags with system-generated equipment labels
+  - Database schema updated with userTags column for improved AI training data quality
+  - System ready for user to add descriptive tags like "adjustable", "heavy-duty", "commercial" during uploads
 
 ## User Preferences
 - **Development Process**: Maintain master TODO.md list - add all discussed/suggested features to this central roadmap
