@@ -54,13 +54,19 @@ export default function BatchContribute() {
 
   const batchUploadMutation = useMutation({
     mutationFn: async (contributions: BatchContribution[]) => {
-      return apiRequest('/api/contributions/batch', {
+      const response = await fetch('/api/contributions/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contributions })
       });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+      
+      return await response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       setResults(data.results);
       toast({
         title: "Batch Upload Complete",
@@ -106,7 +112,7 @@ export default function BatchContribute() {
       // Compress image to 640x640 at 70% quality
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d')!;
-      const img = new Image();
+      const img = document.createElement('img');
       
       await new Promise((resolve) => {
         img.onload = () => {
@@ -201,7 +207,7 @@ export default function BatchContribute() {
       </div>
 
       {/* Analytics Overview */}
-      {analytics && (
+      {analytics && (analytics as any).qualityMetrics && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -212,19 +218,19 @@ export default function BatchContribute() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold">{analytics.qualityMetrics.totalContributions}</div>
+                <div className="text-2xl font-bold">{(analytics as any).qualityMetrics.totalContributions}</div>
                 <div className="text-sm text-muted-foreground">Total Images</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">{Object.keys(analytics.equipmentCount).length}</div>
+                <div className="text-2xl font-bold">{Object.keys((analytics as any).equipmentCount || {}).length}</div>
                 <div className="text-sm text-muted-foreground">Equipment Types</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">{Math.round(analytics.qualityMetrics.averageConfidence * 100)}%</div>
+                <div className="text-2xl font-bold">{Math.round((analytics as any).qualityMetrics.averageConfidence * 100)}%</div>
                 <div className="text-sm text-muted-foreground">Avg Quality</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">{analytics.qualityMetrics.verifiedCount}</div>
+                <div className="text-2xl font-bold">{(analytics as any).qualityMetrics.verifiedCount}</div>
                 <div className="text-sm text-muted-foreground">Verified</div>
               </div>
             </div>
