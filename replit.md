@@ -168,6 +168,8 @@ SuprSet is a React-based web application that provides intelligent exercise supe
   - Integrated user-defined tags with system-generated equipment labels
   - Database schema updated with userTags column for improved AI training data quality
   - System ready for user to add descriptive tags like "adjustable", "heavy-duty", "commercial" during uploads
+  - Added "Plate Loaded" equipment category covering major commercial gym equipment type
+  - Successfully tested with 4 Plate Loaded equipment images (total dataset: 10 images across 3 equipment types)
 
 ## User Preferences
 - **Development Process**: Maintain master TODO.md list - add all discussed/suggested features to this central roadmap
