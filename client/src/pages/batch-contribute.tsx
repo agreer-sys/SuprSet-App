@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +25,7 @@ interface BatchContribution {
   imageData: string;
   confidence: number;
   tags: string[];
+  userTags: string[];
   notes?: string;
 }
 
@@ -42,6 +44,7 @@ export default function BatchContribute() {
   
   const [selectedEquipment, setSelectedEquipment] = useState<string>("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [userTags, setUserTags] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [results, setResults] = useState<ContributionResult[]>([]);
@@ -153,11 +156,17 @@ export default function BatchContribute() {
       
       const imageData = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
       
+      const parsedUserTags = userTags
+        .split(',')
+        .map(tag => tag.trim().toLowerCase())
+        .filter(tag => tag.length > 0);
+
       contributions.push({
         equipment: selectedEquipment,
         imageData,
         confidence: 0.85, // Default confidence for manual uploads
         tags: [`manual_upload`, `batch_${Date.now()}`],
+        userTags: parsedUserTags,
         notes: `Batch upload - ${file.name}`
       });
     }
@@ -283,6 +292,19 @@ export default function BatchContribute() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Custom Tags (Optional)</label>
+            <Input
+              value={userTags}
+              onChange={(e) => setUserTags(e.target.value)}
+              placeholder="Enter tags separated by commas (e.g., adjustable, heavy-duty, commercial)"
+              className="mb-4"
+            />
+            <p className="text-xs text-muted-foreground mb-4">
+              Add descriptive tags to improve AI training quality. Examples: "adjustable", "heavy-duty", "commercial", "beginner-friendly", "olympic"
+            </p>
           </div>
 
           <div>

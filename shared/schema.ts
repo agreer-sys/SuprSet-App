@@ -109,6 +109,7 @@ export const contributions = pgTable("contributions", {
   verified: boolean("verified").default(false),
   votes: integer("votes").default(0),
   tags: text("tags").array(),
+  userTags: text("user_tags").array().notNull().default([]), // User-provided descriptive tags
   
   // AI Training specific fields
   imageHash: varchar("image_hash"), // For duplicate detection
