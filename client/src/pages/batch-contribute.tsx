@@ -17,7 +17,7 @@ const EQUIPMENT_CATEGORIES = [
   "Leg Press", "Lat Pulldown", "Seated Row", "Chest Press", "Shoulder Press",
   "Leg Extension", "Leg Curl", "Calf Raise", "Pull-up Bar", "Dip Station",
   "Bench", "Squat Rack", "Power Rack", "Preacher Curl", "Roman Chair",
-  "Battle Ropes", "TRX", "Resistance Bands", "Medicine Ball", "Stability Ball"
+  "Plate Loaded", "Battle Ropes", "TRX", "Resistance Bands", "Medicine Ball", "Stability Ball"
 ];
 
 interface BatchContribution {
