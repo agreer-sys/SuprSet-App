@@ -46,6 +46,7 @@ export interface IStorage {
   createContribution(contribution: InsertContribution): Promise<Contribution>;
   getUserContributions(userId: string): Promise<Contribution[]>;
   getContributionStats(userId: string): Promise<{ total: number; verified: number }>;
+  checkDuplicateImage(imageHash: string): Promise<boolean>;
   
   // Training data export methods
   exportTrainingData(dataset?: string): Promise<Contribution[]>;
@@ -427,6 +428,15 @@ export class DatabaseStorage implements IStorage {
       byEquipment,
       byDataset
     };
+  }
+
+  async checkDuplicateImage(imageHash: string): Promise<boolean> {
+    const [result] = await db.select()
+      .from(contributions)
+      .where(eq(contributions.imageHash, imageHash))
+      .limit(1);
+    
+    return !!result;
   }
 }
 

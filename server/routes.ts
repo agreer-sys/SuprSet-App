@@ -449,6 +449,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (let i = 0; i < contributions.length; i++) {
         try {
+          // Check for duplicate images
+          if (contributions[i].imageHash) {
+            const isDuplicate = await storage.checkDuplicateImage(contributions[i].imageHash);
+            if (isDuplicate) {
+              console.log(`Duplicate image detected for contribution ${i}`);
+              errors.push({ index: i, error: "Duplicate image detected" });
+              results.push({ index: i, success: false, error: "Duplicate image detected" });
+              continue;
+            }
+          }
+
           const contributionData = insertContributionSchema.parse({
             ...contributions[i],
             userId

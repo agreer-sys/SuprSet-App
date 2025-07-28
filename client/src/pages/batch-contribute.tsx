@@ -27,6 +27,7 @@ interface BatchContribution {
   tags: string[];
   userTags: string[];
   notes?: string;
+  imageHash?: string;
 }
 
 interface ContributionResult {
@@ -156,6 +157,9 @@ export default function BatchContribute() {
       
       const imageData = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
       
+      // Generate simple hash for duplicate detection
+      const imageHash = btoa(imageData.substring(0, 100)).substring(0, 16);
+      
       const parsedUserTags = userTags
         .split(',')
         .map(tag => tag.trim().toLowerCase())
@@ -167,7 +171,8 @@ export default function BatchContribute() {
         confidence: 0.85, // Default confidence for manual uploads
         tags: [`manual_upload`, `batch_${Date.now()}`],
         userTags: parsedUserTags,
-        notes: `Batch upload - ${file.name}`
+        notes: `Batch upload - ${file.name}`,
+        imageHash
       });
     }
     

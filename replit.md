@@ -170,6 +170,13 @@ SuprSet is a React-based web application that provides intelligent exercise supe
   - System ready for user to add descriptive tags like "adjustable", "heavy-duty", "commercial" during uploads
   - Added "Plate Loaded" equipment category covering major commercial gym equipment type
   - Successfully tested with 4 Plate Loaded equipment images (total dataset: 10 images across 3 equipment types)
+  - Added "Selectorized (Built in weight stack)" equipment category for comprehensive gym coverage
+- **2025-01-10**: Duplicate Image Detection System Complete:
+  - Implemented hash-based duplicate detection to prevent redundant uploads
+  - Enhanced batch upload with automatic duplicate checking and rejection
+  - Added imageHash generation using compressed image data fingerprinting
+  - System now prevents duplicate images from cluttering training dataset
+  - Maintains data quality by ensuring unique images only in AI training corpus
 
 ## User Preferences
 - **Development Process**: Maintain master TODO.md list - add all discussed/suggested features to this central roadmap
