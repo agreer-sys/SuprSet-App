@@ -67,12 +67,131 @@ export const insertExerciseSchema = createInsertSchema(exercises).omit({
   id: true,
 });
 
-export const insertWorkoutSessionSchema = createInsertSchema(workoutSessions).omit({
+export const insertLegacyWorkoutSessionSchema = createInsertSchema(workoutSessions).omit({
   id: true,
 });
 
 export const insertExercisePairingSchema = createInsertSchema(exercisePairings).omit({
   id: true,
+});
+
+// Super Sets - Saved exercise combinations
+export const superSets = pgTable("super_sets", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  exerciseAId: integer("exercise_a_id").references(() => exercises.id).notNull(),
+  exerciseBId: integer("exercise_b_id").references(() => exercises.id).notNull(),
+  defaultSets: integer("default_sets").notNull().default(3),
+  defaultRestTime: integer("default_rest_time").notNull().default(150), // seconds
+  difficulty: integer("difficulty").notNull().default(3), // 1-5 scale
+  tags: text("tags").array().notNull().default([]),
+  isPublic: boolean("is_public").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Workouts - Collections of super sets
+export const workouts = pgTable("workouts", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  estimatedDuration: integer("estimated_duration"), // minutes
+  difficulty: integer("difficulty").notNull().default(3), // 1-5 scale
+  muscleGroups: text("muscle_groups").array().notNull().default([]),
+  tags: text("tags").array().notNull().default([]),
+  isTemplate: boolean("is_template").notNull().default(false),
+  isPublic: boolean("is_public").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Workout Super Sets - Join table for workouts and super sets
+export const workoutSuperSets = pgTable("workout_super_sets", {
+  id: serial("id").primaryKey(),
+  workoutId: integer("workout_id").references(() => workouts.id).notNull(),
+  superSetId: integer("super_set_id").references(() => superSets.id).notNull(),
+  orderIndex: integer("order_index").notNull(),
+  customSets: integer("custom_sets"), // Override default sets
+  customRestTime: integer("custom_rest_time"), // Override default rest time
+});
+
+// Workout Sessions - Active workout tracking
+export const workoutSessionsNew = pgTable("workout_sessions_new", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  workoutId: integer("workout_id").references(() => workouts.id),
+  status: text("status").notNull().default("active"), // active, completed, paused
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  totalDuration: integer("total_duration"), // seconds
+  notes: text("notes"),
+});
+
+// Set Logs - Individual set tracking within sessions
+export const setLogs = pgTable("set_logs", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").references(() => workoutSessionsNew.id).notNull(),
+  superSetId: integer("super_set_id").references(() => superSets.id).notNull(),
+  exerciseId: integer("exercise_id").references(() => exercises.id).notNull(),
+  setNumber: integer("set_number").notNull(),
+  reps: integer("reps"),
+  weight: real("weight"),
+  restTime: integer("rest_time"), // actual rest time taken
+  completedAt: timestamp("completed_at").defaultNow(),
+  notes: text("notes"),
+});
+
+// Coaching Sessions - LLM interaction tracking
+export const coachingSessions = pgTable("coaching_sessions", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").references(() => workoutSessionsNew.id).notNull(),
+  messages: jsonb("messages").$type<Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    timestamp: string;
+    audioUrl?: string;
+  }>>().notNull().default([]),
+  voiceEnabled: boolean("voice_enabled").notNull().default(false),
+  preferredStyle: text("preferred_style").notNull().default("motivational"), // motivational, technical, casual
+  currentExercise: integer("current_exercise").references(() => exercises.id),
+  currentSet: integer("current_set").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Insert schemas for new tables
+export const insertSuperSetSchema = createInsertSchema(superSets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWorkoutSchema = createInsertSchema(workouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWorkoutSuperSetSchema = createInsertSchema(workoutSuperSets).omit({
+  id: true,
+});
+
+export const insertWorkoutSessionNewSchema = createInsertSchema(workoutSessionsNew).omit({
+  id: true,
+});
+
+export const insertSetLogSchema = createInsertSchema(setLogs).omit({
+  id: true,
+  completedAt: true,
+});
+
+export const insertCoachingSessionSchema = createInsertSchema(coachingSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Session storage table for Replit Auth
@@ -152,11 +271,27 @@ export const insertContributionSchema = createInsertSchema(contributions).omit({
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
-export type Exercise = typeof exercises.$inferSelect;
+// Core exercise system types
 export type InsertExercise = z.infer<typeof insertExerciseSchema>;
+export type Exercise = typeof exercises.$inferSelect;
+export type InsertWorkoutSession = z.infer<typeof insertLegacyWorkoutSessionSchema>;
 export type WorkoutSession = typeof workoutSessions.$inferSelect;
-export type InsertWorkoutSession = z.infer<typeof insertWorkoutSessionSchema>;
-export type ExercisePairing = typeof exercisePairings.$inferSelect;
 export type InsertExercisePairing = z.infer<typeof insertExercisePairingSchema>;
+export type ExercisePairing = typeof exercisePairings.$inferSelect;
+
+// New workout system types
+export type InsertSuperSet = z.infer<typeof insertSuperSetSchema>;
+export type SuperSet = typeof superSets.$inferSelect;
+export type InsertWorkout = z.infer<typeof insertWorkoutSchema>;
+export type Workout = typeof workouts.$inferSelect;
+export type InsertWorkoutSuperSet = z.infer<typeof insertWorkoutSuperSetSchema>;
+export type WorkoutSuperSet = typeof workoutSuperSets.$inferSelect;
+export type InsertWorkoutSessionNew = z.infer<typeof insertWorkoutSessionNewSchema>;
+export type WorkoutSessionNew = typeof workoutSessionsNew.$inferSelect;
+export type InsertSetLog = z.infer<typeof insertSetLogSchema>;
+export type SetLog = typeof setLogs.$inferSelect;
+export type InsertCoachingSession = z.infer<typeof insertCoachingSessionSchema>;
+export type CoachingSession = typeof coachingSessions.$inferSelect;
+
 export type Contribution = typeof contributions.$inferSelect;
 export type InsertContribution = z.infer<typeof insertContributionSchema>;

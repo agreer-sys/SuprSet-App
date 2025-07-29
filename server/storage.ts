@@ -4,6 +4,12 @@ import {
   exercisePairings,
   users,
   contributions,
+  superSets,
+  workouts,
+  workoutSuperSets,
+  workoutSessionsNew,
+  setLogs,
+  coachingSessions,
   type Exercise, 
   type InsertExercise,
   type WorkoutSession,
@@ -13,11 +19,23 @@ import {
   type User,
   type UpsertUser,
   type Contribution,
-  type InsertContribution
+  type InsertContribution,
+  type SuperSet,
+  type InsertSuperSet,
+  type Workout,
+  type InsertWorkout,
+  type WorkoutSuperSet,
+  type InsertWorkoutSuperSet,
+  type WorkoutSessionNew,
+  type InsertWorkoutSessionNew,
+  type SetLog,
+  type InsertSetLog,
+  type CoachingSession,
+  type InsertCoachingSession
 } from "@shared/schema";
 import { airtableService } from "./airtable";
 import { db } from "./db";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Exercise methods
@@ -47,6 +65,36 @@ export interface IStorage {
   getUserContributions(userId: string): Promise<Contribution[]>;
   getContributionStats(userId: string): Promise<{ total: number; verified: number }>;
   checkDuplicateImage(imageHash: string): Promise<boolean>;
+
+  // Super Sets methods
+  createSuperSet(superSet: InsertSuperSet): Promise<SuperSet>;
+  getUserSuperSets(userId: string): Promise<SuperSet[]>;
+  getSuperSet(id: number): Promise<SuperSet | undefined>;
+  updateSuperSet(id: number, updates: Partial<InsertSuperSet>): Promise<SuperSet>;
+  deleteSuperSet(id: number): Promise<void>;
+
+  // Workout methods
+  createWorkout(workout: InsertWorkout): Promise<Workout>;
+  getUserWorkouts(userId: string): Promise<Workout[]>;
+  getWorkout(id: number): Promise<Workout | undefined>;
+  updateWorkout(id: number, updates: Partial<InsertWorkout>): Promise<Workout>;
+  deleteWorkout(id: number): Promise<void>;
+  getWorkoutWithSuperSets(id: number): Promise<Workout & { superSets: SuperSet[] } | undefined>;
+
+  // Workout Session methods
+  startWorkoutSession(session: InsertWorkoutSessionNew): Promise<WorkoutSessionNew>;
+  getActiveWorkoutSession(userId: string): Promise<WorkoutSessionNew | undefined>;
+  updateWorkoutSession(id: number, updates: Partial<InsertWorkoutSessionNew>): Promise<WorkoutSessionNew>;
+  completeWorkoutSession(id: number, notes?: string): Promise<WorkoutSessionNew>;
+
+  // Set Logging methods
+  logSet(setLog: InsertSetLog): Promise<SetLog>;
+  getSessionSetLogs(sessionId: number): Promise<SetLog[]>;
+
+  // Coaching methods
+  createCoachingSession(coaching: InsertCoachingSession): Promise<CoachingSession>;
+  updateCoachingSession(id: number, updates: Partial<InsertCoachingSession>): Promise<CoachingSession>;
+  getCoachingSession(sessionId: number): Promise<CoachingSession | undefined>;
   
   // Training data export methods
   exportTrainingData(dataset?: string): Promise<Contribution[]>;
@@ -437,6 +485,219 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return !!result;
+  }
+
+  // Super Sets implementation
+  async createSuperSet(superSetData: InsertSuperSet): Promise<SuperSet> {
+    const [superSet] = await db
+      .insert(superSets)
+      .values(superSetData)
+      .returning();
+    
+    return superSet;
+  }
+
+  async getUserSuperSets(userId: string): Promise<SuperSet[]> {
+    return await db
+      .select()
+      .from(superSets)
+      .where(eq(superSets.userId, userId))
+      .orderBy(desc(superSets.createdAt));
+  }
+
+  async getSuperSet(id: number): Promise<SuperSet | undefined> {
+    const [superSet] = await db
+      .select()
+      .from(superSets)
+      .where(eq(superSets.id, id))
+      .limit(1);
+    
+    return superSet;
+  }
+
+  async updateSuperSet(id: number, updates: Partial<InsertSuperSet>): Promise<SuperSet> {
+    const [superSet] = await db
+      .update(superSets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(superSets.id, id))
+      .returning();
+    
+    return superSet;
+  }
+
+  async deleteSuperSet(id: number): Promise<void> {
+    await db.delete(superSets).where(eq(superSets.id, id));
+  }
+
+  // Workout implementation
+  async createWorkout(workoutData: InsertWorkout): Promise<Workout> {
+    const [workout] = await db
+      .insert(workouts)
+      .values(workoutData)
+      .returning();
+    
+    return workout;
+  }
+
+  async getUserWorkouts(userId: string): Promise<Workout[]> {
+    return await db
+      .select()
+      .from(workouts)
+      .where(eq(workouts.userId, userId))
+      .orderBy(desc(workouts.createdAt));
+  }
+
+  async getWorkout(id: number): Promise<Workout | undefined> {
+    const [workout] = await db
+      .select()
+      .from(workouts)
+      .where(eq(workouts.id, id))
+      .limit(1);
+    
+    return workout;
+  }
+
+  async updateWorkout(id: number, updates: Partial<InsertWorkout>): Promise<Workout> {
+    const [workout] = await db
+      .update(workouts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(workouts.id, id))
+      .returning();
+    
+    return workout;
+  }
+
+  async deleteWorkout(id: number): Promise<void> {
+    await db.delete(workouts).where(eq(workouts.id, id));
+  }
+
+  async getWorkoutWithSuperSets(id: number): Promise<Workout & { superSets: SuperSet[] } | undefined> {
+    const workout = await this.getWorkout(id);
+    if (!workout) return undefined;
+
+    // Get super sets associated with this workout
+    const workoutSuperSetJoins = await db
+      .select()
+      .from(workoutSuperSets)
+      .where(eq(workoutSuperSets.workoutId, id))
+      .orderBy(workoutSuperSets.orderIndex);
+
+    const superSetIds = workoutSuperSetJoins.map(ws => ws.superSetId);
+    const associatedSuperSets = superSetIds.length > 0 
+      ? await db.select().from(superSets).where(inArray(superSets.id, superSetIds))
+      : [];
+
+    return {
+      ...workout,
+      superSets: associatedSuperSets
+    };
+  }
+
+  // Workout Session implementation
+  async startWorkoutSession(sessionData: InsertWorkoutSessionNew): Promise<WorkoutSessionNew> {
+    const [session] = await db
+      .insert(workoutSessionsNew)
+      .values(sessionData)
+      .returning();
+    
+    return session;
+  }
+
+  async getActiveWorkoutSession(userId: string): Promise<WorkoutSessionNew | undefined> {
+    const [session] = await db
+      .select()
+      .from(workoutSessionsNew)
+      .where(and(
+        eq(workoutSessionsNew.userId, userId),
+        eq(workoutSessionsNew.status, "active")
+      ))
+      .limit(1);
+    
+    return session;
+  }
+
+  async updateWorkoutSession(id: number, updates: Partial<InsertWorkoutSessionNew>): Promise<WorkoutSessionNew> {
+    const [session] = await db
+      .update(workoutSessionsNew)
+      .set(updates)
+      .where(eq(workoutSessionsNew.id, id))
+      .returning();
+    
+    return session;
+  }
+
+  async completeWorkoutSession(id: number, notes?: string): Promise<WorkoutSessionNew> {
+    const completedAt = new Date();
+    const session = await db
+      .select()
+      .from(workoutSessionsNew)
+      .where(eq(workoutSessionsNew.id, id))
+      .limit(1);
+
+    if (!session[0]) throw new Error("Session not found");
+
+    const totalDuration = Math.floor((completedAt.getTime() - new Date(session[0].startedAt).getTime()) / 1000);
+
+    const [updatedSession] = await db
+      .update(workoutSessionsNew)
+      .set({
+        status: "completed",
+        completedAt,
+        totalDuration,
+        notes
+      })
+      .where(eq(workoutSessionsNew.id, id))
+      .returning();
+    
+    return updatedSession;
+  }
+
+  // Set Logging implementation
+  async logSet(setLogData: InsertSetLog): Promise<SetLog> {
+    const [setLog] = await db
+      .insert(setLogs)
+      .values(setLogData)
+      .returning();
+    
+    return setLog;
+  }
+
+  async getSessionSetLogs(sessionId: number): Promise<SetLog[]> {
+    return await db
+      .select()
+      .from(setLogs)
+      .where(eq(setLogs.sessionId, sessionId))
+      .orderBy(setLogs.completedAt);
+  }
+
+  // Coaching implementation
+  async createCoachingSession(coachingData: InsertCoachingSession): Promise<CoachingSession> {
+    const [coaching] = await db
+      .insert(coachingSessions)
+      .values(coachingData)
+      .returning();
+    
+    return coaching;
+  }
+
+  async updateCoachingSession(id: number, updates: Partial<InsertCoachingSession>): Promise<CoachingSession> {
+    const [coaching] = await db
+      .update(coachingSessions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(coachingSessions.id, id))
+      .returning();
+    
+    return coaching;
+  }
+
+  async getCoachingSession(sessionId: number): Promise<CoachingSession | undefined> {
+    const [coaching] = await db
+      .select()
+      .from(coachingSessions)
+      .where(eq(coachingSessions.sessionId, sessionId))
+      .limit(1);
+    
+    return coaching;
   }
 }
 

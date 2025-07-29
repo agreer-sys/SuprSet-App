@@ -2,9 +2,124 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertWorkoutSessionSchema, insertContributionSchema, type Exercise } from "@shared/schema";
+import { 
+  insertContributionSchema, 
+  insertSuperSetSchema, 
+  insertWorkoutSchema, 
+  insertWorkoutSessionNewSchema,
+  insertSetLogSchema,
+  type Exercise,
+  type CoachingSession
+} from "@shared/schema";
 import { z } from "zod";
 import { isTrainerApprovedPair } from "./trainer-pairs";
+
+// LLM Coaching Integration
+async function generateCoachingResponse(
+  userMessage: string, 
+  exercise: Exercise | null, 
+  coaching: CoachingSession
+): Promise<string> {
+  // Exercise context for AI
+  const exerciseContext = exercise ? `
+Current Exercise: ${exercise.name}
+Primary Muscle Group: ${exercise.primaryMuscleGroup}
+Exercise Type: ${exercise.exerciseType}
+Equipment: ${exercise.equipment}
+Coaching Tips: ${exercise.coachingBulletPoints || 'None available'}
+Common Mistakes: ${exercise.commonMistakes || 'None listed'}
+Ideal Rep Range: ${exercise.idealRepRange || 'Not specified'}
+Rest Period: ${exercise.restPeriodSec ? `${exercise.restPeriodSec} seconds` : 'Not specified'}
+` : '';
+
+  // Coaching style context
+  const stylePrompts = {
+    motivational: "Be encouraging, energetic, and supportive. Use motivational language to keep the user pushing through their workout.",
+    technical: "Focus on form, technique, and precise execution. Provide detailed biomechanical guidance.",
+    casual: "Keep it friendly and conversational. Be supportive but relaxed in tone."
+  };
+
+  const systemPrompt = `You are SuprSet AI, a professional strength training coach specializing in superset workouts. ${stylePrompts[coaching.preferredStyle as keyof typeof stylePrompts]}
+
+Current Context:
+- Current Set: ${coaching.currentSet}
+- Voice Enabled: ${coaching.voiceEnabled ? 'Yes (keep responses concise for speech)' : 'No'}
+${exerciseContext}
+
+Guidelines:
+- Keep responses under 100 words if voice is enabled, under 200 words otherwise
+- Focus on form, safety, and motivation
+- Reference specific exercise details when relevant
+- Acknowledge user's progress and effort
+- Provide actionable advice for the current situation
+- If user asks about form, reference the exercise's coaching tips and common mistakes`;
+
+  // For now, provide intelligent rule-based responses
+  // This can be replaced with OpenAI, Anthropic, or other LLM API calls
+  const responses = generateRuleBasedCoachingResponse(userMessage, exercise, coaching);
+  
+  return responses;
+}
+
+function generateRuleBasedCoachingResponse(
+  userMessage: string, 
+  exercise: Exercise | null, 
+  coaching: CoachingSession
+): string {
+  const message = userMessage.toLowerCase();
+  const exerciseName = exercise?.name || "this exercise";
+  const currentSet = coaching.currentSet;
+  
+  // Form and technique questions
+  if (message.includes('form') || message.includes('technique')) {
+    const tips = exercise?.coachingBulletPoints;
+    return tips 
+      ? `Great question about form! For ${exerciseName}: ${tips}. Focus on controlled movement and proper breathing. You've got this!`
+      : `Focus on controlled movement, maintain proper posture, and breathe steadily throughout ${exerciseName}. Keep your core engaged!`;
+  }
+  
+  // Fatigue and difficulty
+  if (message.includes('tired') || message.includes('hard') || message.includes('difficult')) {
+    return currentSet >= 3 
+      ? `You're in the challenging sets now - this is where the real gains happen! Focus on quality reps over quantity. If needed, reduce weight but maintain perfect form.`
+      : `Feeling it already? That's your muscles working! Stay focused on your breathing and form. You're stronger than you think!`;
+  }
+  
+  // Rest time questions
+  if (message.includes('rest') || message.includes('break')) {
+    const restTime = exercise?.restPeriodSec;
+    return restTime 
+      ? `For ${exerciseName}, aim for ${Math.round(restTime / 60)} minutes rest between sets. Use this time to hydrate and visualize your next set!`
+      : `Take 90-150 seconds between sets. Stay moving lightly - don't sit down completely. You're doing great!`;
+  }
+  
+  // Motivation and encouragement
+  if (message.includes('give up') || message.includes('quit') || message.includes('stop')) {
+    return `Hey, I know it's tough, but you showed up today and that's what matters! Every rep counts. If you need to modify, that's okay - consistency beats perfection every time!`;
+  }
+  
+  // Progress and completion
+  if (message.includes('done') || message.includes('finished')) {
+    return currentSet >= 3 
+      ? `Outstanding work! You crushed that set. Feel that accomplishment - you're getting stronger with every workout!`
+      : `Nice work on that set! Take your rest, then let's hit the next one. You're building something great here!`;
+  }
+  
+  // Weight selection
+  if (message.includes('weight') || message.includes('heavy') || message.includes('light')) {
+    return `Choose a weight where the last 2-3 reps feel challenging but you can maintain perfect form. It's better to go lighter and focus on quality than risk injury with too much weight.`;
+  }
+  
+  // Default encouraging response
+  const encouragingResponses = [
+    `You're doing great! Stay focused on your form and breathing. Every rep is making you stronger!`,
+    `Keep pushing! Remember why you started - you're building something amazing here!`,
+    `Perfect! Stay in control of the movement and trust the process. You've got this!`,
+    `Excellent work! Focus on the mind-muscle connection and make every rep count!`
+  ];
+  
+  return encouragingResponses[Math.floor(Math.random() * encouragingResponses.length)];
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth
@@ -484,6 +599,301 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Batch contribution error:", error);
       res.status(500).json({ message: "Failed to process batch contributions" });
+    }
+  });
+
+  // Super Sets API routes
+  app.get('/api/supersets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const superSets = await storage.getUserSuperSets(userId);
+      res.json(superSets);
+    } catch (error: any) {
+      console.error("Error fetching super sets:", error);
+      res.status(500).json({ message: "Failed to fetch super sets" });
+    }
+  });
+
+  app.post('/api/supersets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const superSetData = insertSuperSetSchema.parse({
+        ...req.body,
+        userId
+      });
+
+      const superSet = await storage.createSuperSet(superSetData);
+      res.status(201).json(superSet);
+    } catch (error: any) {
+      console.error("Error creating super set:", error);
+      res.status(500).json({ message: "Failed to create super set" });
+    }
+  });
+
+  app.get('/api/supersets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const superSet = await storage.getSuperSet(id);
+      
+      if (!superSet) {
+        return res.status(404).json({ message: "Super set not found" });
+      }
+
+      res.json(superSet);
+    } catch (error: any) {
+      console.error("Error fetching super set:", error);
+      res.status(500).json({ message: "Failed to fetch super set" });
+    }
+  });
+
+  app.put('/api/supersets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const superSet = await storage.updateSuperSet(id, updates);
+      res.json(superSet);
+    } catch (error: any) {
+      console.error("Error updating super set:", error);
+      res.status(500).json({ message: "Failed to update super set" });
+    }
+  });
+
+  app.delete('/api/supersets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSuperSet(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting super set:", error);
+      res.status(500).json({ message: "Failed to delete super set" });
+    }
+  });
+
+  // Workouts API routes
+  app.get('/api/workouts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workouts = await storage.getUserWorkouts(userId);
+      res.json(workouts);
+    } catch (error: any) {
+      console.error("Error fetching workouts:", error);
+      res.status(500).json({ message: "Failed to fetch workouts" });
+    }
+  });
+
+  app.post('/api/workouts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workoutData = insertWorkoutSchema.parse({
+        ...req.body,
+        userId
+      });
+
+      const workout = await storage.createWorkout(workoutData);
+      res.status(201).json(workout);
+    } catch (error: any) {
+      console.error("Error creating workout:", error);
+      res.status(500).json({ message: "Failed to create workout" });
+    }
+  });
+
+  app.get('/api/workouts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const workout = await storage.getWorkoutWithSuperSets(id);
+      
+      if (!workout) {
+        return res.status(404).json({ message: "Workout not found" });
+      }
+
+      res.json(workout);
+    } catch (error: any) {
+      console.error("Error fetching workout:", error);
+      res.status(500).json({ message: "Failed to fetch workout" });
+    }
+  });
+
+  // Workout Sessions API routes
+  app.post('/api/workout-sessions/start', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Check if user already has an active session
+      const activeSession = await storage.getActiveWorkoutSession(userId);
+      if (activeSession) {
+        return res.status(400).json({ 
+          message: "You already have an active workout session",
+          activeSession 
+        });
+      }
+
+      const sessionData = insertWorkoutSessionNewSchema.parse({
+        ...req.body,
+        userId
+      });
+
+      const session = await storage.startWorkoutSession(sessionData);
+      
+      // Create coaching session if requested
+      if (req.body.enableCoaching) {
+        await storage.createCoachingSession({
+          sessionId: session.id,
+          voiceEnabled: req.body.voiceEnabled || false,
+          preferredStyle: req.body.coachingStyle || 'motivational',
+          messages: [],
+          currentSet: 1
+        });
+      }
+
+      res.status(201).json(session);
+    } catch (error: any) {
+      console.error("Error starting workout session:", error);
+      res.status(500).json({ message: "Failed to start workout session" });
+    }
+  });
+
+  app.get('/api/workout-sessions/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const session = await storage.getActiveWorkoutSession(userId);
+      
+      if (!session) {
+        return res.status(404).json({ message: "No active workout session" });
+      }
+
+      res.json(session);
+    } catch (error: any) {
+      console.error("Error fetching active session:", error);
+      res.status(500).json({ message: "Failed to fetch active session" });
+    }
+  });
+
+  app.post('/api/workout-sessions/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { notes } = req.body;
+      
+      const session = await storage.completeWorkoutSession(id, notes);
+      res.json(session);
+    } catch (error: any) {
+      console.error("Error completing workout session:", error);
+      res.status(500).json({ message: "Failed to complete workout session" });
+    }
+  });
+
+  // Set Logging API routes
+  app.post('/api/sets/log', isAuthenticated, async (req: any, res) => {
+    try {
+      const setLogData = insertSetLogSchema.parse(req.body);
+      const setLog = await storage.logSet(setLogData);
+      res.status(201).json(setLog);
+    } catch (error: any) {
+      console.error("Error logging set:", error);
+      res.status(500).json({ message: "Failed to log set" });
+    }
+  });
+
+  app.get('/api/workout-sessions/:id/sets', isAuthenticated, async (req: any, res) => {
+    try {
+      const sessionId = parseInt(req.params.id);
+      const setLogs = await storage.getSessionSetLogs(sessionId);
+      res.json(setLogs);
+    } catch (error: any) {
+      console.error("Error fetching set logs:", error);
+      res.status(500).json({ message: "Failed to fetch set logs" });
+    }
+  });
+
+  // LLM Coaching API routes
+  app.get('/api/coaching/:sessionId', isAuthenticated, async (req: any, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const coaching = await storage.getCoachingSession(sessionId);
+      
+      if (!coaching) {
+        return res.status(404).json({ message: "Coaching session not found" });
+      }
+
+      res.json(coaching);
+    } catch (error: any) {
+      console.error("Error fetching coaching session:", error);
+      res.status(500).json({ message: "Failed to fetch coaching session" });
+    }
+  });
+
+  app.post('/api/coaching/:sessionId/message', isAuthenticated, async (req: any, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const { message, exerciseId, setNumber } = req.body;
+      
+      const coaching = await storage.getCoachingSession(sessionId);
+      if (!coaching) {
+        return res.status(404).json({ message: "Coaching session not found" });
+      }
+
+      // Get exercise details for context
+      const exercise = exerciseId ? await storage.getExercise(exerciseId) : null;
+      
+      // Generate AI coaching response
+      const aiResponse = await generateCoachingResponse(message, exercise, coaching);
+      
+      // Update coaching session with new messages
+      const updatedMessages = [
+        ...coaching.messages,
+        {
+          role: 'user' as const,
+          content: message,
+          timestamp: new Date().toISOString()
+        },
+        {
+          role: 'assistant' as const,
+          content: aiResponse,
+          timestamp: new Date().toISOString()
+        }
+      ];
+
+      const updatedCoaching = await storage.updateCoachingSession(coaching.id, {
+        messages: updatedMessages,
+        currentExercise: exerciseId || coaching.currentExercise,
+        currentSet: setNumber || coaching.currentSet
+      });
+
+      res.json({ 
+        message: aiResponse,
+        coaching: updatedCoaching 
+      });
+    } catch (error: any) {
+      console.error("Error processing coaching message:", error);
+      res.status(500).json({ message: "Failed to process coaching message" });
+    }
+  });
+
+  // Enhanced pairing recommendation with superset creation
+  app.post('/api/supersets/from-recommendation', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { exerciseAId, exerciseBId, name, description } = req.body;
+      
+      // Create superset from recommendation
+      const superSetData = insertSuperSetSchema.parse({
+        userId,
+        name: name || "Custom Superset",
+        description: description || "Generated from recommendation",
+        exerciseAId,
+        exerciseBId,
+        defaultSets: 3,
+        defaultRestTime: 150,
+        difficulty: 3,
+        tags: ["custom", "from-recommendation"],
+        isPublic: false
+      });
+
+      const superSet = await storage.createSuperSet(superSetData);
+      res.status(201).json(superSet);
+    } catch (error: any) {
+      console.error("Error creating superset from recommendation:", error);
+      res.status(500).json({ message: "Failed to create superset from recommendation" });
     }
   });
 

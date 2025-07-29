@@ -35,9 +35,35 @@ export default function Header() {
                 className="flex items-center gap-2"
               >
                 <Home className="h-4 w-4" />
-                Workouts
+                Home
               </Button>
             </Link>
+            
+            {isAuthenticated && (
+              <>
+                <Link href="/supersets">
+                  <Button 
+                    variant={location === "/supersets" ? "default" : "ghost"} 
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Dumbbell className="h-4 w-4" />
+                    Super Sets
+                  </Button>
+                </Link>
+                <Link href="/workouts">
+                  <Button 
+                    variant={location === "/workouts" ? "default" : "ghost"} 
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Home className="h-4 w-4" />
+                    Workouts
+                  </Button>
+                </Link>
+              </>
+            )}
+            
             <Link href="/gym-mapping">
               <Button 
                 variant={location === "/gym-mapping" ? "default" : "ghost"} 

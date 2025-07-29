@@ -9,6 +9,9 @@ import NotFound from "@/pages/not-found";
 import GymMapping from "@/pages/gym-mapping";
 import Profile from "@/pages/profile";
 import BatchContribute from "@/pages/batch-contribute";
+import SuperSets from "@/pages/supersets";
+import Workouts from "@/pages/workouts";
+import WorkoutSession from "@/pages/workout-session";
 
 function Router() {
   return (
@@ -17,6 +20,9 @@ function Router() {
       <Route path="/gym-mapping" component={GymMapping} />
       <Route path="/profile" component={Profile} />
       <Route path="/batch-contribute" component={BatchContribute} />
+      <Route path="/supersets" component={SuperSets} />
+      <Route path="/workouts" component={Workouts} />
+      <Route path="/workout-session" component={WorkoutSession} />
       <Route component={NotFound} />
     </Switch>
   );
