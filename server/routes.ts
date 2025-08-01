@@ -211,6 +211,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete contribution
+  app.delete('/api/contributions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const contributionId = req.params.id;
+      
+      const success = await storage.deleteContribution(contributionId, userId);
+      
+      if (success) {
+        console.log(`🗑️ Deleted contribution ${contributionId} for user ${userId}`);
+        res.json({ message: "Contribution deleted successfully" });
+      } else {
+        res.status(404).json({ message: "Contribution not found or unauthorized" });
+      }
+    } catch (error) {
+      console.error("Error deleting contribution:", error);
+      res.status(500).json({ message: "Failed to delete contribution" });
+    }
+  });
+
   // Debug endpoint to view all contributions in memory (admin/development use)
   app.get('/api/debug/contributions', async (req, res) => {
     try {

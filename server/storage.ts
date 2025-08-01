@@ -487,6 +487,20 @@ export class DatabaseStorage implements IStorage {
     return !!result;
   }
 
+  async deleteContribution(contributionId: string, userId: string): Promise<boolean> {
+    try {
+      const result = await db
+        .delete(contributions)
+        .where(and(eq(contributions.id, contributionId), eq(contributions.userId, userId)))
+        .returning();
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting contribution:", error);
+      return false;
+    }
+  }
+
   // Super Sets implementation
   async createSuperSet(superSetData: InsertSuperSet): Promise<SuperSet> {
     const [superSet] = await db
