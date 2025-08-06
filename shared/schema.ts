@@ -67,8 +67,6 @@ export const exercisePairings = pgTable("exercise_pairings", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertExerciseSchema = createInsertSchema(exercises).omit({

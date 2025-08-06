@@ -273,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const pairingData = {
         ...req.body,
-        approvedBy: 'system'
+        approvedBy: null  // Make it null since we don't have proper auth yet
       };
       
       const pairing = await storage.createTrainerPairing(pairingData);
