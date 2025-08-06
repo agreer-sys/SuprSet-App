@@ -61,6 +61,14 @@ export const exercisePairings = pgTable("exercise_pairings", {
   exerciseBId: integer("exercise_b_id").references(() => exercises.id).notNull(),
   compatibilityScore: real("compatibility_score").notNull(),
   reasoning: text("reasoning").array().notNull(),
+  trainerApproved: boolean("trainer_approved").notNull().default(false),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  pairingType: varchar("pairing_type", { length: 50 }), // "push_pull", "squat_hinge", "compound_isolation"
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertExerciseSchema = createInsertSchema(exercises).omit({

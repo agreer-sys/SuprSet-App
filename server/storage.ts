@@ -501,6 +501,165 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Trainer pairs management methods
+  async getTrainerApprovedPairs(): Promise<any[]> {
+    const results = await db
+      .select({
+        id: exercisePairings.id,
+        exerciseAId: exercisePairings.exerciseAId,
+        exerciseBId: exercisePairings.exerciseBId,
+        compatibilityScore: exercisePairings.compatibilityScore,
+        reasoning: exercisePairings.reasoning,
+        trainerApproved: exercisePairings.trainerApproved,
+        pairingType: exercisePairings.pairingType,
+        notes: exercisePairings.notes,
+        approvedBy: exercisePairings.approvedBy,
+        createdAt: exercisePairings.createdAt,
+        updatedAt: exercisePairings.updatedAt,
+      })
+      .from(exercisePairings)
+      .orderBy(desc(exercisePairings.createdAt));
+    
+    // Get exercise details for each pairing
+    const pairingsWithExercises = await Promise.all(
+      results.map(async (pairing) => {
+        const exerciseA = await this.getExercise(pairing.exerciseAId);
+        const exerciseB = await this.getExercise(pairing.exerciseBId);
+        
+        return {
+          ...pairing,
+          exerciseA,
+          exerciseB
+        };
+      })
+    );
+    
+    return pairingsWithExercises;
+  }
+
+  async createTrainerPairing(pairingData: {
+    exerciseAId: number;
+    exerciseBId: number;
+    pairingType: string;
+    notes?: string;
+    trainerApproved: boolean;
+    approvedBy: string;
+  }): Promise<any> {
+    // Calculate compatibility score based on exercises
+    const exerciseA = await this.getExercise(pairingData.exerciseAId);
+    const exerciseB = await this.getExercise(pairingData.exerciseBId);
+    
+    if (!exerciseA || !exerciseB) {
+      throw new Error("Invalid exercise IDs");
+    }
+    
+    const compatibilityScore = this.calculateCompatibilityScore(exerciseA, exerciseB);
+    const reasoning = this.generatePairingReasoning(exerciseA, exerciseB);
+    
+    const [pairing] = await db
+      .insert(exercisePairings)
+      .values({
+        ...pairingData,
+        compatibilityScore,
+        reasoning
+      })
+      .returning();
+    
+    return pairing;
+  }
+
+  async updateTrainerPairing(pairingId: number, updates: any): Promise<any> {
+    const [pairing] = await db
+      .update(exercisePairings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(exercisePairings.id, pairingId))
+      .returning();
+    
+    return pairing;
+  }
+
+  async deleteTrainerPairing(pairingId: number): Promise<boolean> {
+    try {
+      const result = await db
+        .delete(exercisePairings)
+        .where(eq(exercisePairings.id, pairingId))
+        .returning();
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting trainer pairing:", error);
+      return false;
+    }
+  }
+
+  private calculateCompatibilityScore(exerciseA: Exercise, exerciseB: Exercise): number {
+    let score = 50; // Base score
+    
+    // Opposing movement patterns get higher score
+    if (this.isOpposingMovementPattern(exerciseA.movementPattern, exerciseB.movementPattern)) {
+      score += 30;
+    }
+    
+    // Same equipment gets bonus for efficiency
+    if (exerciseA.equipment === exerciseB.equipment) {
+      score += 15;
+    }
+    
+    // Different muscle groups get bonus
+    if (!this.hasMuscleOverlap(exerciseA.primaryMuscleGroup, exerciseB.primaryMuscleGroup)) {
+      score += 15;
+    }
+    
+    return Math.min(score, 100);
+  }
+
+  private generatePairingReasoning(exerciseA: Exercise, exerciseB: Exercise): string[] {
+    const reasons = [];
+    
+    if (this.isOpposingMovementPattern(exerciseA.movementPattern, exerciseB.movementPattern)) {
+      reasons.push("Opposing movement patterns for balanced training");
+    }
+    
+    if (exerciseA.equipment === exerciseB.equipment) {
+      reasons.push("Same equipment for efficient transitions");
+    }
+    
+    if (!this.hasMuscleOverlap(exerciseA.primaryMuscleGroup, exerciseB.primaryMuscleGroup)) {
+      reasons.push("Different muscle groups allow for active recovery");
+    }
+    
+    return reasons;
+  }
+
+  private isOpposingMovementPattern(patternA: string, patternB: string): boolean {
+    const opposingPairs = [
+      ["push", "pull"],
+      ["squat", "hinge"],
+      ["horizontal", "vertical"]
+    ];
+    
+    return opposingPairs.some(pair => 
+      (patternA.includes(pair[0]) && patternB.includes(pair[1])) ||
+      (patternA.includes(pair[1]) && patternB.includes(pair[0]))
+    );
+  }
+
+  private hasMuscleOverlap(muscleA: string, muscleB: string): boolean {
+    return muscleA.toLowerCase() === muscleB.toLowerCase();
+  }
+
+  async getTrainerApprovedPairingsByExercise(exerciseId: number): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(exercisePairings)
+      .where(and(
+        eq(exercisePairings.exerciseAId, exerciseId), 
+        eq(exercisePairings.trainerApproved, true)
+      ));
+    
+    return results;
+  }
+
   // Super Sets implementation
   async createSuperSet(superSetData: InsertSuperSet): Promise<SuperSet> {
     const [superSet] = await db

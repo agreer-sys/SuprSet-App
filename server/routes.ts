@@ -258,6 +258,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Trainer pairs management endpoints
+  app.get('/api/trainer-pairs', isAuthenticated, async (req: any, res) => {
+    try {
+      const pairings = await storage.getTrainerApprovedPairs();
+      res.json(pairings);
+    } catch (error) {
+      console.error("Error fetching trainer pairs:", error);
+      res.status(500).json({ message: "Failed to fetch trainer pairs" });
+    }
+  });
+
+  app.post('/api/trainer-pairs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const pairingData = {
+        ...req.body,
+        approvedBy: userId
+      };
+      
+      const pairing = await storage.createTrainerPairing(pairingData);
+      res.json(pairing);
+    } catch (error) {
+      console.error("Error creating trainer pairing:", error);
+      res.status(500).json({ message: "Failed to create trainer pairing" });
+    }
+  });
+
+  app.patch('/api/trainer-pairs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const pairingId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const pairing = await storage.updateTrainerPairing(pairingId, updates);
+      res.json(pairing);
+    } catch (error) {
+      console.error("Error updating trainer pairing:", error);
+      res.status(500).json({ message: "Failed to update trainer pairing" });
+    }
+  });
+
+  app.delete('/api/trainer-pairs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const pairingId = parseInt(req.params.id);
+      const success = await storage.deleteTrainerPairing(pairingId);
+      
+      if (success) {
+        res.json({ message: "Trainer pairing deleted successfully" });
+      } else {
+        res.status(404).json({ message: "Trainer pairing not found" });
+      }
+    } catch (error) {
+      console.error("Error deleting trainer pairing:", error);
+      res.status(500).json({ message: "Failed to delete trainer pairing" });
+    }
+  });
+
   // Training data export endpoints for AI model development
   app.get('/api/training/export', isAuthenticated, async (req: any, res) => {
     try {

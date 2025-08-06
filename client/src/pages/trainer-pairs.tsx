@@ -1,0 +1,438 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  Search, Plus, CheckCircle, XCircle, Edit, Trash2, 
+  Filter, ArrowRight, Dumbbell, Target
+} from "lucide-react";
+import type { Exercise } from "@shared/schema";
+
+interface TrainerPairing {
+  id: number;
+  exerciseAId: number;
+  exerciseBId: number;
+  exerciseA: Exercise;
+  exerciseB: Exercise;
+  compatibilityScore: number;
+  reasoning: string[];
+  trainerApproved: boolean;
+  pairingType?: string;
+  notes?: string;
+  approvedBy?: string;
+  createdAt: string;
+}
+
+export default function TrainerPairs() {
+  const [searchA, setSearchA] = useState("");
+  const [searchB, setSearchB] = useState("");
+  const [selectedExerciseA, setSelectedExerciseA] = useState<Exercise | null>(null);
+  const [selectedExerciseB, setSelectedExerciseB] = useState<Exercise | null>(null);
+  const [pairingType, setPairingType] = useState("");
+  const [notes, setNotes] = useState("");
+  const [filterApproved, setFilterApproved] = useState<boolean | null>(null);
+  const [editingPairing, setEditingPairing] = useState<TrainerPairing | null>(null);
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Get all exercises for selection
+  const { data: exercises = [] } = useQuery<Exercise[]>({
+    queryKey: ['/api/exercises'],
+  });
+
+  // Get trainer pairings
+  const { data: pairings = [], isLoading } = useQuery<TrainerPairing[]>({
+    queryKey: ['/api/trainer-pairs'],
+  });
+
+  // Create pairing mutation
+  const createPairingMutation = useMutation({
+    mutationFn: async (pairingData: {
+      exerciseAId: number;
+      exerciseBId: number;
+      pairingType: string;
+      notes?: string;
+      trainerApproved: boolean;
+    }) => {
+      return await apiRequest('/api/trainer-pairs', 'POST', pairingData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trainer-pairs'] });
+      toast({
+        title: "Success",
+        description: "Trainer pairing created successfully",
+      });
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create pairing",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Update pairing mutation
+  const updatePairingMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: number, updates: Partial<TrainerPairing> }) => {
+      return await apiRequest(`/api/trainer-pairs/${id}`, 'PATCH', updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trainer-pairs'] });
+      toast({
+        title: "Success",
+        description: "Trainer pairing updated successfully",
+      });
+      setEditingPairing(null);
+    }
+  });
+
+  // Delete pairing mutation
+  const deletePairingMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/trainer-pairs/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trainer-pairs'] });
+      toast({
+        title: "Success",
+        description: "Trainer pairing deleted successfully",
+      });
+    }
+  });
+
+  const filteredExercisesA = exercises.filter(e => 
+    e.name.toLowerCase().includes(searchA.toLowerCase())
+  ).slice(0, 8);
+
+  const filteredExercisesB = exercises.filter(e => 
+    e.name.toLowerCase().includes(searchB.toLowerCase()) && 
+    e.id !== selectedExerciseA?.id
+  ).slice(0, 8);
+
+  const filteredPairings = pairings.filter(p => {
+    if (filterApproved === null) return true;
+    return p.trainerApproved === filterApproved;
+  });
+
+  const resetForm = () => {
+    setSelectedExerciseA(null);
+    setSelectedExerciseB(null);
+    setPairingType("");
+    setNotes("");
+    setSearchA("");
+    setSearchB("");
+  };
+
+  const handleCreatePairing = () => {
+    if (!selectedExerciseA || !selectedExerciseB || !pairingType) {
+      toast({
+        title: "Missing Information",
+        description: "Please select both exercises and a pairing type",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createPairingMutation.mutate({
+      exerciseAId: selectedExerciseA.id,
+      exerciseBId: selectedExerciseB.id,
+      pairingType,
+      notes,
+      trainerApproved: true
+    });
+  };
+
+  const toggleApproval = (pairing: TrainerPairing) => {
+    updatePairingMutation.mutate({
+      id: pairing.id,
+      updates: { trainerApproved: !pairing.trainerApproved }
+    });
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Trainer-Approved Exercise Pairs</h1>
+        <p className="text-muted-foreground">
+          Manage the curated list of professional exercise pairings for Trainer Mode recommendations
+        </p>
+      </div>
+
+      {/* Create New Pairing */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5" />
+            Create New Trainer Pairing
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Exercise A Selection */}
+            <div className="space-y-3">
+              <Label>First Exercise</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search for first exercise..."
+                  value={searchA}
+                  onChange={(e) => setSearchA(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              
+              {selectedExerciseA ? (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium">{selectedExerciseA.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedExerciseA.equipment} • {selectedExerciseA.primaryMuscleGroup}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedExerciseA(null)}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {filteredExercisesA.map(exercise => (
+                    <Button
+                      key={exercise.id}
+                      variant="outline"
+                      className="w-full justify-start h-auto p-3"
+                      onClick={() => {
+                        setSelectedExerciseA(exercise);
+                        setSearchA("");
+                      }}
+                    >
+                      <div className="text-left">
+                        <p className="font-medium">{exercise.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {exercise.equipment} • {exercise.primaryMuscleGroup}
+                        </p>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Exercise B Selection */}
+            <div className="space-y-3">
+              <Label>Second Exercise</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search for second exercise..."
+                  value={searchB}
+                  onChange={(e) => setSearchB(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              
+              {selectedExerciseB ? (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium">{selectedExerciseB.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedExerciseB.equipment} • {selectedExerciseB.primaryMuscleGroup}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedExerciseB(null)}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {filteredExercisesB.map(exercise => (
+                    <Button
+                      key={exercise.id}
+                      variant="outline"
+                      className="w-full justify-start h-auto p-3"
+                      onClick={() => {
+                        setSelectedExerciseB(exercise);
+                        setSearchB("");
+                      }}
+                    >
+                      <div className="text-left">
+                        <p className="font-medium">{exercise.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {exercise.equipment} • {exercise.primaryMuscleGroup}
+                        </p>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Pairing Configuration */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Pairing Type</Label>
+              <Select value={pairingType} onValueChange={setPairingType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select pairing type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="push_pull">Push/Pull Antagonist</SelectItem>
+                  <SelectItem value="squat_hinge">Squat/Hinge Antagonist</SelectItem>
+                  <SelectItem value="upper_lower">Upper/Lower Split</SelectItem>
+                  <SelectItem value="compound_isolation">Compound + Isolation</SelectItem>
+                  <SelectItem value="same_equipment">Same Equipment</SelectItem>
+                  <SelectItem value="time_efficient">Time Efficient</SelectItem>
+                  <SelectItem value="custom">Custom Pairing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Notes (Optional)</Label>
+              <Textarea
+                placeholder="Why is this a good pairing?"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <Button 
+            onClick={handleCreatePairing}
+            disabled={createPairingMutation.isPending || !selectedExerciseA || !selectedExerciseB || !pairingType}
+            className="w-full"
+          >
+            {createPairingMutation.isPending ? "Creating..." : "Create Trainer Pairing"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Existing Pairings */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Existing Trainer Pairings ({filteredPairings.length})</CardTitle>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4" />
+                <Select 
+                  value={filterApproved === null ? "all" : filterApproved.toString()} 
+                  onValueChange={(value) => setFilterApproved(value === "all" ? null : value === "true")}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="true">Approved</SelectItem>
+                    <SelectItem value="false">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-8">Loading pairings...</div>
+          ) : filteredPairings.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No trainer pairings found. Create your first pairing above.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredPairings.map((pairing) => (
+                <div 
+                  key={pairing.id}
+                  className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{pairing.exerciseA?.name || `Exercise ${pairing.exerciseAId}`}</Badge>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <Badge variant="outline">{pairing.exerciseB?.name || `Exercise ${pairing.exerciseBId}`}</Badge>
+                      </div>
+                      <Badge variant={pairing.trainerApproved ? "default" : "secondary"}>
+                        {pairing.trainerApproved ? "Approved" : "Pending"}
+                      </Badge>
+                      {pairing.pairingType && (
+                        <Badge variant="outline">{pairing.pairingType}</Badge>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={pairing.trainerApproved ? "outline" : "default"}
+                        size="sm"
+                        onClick={() => toggleApproval(pairing)}
+                        disabled={updatePairingMutation.isPending}
+                      >
+                        {pairing.trainerApproved ? (
+                          <>
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Unapprove
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deletePairingMutation.mutate(pairing.id)}
+                        disabled={deletePairingMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {pairing.notes && (
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {pairing.notes}
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Score: {pairing.compatibilityScore}</span>
+                    <span>{new Date(pairing.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

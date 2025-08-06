@@ -12,6 +12,7 @@ import BatchContribute from "@/pages/batch-contribute";
 import SuperSets from "@/pages/supersets";
 import Workouts from "@/pages/workouts";
 import WorkoutSession from "@/pages/workout-session";
+import TrainerPairs from "@/pages/trainer-pairs";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/supersets" component={SuperSets} />
       <Route path="/workouts" component={Workouts} />
       <Route path="/workout-session" component={WorkoutSession} />
+      <Route path="/trainer-pairs" component={TrainerPairs} />
       <Route component={NotFound} />
     </Switch>
   );

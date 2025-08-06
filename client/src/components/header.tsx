@@ -61,6 +61,16 @@ export default function Header() {
                     Workouts
                   </Button>
                 </Link>
+                <Link href="/trainer-pairs">
+                  <Button 
+                    variant={location === "/trainer-pairs" ? "default" : "ghost"} 
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Dumbbell className="h-4 w-4" />
+                    Trainer Pairs
+                  </Button>
+                </Link>
               </>
             )}
             
