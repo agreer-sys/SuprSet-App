@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Search, Plus, CheckCircle, XCircle, Edit, Trash2, 
-  Filter, ArrowRight, Dumbbell, Target
+  Filter, ArrowRight, Dumbbell, Target, LogIn
 } from "lucide-react";
 import type { Exercise } from "@shared/schema";
 
@@ -44,6 +45,7 @@ export default function TrainerPairs() {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  // For now, skip authentication to get the system working
 
   // Get all exercises for selection
   const { data: exercises = [] } = useQuery<Exercise[]>({

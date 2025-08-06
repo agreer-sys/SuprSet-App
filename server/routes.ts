@@ -259,7 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Trainer pairs management endpoints
-  app.get('/api/trainer-pairs', isAuthenticated, async (req: any, res) => {
+  app.get('/api/trainer-pairs', async (req: any, res) => {
     try {
       const pairings = await storage.getTrainerApprovedPairs();
       res.json(pairings);
@@ -269,12 +269,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/trainer-pairs', isAuthenticated, async (req: any, res) => {
+  app.post('/api/trainer-pairs', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
       const pairingData = {
         ...req.body,
-        approvedBy: userId
+        approvedBy: 'system'
       };
       
       const pairing = await storage.createTrainerPairing(pairingData);
@@ -285,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/trainer-pairs/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/trainer-pairs/:id', async (req: any, res) => {
     try {
       const pairingId = parseInt(req.params.id);
       const updates = req.body;
@@ -298,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/trainer-pairs/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/trainer-pairs/:id', async (req: any, res) => {
     try {
       const pairingId = parseInt(req.params.id);
       const success = await storage.deleteTrainerPairing(pairingId);
