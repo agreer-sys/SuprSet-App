@@ -32,20 +32,17 @@ export function getSession() {
     tableName: "sessions",
   });
   
-  const isProduction = process.env.NODE_ENV === "production";
-  
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
-    resave: false,
-    saveUninitialized: true, // Allow uninitialized sessions for OIDC state
+    resave: true,
+    saveUninitialized: true,
     cookie: {
       httpOnly: true,
-      secure: isProduction,
+      secure: false, // Disable secure for development
       maxAge: sessionTtl,
       sameSite: 'lax'
     },
-    rolling: true, // Extend session on activity
   });
 }
 
@@ -97,8 +94,6 @@ export async function setupAuth(app: Express) {
         config,
         scope: "openid email profile offline_access",
         callbackURL: `https://${domain}/api/callback`,
-        state: true, // Enable state verification
-        nonce: true, // Enable nonce verification
       },
       verify,
     );
@@ -109,19 +104,25 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    // If user is already authenticated, redirect to home
+    console.log("Login attempt, hostname:", req.hostname);
+    console.log("Session ID:", req.sessionID);
+    console.log("Is authenticated:", req.isAuthenticated());
+    
     if (req.isAuthenticated()) {
       return res.redirect("/");
     }
     
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "select_account", // Allow account selection instead of forcing login
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
+    passport.authenticate(`replitauth:${req.hostname}`)(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
+    console.log("Callback received, hostname:", req.hostname);
+    console.log("Session ID:", req.sessionID);
+    console.log("Query params:", req.query);
+    
     passport.authenticate(`replitauth:${req.hostname}`, (err, user, info) => {
+      console.log("Auth result - err:", err, "user:", !!user, "info:", info);
+      
       if (err) {
         console.error("Authentication error:", err);
         return res.redirect("/?error=auth_failed");
@@ -138,6 +139,7 @@ export async function setupAuth(app: Express) {
           return res.redirect("/?error=login_failed");
         }
         
+        console.log("Successfully logged in user");
         return res.redirect("/");
       });
     })(req, res, next);
