@@ -38,12 +38,13 @@ export function getSession() {
     resave: false,
     saveUninitialized: true,
     cookie: {
-      httpOnly: true,
+      httpOnly: false, // Allow client-side access for debugging
       secure: false,
       maxAge: sessionTtl,
-      sameSite: 'none' // More permissive for OIDC
+      sameSite: 'lax' // More compatible with Replit preview
     },
-    name: 'suprset.sid', // Custom session name
+    name: 'connect.sid', // Use default session name
+    proxy: true, // Trust proxy headers
   });
 }
 
@@ -70,8 +71,9 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
-  app.use(getSession());
+  app.set("trust proxy", true); // Trust all proxies for Replit
+  const sessionMiddleware = getSession();
+  app.use(sessionMiddleware);
   app.use(passport.initialize());
   app.use(passport.session());
 
