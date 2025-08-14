@@ -39,6 +39,17 @@ export default function Header() {
               </Button>
             </Link>
             
+            <Link href="/trainer-pairs">
+              <Button 
+                variant={location === "/trainer-pairs" ? "default" : "ghost"} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Dumbbell className="h-4 w-4" />
+                Trainer Pairs
+              </Button>
+            </Link>
+            
             {isAuthenticated && (
               <>
                 <Link href="/supersets">
@@ -59,16 +70,6 @@ export default function Header() {
                   >
                     <Home className="h-4 w-4" />
                     Workouts
-                  </Button>
-                </Link>
-                <Link href="/trainer-pairs">
-                  <Button 
-                    variant={location === "/trainer-pairs" ? "default" : "ghost"} 
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Dumbbell className="h-4 w-4" />
-                    Trainer Pairs
                   </Button>
                 </Link>
               </>
@@ -179,6 +180,18 @@ export default function Header() {
                 >
                   <Camera className="h-4 w-4" />
                   Gym Mapping
+                </Button>
+              </Link>
+              
+              <Link href="/trainer-pairs">
+                <Button 
+                  variant={location === "/trainer-pairs" ? "default" : "ghost"} 
+                  size="sm"
+                  className="w-full justify-start gap-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Dumbbell className="h-4 w-4" />
+                  Trainer Pairs
                 </Button>
               </Link>
               
