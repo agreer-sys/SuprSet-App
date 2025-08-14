@@ -38,13 +38,14 @@ export function getSession() {
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true, // Allow uninitialized sessions for OIDC state
     cookie: {
       httpOnly: true,
-      secure: isProduction, // Only secure in production
+      secure: isProduction,
       maxAge: sessionTtl,
       sameSite: 'lax'
     },
+    rolling: true, // Extend session on activity
   });
 }
 
@@ -96,6 +97,8 @@ export async function setupAuth(app: Express) {
         config,
         scope: "openid email profile offline_access",
         callbackURL: `https://${domain}/api/callback`,
+        state: true, // Enable state verification
+        nonce: true, // Enable nonce verification
       },
       verify,
     );
