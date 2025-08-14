@@ -142,7 +142,7 @@ export default function TrainerPairs() {
     });
     
   // Get unique pairing types for filter
-  const pairingTypes = [...new Set(pairings.map(p => p.pairingType).filter(Boolean))];
+  const pairingTypes = Array.from(new Set(pairings.map(p => p.pairingType).filter((type): type is string => Boolean(type))));
   
   // Analytics stats
   const stats = {
