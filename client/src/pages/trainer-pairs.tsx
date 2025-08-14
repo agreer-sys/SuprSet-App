@@ -433,14 +433,14 @@ export default function TrainerPairs() {
               {/* Type Filter */}
               {pairingTypes.length > 0 && (
                 <Select 
-                  value={filterPairingType} 
-                  onValueChange={setFilterPairingType}
+                  value={filterPairingType || "all_types"} 
+                  onValueChange={(value) => setFilterPairingType(value === "all_types" ? "" : value)}
                 >
                   <SelectTrigger className="w-36">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="all_types">All Types</SelectItem>
                     {pairingTypes.map(type => (
                       <SelectItem key={type} value={type}>{type}</SelectItem>
                     ))}
