@@ -42,6 +42,8 @@ export default function TrainerPairs() {
   const [notes, setNotes] = useState("");
   const [filterApproved, setFilterApproved] = useState<boolean | null>(null);
   const [editingPairing, setEditingPairing] = useState<TrainerPairing | null>(null);
+  const [filterPairingType, setFilterPairingType] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "score">("newest");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -123,10 +125,35 @@ export default function TrainerPairs() {
     e.id !== selectedExerciseA?.id
   ).slice(0, 8);
 
-  const filteredPairings = pairings.filter(p => {
-    if (filterApproved === null) return true;
-    return p.trainerApproved === filterApproved;
-  });
+  // Enhanced filtering and sorting
+  const filteredPairings = pairings
+    .filter(pairing => {
+      if (filterApproved !== null && pairing.trainerApproved !== filterApproved) return false;
+      if (filterPairingType && pairing.pairingType !== filterPairingType) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "newest": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "oldest": return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case "score": return b.compatibilityScore - a.compatibilityScore;
+        default: return 0;
+      }
+    });
+    
+  // Get unique pairing types for filter
+  const pairingTypes = [...new Set(pairings.map(p => p.pairingType).filter(Boolean))];
+  
+  // Analytics stats
+  const stats = {
+    total: pairings.length,
+    approved: pairings.filter(p => p.trainerApproved).length,
+    byType: pairingTypes.reduce((acc, type) => {
+      acc[type] = pairings.filter(p => p.pairingType === type).length;
+      return acc;
+    }, {} as Record<string, number>),
+    avgScore: pairings.length > 0 ? (pairings.reduce((sum, p) => sum + p.compatibilityScore, 0) / pairings.length).toFixed(1) : "0"
+  };
 
   const resetForm = () => {
     setSelectedExerciseA(null);
@@ -334,12 +361,58 @@ export default function TrainerPairs() {
         </CardContent>
       </Card>
 
+      {/* Analytics Stats */}
+      {pairings.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Trainer Pairs Analytics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+                <div className="text-sm text-muted-foreground">Total Pairs</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
+                <div className="text-sm text-muted-foreground">Approved</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">{stats.total - stats.approved}</div>
+                <div className="text-sm text-muted-foreground">Pending</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{stats.avgScore}</div>
+                <div className="text-sm text-muted-foreground">Avg Score</div>
+              </div>
+            </div>
+            
+            {Object.keys(stats.byType).length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <div className="text-sm font-medium mb-2">By Pairing Type:</div>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(stats.byType).map(([type, count]) => (
+                    <Badge key={type} variant="outline" className="text-xs">
+                      {type}: {count}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Existing Pairings */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <CardTitle>Existing Trainer Pairings ({filteredPairings.length})</CardTitle>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Approval Filter */}
               <div className="flex items-center space-x-2">
                 <Filter className="h-4 w-4" />
                 <Select 
@@ -356,6 +429,36 @@ export default function TrainerPairs() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Type Filter */}
+              {pairingTypes.length > 0 && (
+                <Select 
+                  value={filterPairingType} 
+                  onValueChange={setFilterPairingType}
+                >
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Types</SelectItem>
+                    {pairingTypes.map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {/* Sort Filter */}
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="oldest">Oldest</SelectItem>
+                  <SelectItem value="score">Best Score</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
