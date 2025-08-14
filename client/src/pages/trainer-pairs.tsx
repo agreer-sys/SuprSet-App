@@ -14,8 +14,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Search, Plus, CheckCircle, XCircle, Edit, Trash2, 
-  Filter, ArrowRight, Dumbbell, Target, LogIn
+  Filter, ArrowRight, Dumbbell, Target, LogIn, Home, Menu
 } from "lucide-react";
+import { Link } from "wouter";
 import type { Exercise } from "@shared/schema";
 
 interface TrainerPairing {
@@ -44,6 +45,14 @@ export default function TrainerPairs() {
   const [editingPairing, setEditingPairing] = useState<TrainerPairing | null>(null);
   const [filterPairingType, setFilterPairingType] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "score">("newest");
+  
+  // Advanced filtering for exercise selection
+  const [categoryFilterA, setCategoryFilterA] = useState("");
+  const [equipmentFilterA, setEquipmentFilterA] = useState("");
+  const [muscleGroupFilterA, setMuscleGroupFilterA] = useState("");
+  const [categoryFilterB, setCategoryFilterB] = useState("");
+  const [equipmentFilterB, setEquipmentFilterB] = useState("");
+  const [muscleGroupFilterB, setMuscleGroupFilterB] = useState("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -52,6 +61,19 @@ export default function TrainerPairs() {
   // Get all exercises for selection
   const { data: exercises = [] } = useQuery<Exercise[]>({
     queryKey: ['/api/exercises'],
+  });
+
+  // Get filter options
+  const { data: categories = [] } = useQuery<string[]>({
+    queryKey: ['/api/exercises/categories'],
+  });
+
+  const { data: equipment = [] } = useQuery<string[]>({
+    queryKey: ['/api/exercises/equipment'],
+  });
+
+  const { data: muscleGroups = [] } = useQuery<string[]>({
+    queryKey: ['/api/exercises/muscle-groups'],
   });
 
   // Get trainer pairings
@@ -116,14 +138,42 @@ export default function TrainerPairs() {
     }
   });
 
-  const filteredExercisesA = exercises.filter(e => 
-    e.name.toLowerCase().includes(searchA.toLowerCase())
-  ).slice(0, 8);
+  // Enhanced exercise filtering for Exercise A
+  const filteredExercisesA = exercises.filter(e => {
+    // Search term filter
+    if (searchA && !e.name.toLowerCase().includes(searchA.toLowerCase())) return false;
+    
+    // Category filter
+    if (categoryFilterA && categoryFilterA !== "all_categories" && e.exerciseType !== categoryFilterA) return false;
+    
+    // Equipment filter  
+    if (equipmentFilterA && equipmentFilterA !== "all_equipment" && !e.equipment.toLowerCase().includes(equipmentFilterA.toLowerCase())) return false;
+    
+    // Muscle group filter
+    if (muscleGroupFilterA && muscleGroupFilterA !== "all_muscles" && e.primaryMuscleGroup !== muscleGroupFilterA) return false;
+    
+    return true;
+  }).slice(0, 12);
 
-  const filteredExercisesB = exercises.filter(e => 
-    e.name.toLowerCase().includes(searchB.toLowerCase()) && 
-    e.id !== selectedExerciseA?.id
-  ).slice(0, 8);
+  // Enhanced exercise filtering for Exercise B
+  const filteredExercisesB = exercises.filter(e => {
+    // Exclude selected Exercise A
+    if (selectedExerciseA && e.id === selectedExerciseA.id) return false;
+    
+    // Search term filter
+    if (searchB && !e.name.toLowerCase().includes(searchB.toLowerCase())) return false;
+    
+    // Category filter
+    if (categoryFilterB && categoryFilterB !== "all_categories" && e.exerciseType !== categoryFilterB) return false;
+    
+    // Equipment filter
+    if (equipmentFilterB && equipmentFilterB !== "all_equipment" && !e.equipment.toLowerCase().includes(equipmentFilterB.toLowerCase())) return false;
+    
+    // Muscle group filter
+    if (muscleGroupFilterB && muscleGroupFilterB !== "all_muscles" && e.primaryMuscleGroup !== muscleGroupFilterB) return false;
+    
+    return true;
+  }).slice(0, 12);
 
   // Enhanced filtering and sorting
   const filteredPairings = pairings
@@ -162,6 +212,27 @@ export default function TrainerPairs() {
     setNotes("");
     setSearchA("");
     setSearchB("");
+    // Reset advanced filters
+    setCategoryFilterA("");
+    setEquipmentFilterA("");
+    setMuscleGroupFilterA("");
+    setCategoryFilterB("");
+    setEquipmentFilterB("");
+    setMuscleGroupFilterB("");
+  };
+  
+  const clearFiltersA = () => {
+    setSearchA("");
+    setCategoryFilterA("");
+    setEquipmentFilterA("");
+    setMuscleGroupFilterA("");
+  };
+  
+  const clearFiltersB = () => {
+    setSearchB("");
+    setCategoryFilterB("");
+    setEquipmentFilterB("");
+    setMuscleGroupFilterB("");
   };
 
   const handleCreatePairing = () => {
@@ -191,15 +262,45 @@ export default function TrainerPairs() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Trainer-Approved Exercise Pairs</h1>
-        <p className="text-muted-foreground">
-          Manage the curated list of professional exercise pairings for Trainer Mode recommendations
-        </p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200 mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Dumbbell className="text-primary-foreground w-4 h-4" />
+              </div>
+              <h1 className="text-xl font-bold text-gray-900">SuprSet</h1>
+            </div>
+            
+            <nav className="flex items-center space-x-4">
+              <Link href="/">
+                <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                  <Home className="h-4 w-4" />
+                  Home
+                </Button>
+              </Link>
+              <Link href="/supersets">
+                <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Super Sets
+                </Button>
+              </Link>
+            </nav>
+          </div>
+        </div>
       </div>
 
-      {/* Create New Pairing */}
+      <div className="container mx-auto px-4 py-0 max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Trainer-Approved Exercise Pairs</h1>
+          <p className="text-muted-foreground">
+            Manage the curated list of professional exercise pairings for Trainer Mode recommendations
+          </p>
+        </div>
+
+        {/* Create New Pairing */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -212,6 +313,51 @@ export default function TrainerPairs() {
             {/* Exercise A Selection */}
             <div className="space-y-3">
               <Label>First Exercise</Label>
+              
+              {/* Advanced Filters for Exercise A */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 grid grid-cols-3 gap-2">
+                  <Select value={categoryFilterA || "all_categories"} onValueChange={(value) => setCategoryFilterA(value === "all_categories" ? "" : value)}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_categories">All Categories</SelectItem>
+                      {categories.map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={equipmentFilterA || "all_equipment"} onValueChange={(value) => setEquipmentFilterA(value === "all_equipment" ? "" : value)}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Equipment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_equipment">All Equipment</SelectItem>
+                      {equipment.map(eq => (
+                        <SelectItem key={eq} value={eq}>{eq}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={muscleGroupFilterA || "all_muscles"} onValueChange={(value) => setMuscleGroupFilterA(value === "all_muscles" ? "" : value)}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Muscle Group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_muscles">All Muscles</SelectItem>
+                      {muscleGroups.map(muscle => (
+                        <SelectItem key={muscle} value={muscle}>{muscle}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button variant="ghost" size="sm" onClick={clearFiltersA} className="text-xs px-2">
+                  Clear
+                </Button>
+              </div>
+              
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -267,6 +413,51 @@ export default function TrainerPairs() {
             {/* Exercise B Selection */}
             <div className="space-y-3">
               <Label>Second Exercise</Label>
+              
+              {/* Advanced Filters for Exercise B */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 grid grid-cols-3 gap-2">
+                  <Select value={categoryFilterB || "all_categories"} onValueChange={(value) => setCategoryFilterB(value === "all_categories" ? "" : value)}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_categories">All Categories</SelectItem>
+                      {categories.map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={equipmentFilterB || "all_equipment"} onValueChange={(value) => setEquipmentFilterB(value === "all_equipment" ? "" : value)}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Equipment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_equipment">All Equipment</SelectItem>
+                      {equipment.map(eq => (
+                        <SelectItem key={eq} value={eq}>{eq}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={muscleGroupFilterB || "all_muscles"} onValueChange={(value) => setMuscleGroupFilterB(value === "all_muscles" ? "" : value)}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Muscle Group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_muscles">All Muscles</SelectItem>
+                      {muscleGroups.map(muscle => (
+                        <SelectItem key={muscle} value={muscle}>{muscle}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button variant="ghost" size="sm" onClick={clearFiltersB} className="text-xs px-2">
+                  Clear
+                </Button>
+              </div>
+              
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -538,6 +729,7 @@ export default function TrainerPairs() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
