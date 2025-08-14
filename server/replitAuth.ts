@@ -106,16 +106,37 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
+    // If user is already authenticated, redirect to home
+    if (req.isAuthenticated()) {
+      return res.redirect("/");
+    }
+    
     passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
+      prompt: "select_account", // Allow account selection instead of forcing login
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+    passport.authenticate(`replitauth:${req.hostname}`, (err, user, info) => {
+      if (err) {
+        console.error("Authentication error:", err);
+        return res.redirect("/?error=auth_failed");
+      }
+      
+      if (!user) {
+        console.log("Authentication failed:", info);
+        return res.redirect("/?error=auth_failed");
+      }
+      
+      req.logIn(user, (err) => {
+        if (err) {
+          console.error("Login error:", err);
+          return res.redirect("/?error=login_failed");
+        }
+        
+        return res.redirect("/");
+      });
     })(req, res, next);
   });
 
