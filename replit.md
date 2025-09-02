@@ -14,7 +14,7 @@ SuprSet is a React-based web application designed to provide intelligent exercis
 - **Improved Navigation**: Integrated header navigation in trainer pairs page with Home and Super Sets links for seamless app navigation
 - **User Experience Enhancements**: Added individual clear buttons for filter sections, increased exercise search results to 12 items, mobile-responsive design
 - **Database Expansion**: Added 12 new tricep exercises, expanding from 194 to 206 total exercises with real-time Airtable sync
-- **Database Consolidation Plan**: Simplified muscle group structure from 38 to 9 primary categories (Back, Chest, Shoulders, Biceps, Triceps, Legs, Core, Posterior Chain, Accessory) with detailed secondary targeting
+- **Database Consolidation Plan**: Simplified muscle group structure from 38 to 10 primary categories (Back, Chest, Shoulders, Biceps, Triceps, Legs, Glutes, Core, Posterior Chain, Accessory) with detailed secondary targeting
 - **Authentication Status**: Authentication working on mobile but web preview shows 401 errors - temporarily deferred to focus on core functionality development
 
 ## System Architecture
@@ -42,7 +42,7 @@ The application follows a client-server architecture with a React frontend and a
 - **Airtable Service**: Handles API calls and data transformation for the exercise database.
 - **Exercise Schema**: Standardized interface from Airtable to application with 206 exercises across simplified muscle group structure.
 - **Caching Strategy**: 5-minute cache expiry for Airtable data with real-time sync for database updates.
-- **Muscle Group Consolidation**: Simplified from 38 specific targets to 9 primary categories (Back, Chest, Shoulders, Biceps, Triceps, Legs, Core, Posterior Chain, Accessory) with secondary muscle group detail for precise targeting.
+- **Muscle Group Consolidation**: Simplified from 38 specific targets to 10 primary categories (Back, Chest, Shoulders, Biceps, Triceps, Legs, Glutes, Core, Posterior Chain, Accessory) with secondary muscle group detail for precise targeting.
 
 **Recommendation System**
 - **Standard Mode**: 0-100 scoring algorithm for broad recommendations.
