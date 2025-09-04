@@ -1108,8 +1108,8 @@ function calculateCompatibilityScoreWithReasoning(exerciseA: Exercise, exerciseB
     }
   }
   
-  // 4. Enhanced Equipment Zone Efficiency (up to 35 points)
-  const { equipmentScore, equipmentReason } = calculateEquipmentZoneEfficiencyServer(exerciseA, exerciseB);
+  // 4. Enhanced Equipment Ecosystem Efficiency (up to 40 points with quality bonus)
+  const { equipmentScore, equipmentReason } = calculateEquipmentEcosystemEfficiencyServer(exerciseA, exerciseB);
   score += equipmentScore;
   if (equipmentReason) {
     reasons.push(equipmentReason);
@@ -1181,40 +1181,48 @@ function isCompoundIsolationPair(exerciseA: any, exerciseB: any): boolean {
   return isACompound !== isBCompound;
 }
 
-// Enhanced Equipment Zone Efficiency System for Server
-function getEquipmentZoneServer(equipment: string): string {
+// Enhanced Equipment Ecosystem System for Server
+function getEquipmentEcosystemServer(equipment: string): { type: string; canSupport: string[] } {
   const equipment_lower = equipment.toLowerCase();
   
-  // Free Weight Zone
-  if (equipment_lower.includes('barbell') || equipment_lower.includes('dumbbell') || 
-      equipment_lower.includes('weight plate') || equipment_lower.includes('kettlebell') ||
-      equipment_lower.includes('ez-bar') || equipment_lower.includes('ez bar')) {
-    return 'free_weight';
+  // Multi-Exercise Hubs (High Superset Potential)
+  if (equipment_lower.includes('squat rack') || equipment_lower.includes('power rack') ||
+      equipment_lower.includes('rig') || equipment_lower.includes('rack')) {
+    return { type: 'rack_hub', canSupport: ['barbell', 'pullups', 'dumbbells', 'bodyweight', 'bands'] };
   }
   
-  // Cable/Machine Zone
-  if (equipment_lower.includes('cable') || equipment_lower.includes('machine') ||
-      equipment_lower.includes('smith') || equipment_lower.includes('pulldown') ||
-      equipment_lower.includes('press machine') || equipment_lower.includes('curl machine')) {
-    return 'cable_machine';
+  if ((equipment_lower.includes('bench') && equipment_lower.includes('barbell')) ||
+      equipment_lower.includes('olympic bench')) {
+    return { type: 'bench_barbell_hub', canSupport: ['barbell', 'dumbbells', 'bodyweight'] };
   }
   
-  // Bodyweight Zone
-  if (equipment_lower.includes('bodyweight') || equipment_lower.includes('pull-up') ||
-      equipment_lower.includes('dip bar') || equipment_lower.includes('mat') ||
-      equipment_lower === 'bodyweight' || equipment_lower.includes('wall')) {
-    return 'bodyweight';
+  if (equipment_lower.includes('cable')) {
+    return { type: 'cable_hub', canSupport: ['cable_variations', 'dumbbells', 'bodyweight', 'bands'] };
   }
   
-  // Functional Zone
-  if (equipment_lower.includes('resistance band') || equipment_lower.includes('medicine ball') ||
-      equipment_lower.includes('plyo') || equipment_lower.includes('trx') ||
-      equipment_lower.includes('suspension') || equipment_lower.includes('sled')) {
-    return 'functional';
+  // Single Equipment + Portable Additions
+  if (equipment_lower.includes('bench') && equipment_lower.includes('dumbbell')) {
+    return { type: 'bench_dumbbell', canSupport: ['dumbbells', 'bodyweight'] };
   }
   
-  // Default to functional for unknown equipment
-  return 'functional';
+  if (equipment_lower.includes('dumbbell') && !equipment_lower.includes('bench')) {
+    return { type: 'dumbbell_portable', canSupport: ['dumbbells', 'bodyweight', 'bands'] };
+  }
+  
+  // Fixed Single-Exercise Equipment
+  if (equipment_lower.includes('press machine') || equipment_lower.includes('leg press') ||
+      equipment_lower.includes('pulldown') || equipment_lower.includes('curl machine') ||
+      equipment_lower.includes('extension machine') || equipment_lower.includes('fly machine')) {
+    return { type: 'fixed_machine', canSupport: ['dumbbells', 'bodyweight', 'bands'] };
+  }
+  
+  // Bodyweight/Minimal Equipment
+  if (equipment_lower.includes('bodyweight') || equipment_lower === 'bodyweight') {
+    return { type: 'bodyweight', canSupport: ['bodyweight', 'bands', 'dumbbells'] };
+  }
+  
+  // Default to portable
+  return { type: 'portable', canSupport: ['bodyweight', 'bands'] };
 }
 
 function isPortableEquipmentServer(equipment: string): boolean {
@@ -1226,60 +1234,142 @@ function isPortableEquipmentServer(equipment: string): boolean {
          equipment_lower.includes('medicine ball');
 }
 
-function calculateEquipmentZoneEfficiencyServer(exerciseA: Exercise, exerciseB: Exercise): { equipmentScore: number; equipmentReason: string | null } {
-  const zoneA = getEquipmentZoneServer(exerciseA.equipment);
-  const zoneB = getEquipmentZoneServer(exerciseB.equipment);
+function getExerciseQualityScoreServer(equipment: string, exerciseType: string): number {
+  const equipment_lower = equipment.toLowerCase();
   
-  // Same zone = maximum efficiency (25 pts base)
-  if (zoneA === zoneB) {
-    let score = 25;
-    let reason = `Same zone (${zoneA.replace('_', ' ')}) for efficient transitions`;
-    
-    // Equipment synergy bonus (up to 10 pts)
-    if (exerciseA.equipment === exerciseB.equipment) {
-      score += 5; // Exact same equipment
-      reason = "Same equipment for seamless transitions";
-    }
-    
-    // Portable equipment bonus
-    if (isPortableEquipmentServer(exerciseA.equipment) || isPortableEquipmentServer(exerciseB.equipment)) {
-      score += 5; // Can move between zones
-      reason += " (portable equipment adds flexibility)";
-    }
-    
-    return { equipmentScore: Math.min(score, 35), equipmentReason: reason };
+  // Premium exercise quality (full range of motion, optimal setup)
+  if (equipment_lower.includes('barbell') || equipment_lower.includes('dumbbell') ||
+      equipment_lower.includes('cable')) {
+    return 5; // High quality strength exercises (max 5 pts bonus)
   }
   
-  // Adjacent zones (15 pts)
-  const adjacentPairs = [
-    ['free_weight', 'cable_machine'],
-    ['free_weight', 'bodyweight'],
-    ['cable_machine', 'functional'],
-    ['bodyweight', 'functional']
-  ];
-  
-  const isAdjacent = adjacentPairs.some(pair => 
-    (pair[0] === zoneA && pair[1] === zoneB) ||
-    (pair[1] === zoneA && pair[0] === zoneB)
-  );
-  
-  if (isAdjacent) {
-    let score = 15;
-    let reason = "Adjacent zones allow moderate transitions";
-    
-    // Portable equipment reduces transition penalty
-    if (isPortableEquipmentServer(exerciseA.equipment) || isPortableEquipmentServer(exerciseB.equipment)) {
-      score += 5;
-      reason += " (portable equipment reduces transition time)";
-    }
-    
-    return { equipmentScore: score, equipmentReason: reason };
+  // Excellent bodyweight exercises (full range, proven effectiveness)
+  if (equipment_lower.includes('bodyweight') && 
+      (exerciseType?.toLowerCase().includes('push') || exerciseType?.toLowerCase().includes('pull'))) {
+    return 4; // Push-ups, pull-ups are excellent
   }
   
-  // Cross-gym zones (5 pts)
+  // Good bodyweight exercises
+  if (equipment_lower.includes('bodyweight')) {
+    return 3; // Other bodyweight exercises
+  }
+  
+  // Functional equipment
+  if (equipment_lower.includes('band') || equipment_lower.includes('medicine ball')) {
+    return 2; // Good accessory tools
+  }
+  
+  // Default
+  return 1;
+}
+
+function calculateEquipmentEcosystemEfficiencyServer(exerciseA: Exercise, exerciseB: Exercise): { equipmentScore: number; equipmentReason: string | null } {
+  const ecosystemA = getEquipmentEcosystemServer(exerciseA.equipment);
+  const ecosystemB = getEquipmentEcosystemServer(exerciseB.equipment);
+  
+  // Same equipment = maximum efficiency (35 pts)
+  if (exerciseA.equipment === exerciseB.equipment) {
+    const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+    return { 
+      equipmentScore: 35 + qualityBonus, 
+      equipmentReason: "Same equipment for seamless transitions" 
+    };
+  }
+  
+  // Equipment ecosystem compatibility (30 pts)
+  if (ecosystemA.type === 'rack_hub') {
+    if (exerciseB.equipment.toLowerCase().includes('barbell')) {
+      const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+      return { 
+        equipmentScore: 30 + qualityBonus, 
+        equipmentReason: "Both exercises use the same rack setup" 
+      };
+    }
+    if (exerciseB.equipment.toLowerCase().includes('pull-up')) {
+      const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+      return { 
+        equipmentScore: 30 + qualityBonus, 
+        equipmentReason: "Rack supports both barbell and pull-up exercises" 
+      };
+    }
+    if (exerciseB.equipment.toLowerCase().includes('dumbbell') || 
+        exerciseB.equipment.toLowerCase().includes('bodyweight')) {
+      const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+      return { 
+        equipmentScore: 30 + qualityBonus, 
+        equipmentReason: "Can add dumbbells/bodyweight exercises in rack area" 
+      };
+    }
+  }
+  
+  if (ecosystemA.type === 'bench_barbell_hub' || ecosystemA.type === 'bench_dumbbell') {
+    if (exerciseB.equipment.toLowerCase().includes('barbell') ||
+        exerciseB.equipment.toLowerCase().includes('dumbbell') ||
+        exerciseB.equipment.toLowerCase().includes('bodyweight')) {
+      const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+      return { 
+        equipmentScore: 30 + qualityBonus, 
+        equipmentReason: "Can maximize bench utility with dumbbells/bodyweight" 
+      };
+    }
+  }
+  
+  if (ecosystemA.type === 'cable_hub') {
+    if (exerciseB.equipment.toLowerCase().includes('cable')) {
+      const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+      return { 
+        equipmentScore: 30 + qualityBonus, 
+        equipmentReason: "Both use same cable station with different attachments" 
+      };
+    }
+    if (exerciseB.equipment.toLowerCase().includes('dumbbell') || 
+        exerciseB.equipment.toLowerCase().includes('bodyweight')) {
+      const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+      return { 
+        equipmentScore: 25 + qualityBonus, 
+        equipmentReason: "Can add dumbbells/bodyweight beside cable station" 
+      };
+    }
+  }
+  
+  // Fixed machine + portable addition (25 pts)
+  if (ecosystemA.type === 'fixed_machine') {
+    if (exerciseB.equipment.toLowerCase().includes('dumbbell')) {
+      const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+      return { 
+        equipmentScore: 25 + qualityBonus, 
+        equipmentReason: "Can add dumbbell exercises beside machine (better than bodyweight for strength)" 
+      };
+    }
+    if (exerciseB.equipment.toLowerCase().includes('bodyweight')) {
+      const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+      return { 
+        equipmentScore: 20 + qualityBonus, 
+        equipmentReason: "Can add bodyweight exercises beside machine" 
+      };
+    }
+    if (exerciseB.equipment.toLowerCase().includes('band')) {
+      const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+      return { 
+        equipmentScore: 15 + qualityBonus, 
+        equipmentReason: "Can add resistance band exercises beside machine" 
+      };
+    }
+  }
+  
+  // Portable equipment pairing (20 pts)
+  if (isPortableEquipmentServer(exerciseA.equipment) && isPortableEquipmentServer(exerciseB.equipment)) {
+    const qualityBonus = getExerciseQualityScoreServer(exerciseB.equipment, exerciseB.exerciseType || '');
+    return { 
+      equipmentScore: 20 + qualityBonus, 
+      equipmentReason: "Both exercises use portable equipment" 
+    };
+  }
+  
+  // Poor efficiency - requires multiple major equipment pieces (5 pts)
   return { 
     equipmentScore: 5, 
-    equipmentReason: "Different zones require longer transitions between exercises" 
+    equipmentReason: "Poor gym etiquette - requires multiple equipment pieces" 
   };
 }
 
