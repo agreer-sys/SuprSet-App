@@ -1099,12 +1099,23 @@ function calculateCompatibilityScoreWithReasoning(exerciseA: Exercise, exerciseB
     reasons.push("Good flow: mobile to anchored transition");
   }
   
-  // 3. Exercise Type Opposition (30 points) - Push/Pull pairing
-  if (exerciseA.exerciseType && exerciseB.exerciseType) {
-    if ((exerciseA.exerciseType === "Push" && exerciseB.exerciseType === "Pull") ||
-        (exerciseA.exerciseType === "Pull" && exerciseB.exerciseType === "Push")) {
-      score += 30;
-      reasons.push("Perfect push-pull antagonist pairing");
+  // 3. Enhanced Movement Pattern Opposition (30 points) - Using New System
+  const patternA = mapToMovementPatternServer(exerciseA.exerciseType || '', exerciseA.name, exerciseA.equipment);
+  const patternB = mapToMovementPatternServer(exerciseB.exerciseType || '', exerciseB.name, exerciseB.equipment);
+  
+  if (isOpposingMovementPattern(patternA, patternB)) {
+    score += 30;
+    // Provide specific movement pattern reasoning
+    if ((patternA === 'horizontal_push' && patternB === 'horizontal_pull') || (patternA === 'horizontal_pull' && patternB === 'horizontal_push')) {
+      reasons.push("Perfect push/pull balance (horizontal plane)");
+    } else if ((patternA === 'vertical_push' && patternB === 'vertical_pull') || (patternA === 'vertical_pull' && patternB === 'vertical_push')) {
+      reasons.push("Perfect push/pull balance (vertical plane)");
+    } else if ((patternA === 'squat' && patternB === 'hinge') || (patternA === 'hinge' && patternB === 'squat')) {
+      reasons.push("Perfect squat/hinge balance for complete lower body");
+    } else if (patternA.includes('core') || patternB.includes('core')) {
+      reasons.push("Upper body + core combination for active recovery");
+    } else {
+      reasons.push("Opposing movement patterns for balanced training");
     }
   }
   
@@ -1156,11 +1167,96 @@ function calculateCompatibilityScoreWithReasoning(exerciseA: Exercise, exerciseB
   return { score: Math.min(score, 100), reasoning: reasons };
 }
 
+// Convert current Exercise Type to new Movement Pattern system (Server)
+function mapToMovementPatternServer(exerciseType: string, exerciseName: string, equipment: string): string {
+  const type = exerciseType?.toLowerCase() || '';
+  const name = exerciseName?.toLowerCase() || '';
+  const equip = equipment?.toLowerCase() || '';
+  
+  // Horizontal Push Pattern
+  if (type === 'push' && (name.includes('bench') || name.includes('chest') || name.includes('press') && !name.includes('shoulder') && !name.includes('overhead'))) {
+    return 'horizontal_push';
+  }
+  if (name.includes('push-up') || name.includes('pushup') || name.includes('dips') || name.includes('chest fly') || name.includes('pec deck')) {
+    return 'horizontal_push';
+  }
+  
+  // Horizontal Pull Pattern
+  if (type === 'pull' && (name.includes('row') || name.includes('reverse fly') || name.includes('face pull') || name.includes('rear delt'))) {
+    return 'horizontal_pull';
+  }
+  
+  // Vertical Push Pattern
+  if (type === 'push' && (name.includes('shoulder') || name.includes('overhead') || name.includes('military') || name.includes('pike'))) {
+    return 'vertical_push';
+  }
+  if (name.includes('shoulder press') || name.includes('overhead press') || name.includes('pike push')) {
+    return 'vertical_push';
+  }
+  
+  // Vertical Pull Pattern
+  if (type === 'pull' && (name.includes('pull-up') || name.includes('pullup') || name.includes('pulldown') || name.includes('lat') || name.includes('chin-up'))) {
+    return 'vertical_pull';
+  }
+  if (name.includes('shrug') || name.includes('upright row')) {
+    return 'vertical_pull';
+  }
+  
+  // Squat Pattern
+  if (type === 'squat' || name.includes('squat') || name.includes('leg press') || name.includes('wall sit')) {
+    return 'squat';
+  }
+  
+  // Hinge Pattern
+  if (type === 'hinge' || name.includes('deadlift') || name.includes('hip hinge') || name.includes('hip thrust') || name.includes('glute bridge')) {
+    return 'hinge';
+  }
+  if (name.includes('good morning') || name.includes('romanian') || name.includes('rdl')) {
+    return 'hinge';
+  }
+  
+  // Unilateral Pattern
+  if (type === 'lunge' || name.includes('lunge') || name.includes('step-up') || name.includes('step up') || name.includes('single leg') || name.includes('bulgarian')) {
+    return 'unilateral';
+  }
+  
+  // Core/Stability Pattern
+  if (name.includes('plank') || name.includes('dead bug') || name.includes('bird dog') || name.includes('pallof') || name.includes('anti-')) {
+    return 'core';
+  }
+  if (name.includes('crunch') || name.includes('sit-up') || name.includes('russian twist') || name.includes('mountain climber')) {
+    return 'core';
+  }
+  
+  // Default mappings for current types
+  switch (type) {
+    case 'push': return 'horizontal_push';
+    case 'pull': return 'horizontal_pull';
+    case 'squat': return 'squat';
+    case 'hinge': return 'hinge';
+    case 'lunge': return 'unilateral';
+    case 'accessory':
+      // Smart accessory mapping based on name
+      if (name.includes('curl') || name.includes('tricep') || name.includes('bicep')) {
+        return name.includes('hammer') || name.includes('bicep') ? 'vertical_pull' : 'vertical_push';
+      }
+      if (name.includes('lateral') || name.includes('front raise')) return 'vertical_push';
+      if (name.includes('calf')) return 'squat';
+      return 'accessory';
+    default: return 'general';
+  }
+}
+
 function isOpposingMovementPattern(patternA: string, patternB: string): boolean {
   const opposingPairs = [
     ["horizontal_push", "horizontal_pull"],
     ["vertical_push", "vertical_pull"],
     ["squat", "hinge"],
+    ["unilateral", "core"],
+    ["horizontal_push", "core"],
+    ["horizontal_pull", "core"],
+    ["vertical_push", "core"],
+    ["vertical_pull", "core"],
   ];
   
   return opposingPairs.some(pair => 
