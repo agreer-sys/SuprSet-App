@@ -1108,10 +1108,11 @@ function calculateCompatibilityScoreWithReasoning(exerciseA: Exercise, exerciseB
     }
   }
   
-  // 4. Equipment Zone efficiency (25 points)
-  if (exerciseA.equipmentZone === exerciseB.equipmentZone) {
-    score += 25;
-    reasons.push(`Both use ${exerciseA.equipmentZone} - minimal setup transition`);
+  // 4. Enhanced Equipment Zone Efficiency (up to 35 points)
+  const { equipmentScore, equipmentReason } = calculateEquipmentZoneEfficiencyServer(exerciseA, exerciseB);
+  score += equipmentScore;
+  if (equipmentReason) {
+    reasons.push(equipmentReason);
   }
   
   // 5. Setup Time efficiency (20 points)
@@ -1178,6 +1179,108 @@ function isCompoundIsolationPair(exerciseA: any, exerciseB: any): boolean {
   const isBCompound = compoundCategories.includes(exerciseB.category) || exerciseB.primaryMuscles.length > 2;
   
   return isACompound !== isBCompound;
+}
+
+// Enhanced Equipment Zone Efficiency System for Server
+function getEquipmentZoneServer(equipment: string): string {
+  const equipment_lower = equipment.toLowerCase();
+  
+  // Free Weight Zone
+  if (equipment_lower.includes('barbell') || equipment_lower.includes('dumbbell') || 
+      equipment_lower.includes('weight plate') || equipment_lower.includes('kettlebell') ||
+      equipment_lower.includes('ez-bar') || equipment_lower.includes('ez bar')) {
+    return 'free_weight';
+  }
+  
+  // Cable/Machine Zone
+  if (equipment_lower.includes('cable') || equipment_lower.includes('machine') ||
+      equipment_lower.includes('smith') || equipment_lower.includes('pulldown') ||
+      equipment_lower.includes('press machine') || equipment_lower.includes('curl machine')) {
+    return 'cable_machine';
+  }
+  
+  // Bodyweight Zone
+  if (equipment_lower.includes('bodyweight') || equipment_lower.includes('pull-up') ||
+      equipment_lower.includes('dip bar') || equipment_lower.includes('mat') ||
+      equipment_lower === 'bodyweight' || equipment_lower.includes('wall')) {
+    return 'bodyweight';
+  }
+  
+  // Functional Zone
+  if (equipment_lower.includes('resistance band') || equipment_lower.includes('medicine ball') ||
+      equipment_lower.includes('plyo') || equipment_lower.includes('trx') ||
+      equipment_lower.includes('suspension') || equipment_lower.includes('sled')) {
+    return 'functional';
+  }
+  
+  // Default to functional for unknown equipment
+  return 'functional';
+}
+
+function isPortableEquipmentServer(equipment: string): boolean {
+  const equipment_lower = equipment.toLowerCase();
+  return equipment_lower.includes('dumbbell') || 
+         equipment_lower.includes('resistance band') ||
+         equipment_lower.includes('bodyweight') ||
+         equipment_lower.includes('kettlebell') ||
+         equipment_lower.includes('medicine ball');
+}
+
+function calculateEquipmentZoneEfficiencyServer(exerciseA: Exercise, exerciseB: Exercise): { equipmentScore: number; equipmentReason: string | null } {
+  const zoneA = getEquipmentZoneServer(exerciseA.equipment);
+  const zoneB = getEquipmentZoneServer(exerciseB.equipment);
+  
+  // Same zone = maximum efficiency (25 pts base)
+  if (zoneA === zoneB) {
+    let score = 25;
+    let reason = `Same zone (${zoneA.replace('_', ' ')}) for efficient transitions`;
+    
+    // Equipment synergy bonus (up to 10 pts)
+    if (exerciseA.equipment === exerciseB.equipment) {
+      score += 5; // Exact same equipment
+      reason = "Same equipment for seamless transitions";
+    }
+    
+    // Portable equipment bonus
+    if (isPortableEquipmentServer(exerciseA.equipment) || isPortableEquipmentServer(exerciseB.equipment)) {
+      score += 5; // Can move between zones
+      reason += " (portable equipment adds flexibility)";
+    }
+    
+    return { equipmentScore: Math.min(score, 35), equipmentReason: reason };
+  }
+  
+  // Adjacent zones (15 pts)
+  const adjacentPairs = [
+    ['free_weight', 'cable_machine'],
+    ['free_weight', 'bodyweight'],
+    ['cable_machine', 'functional'],
+    ['bodyweight', 'functional']
+  ];
+  
+  const isAdjacent = adjacentPairs.some(pair => 
+    (pair[0] === zoneA && pair[1] === zoneB) ||
+    (pair[1] === zoneA && pair[0] === zoneB)
+  );
+  
+  if (isAdjacent) {
+    let score = 15;
+    let reason = "Adjacent zones allow moderate transitions";
+    
+    // Portable equipment reduces transition penalty
+    if (isPortableEquipmentServer(exerciseA.equipment) || isPortableEquipmentServer(exerciseB.equipment)) {
+      score += 5;
+      reason += " (portable equipment reduces transition time)";
+    }
+    
+    return { equipmentScore: score, equipmentReason: reason };
+  }
+  
+  // Cross-gym zones (5 pts)
+  return { 
+    equipmentScore: 5, 
+    equipmentReason: "Different zones require longer transitions between exercises" 
+  };
 }
 
 // Legacy compatibility functions

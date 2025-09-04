@@ -14,10 +14,9 @@ export function calculateCompatibilityScore(exerciseA: Exercise, exerciseB: Exer
     score += 40;
   }
   
-  // Same equipment (efficiency)
-  if (exerciseA.equipment === exerciseB.equipment) {
-    score += 25;
-  }
+  // Enhanced Equipment Zone Efficiency (35 pts total)
+  const equipmentScore = calculateEquipmentZoneEfficiency(exerciseA, exerciseB);
+  score += equipmentScore;
   
   // Different primary muscle groups (recovery)
   if (!hasMuscleOverlap(exerciseA.primaryMuscles, exerciseB.primaryMuscles)) {
@@ -45,8 +44,10 @@ export function generatePairingReasoning(exerciseA: Exercise, exerciseB: Exercis
     reasoning.push("Opposing movement patterns for balanced training");
   }
   
-  if (exerciseA.equipment === exerciseB.equipment) {
-    reasoning.push("Same equipment for efficient transitions");
+  // Enhanced equipment zone reasoning
+  const equipmentReasoning = getEquipmentZoneReasoning(exerciseA, exerciseB);
+  if (equipmentReasoning) {
+    reasoning.push(equipmentReasoning);
   }
   
   if (!hasMuscleOverlap(exerciseA.primaryMuscles, exerciseB.primaryMuscles)) {
@@ -88,4 +89,128 @@ function isCompoundIsolationPair(exerciseA: Exercise, exerciseB: Exercise): bool
   const isBCompound = compoundCategories.includes(exerciseB.category) || exerciseB.primaryMuscles.length > 2;
   
   return isACompound !== isBCompound;
+}
+
+// Equipment Zone Efficiency System
+function getEquipmentZone(equipment: string): string {
+  const equipment_lower = equipment.toLowerCase();
+  
+  // Free Weight Zone
+  if (equipment_lower.includes('barbell') || equipment_lower.includes('dumbbell') || 
+      equipment_lower.includes('weight plate') || equipment_lower.includes('kettlebell') ||
+      equipment_lower.includes('ez-bar') || equipment_lower.includes('ez bar')) {
+    return 'free_weight';
+  }
+  
+  // Cable/Machine Zone
+  if (equipment_lower.includes('cable') || equipment_lower.includes('machine') ||
+      equipment_lower.includes('smith') || equipment_lower.includes('pulldown') ||
+      equipment_lower.includes('press machine') || equipment_lower.includes('curl machine')) {
+    return 'cable_machine';
+  }
+  
+  // Bodyweight Zone
+  if (equipment_lower.includes('bodyweight') || equipment_lower.includes('pull-up') ||
+      equipment_lower.includes('dip bar') || equipment_lower.includes('mat') ||
+      equipment_lower === 'bodyweight' || equipment_lower.includes('wall')) {
+    return 'bodyweight';
+  }
+  
+  // Functional Zone
+  if (equipment_lower.includes('resistance band') || equipment_lower.includes('medicine ball') ||
+      equipment_lower.includes('plyo') || equipment_lower.includes('trx') ||
+      equipment_lower.includes('suspension') || equipment_lower.includes('sled')) {
+    return 'functional';
+  }
+  
+  // Default to functional for unknown equipment
+  return 'functional';
+}
+
+function isPortableEquipment(equipment: string): boolean {
+  const equipment_lower = equipment.toLowerCase();
+  return equipment_lower.includes('dumbbell') || 
+         equipment_lower.includes('resistance band') ||
+         equipment_lower.includes('bodyweight') ||
+         equipment_lower.includes('kettlebell') ||
+         equipment_lower.includes('medicine ball');
+}
+
+function calculateEquipmentZoneEfficiency(exerciseA: Exercise, exerciseB: Exercise): number {
+  const zoneA = getEquipmentZone(exerciseA.equipment);
+  const zoneB = getEquipmentZone(exerciseB.equipment);
+  
+  // Same zone = maximum efficiency (25 pts)
+  if (zoneA === zoneB) {
+    let score = 25;
+    
+    // Equipment synergy bonus (up to 10 pts)
+    if (exerciseA.equipment === exerciseB.equipment) {
+      score += 5; // Exact same equipment
+    }
+    
+    // Portable equipment bonus
+    if (isPortableEquipment(exerciseA.equipment) || isPortableEquipment(exerciseB.equipment)) {
+      score += 5; // Can move between zones
+    }
+    
+    return Math.min(score, 35);
+  }
+  
+  // Adjacent zones (15 pts)
+  const adjacentPairs = [
+    ['free_weight', 'cable_machine'],
+    ['free_weight', 'bodyweight'],
+    ['cable_machine', 'functional'],
+    ['bodyweight', 'functional']
+  ];
+  
+  const isAdjacent = adjacentPairs.some(pair => 
+    (pair[0] === zoneA && pair[1] === zoneB) ||
+    (pair[1] === zoneA && pair[0] === zoneB)
+  );
+  
+  if (isAdjacent) {
+    let score = 15;
+    
+    // Portable equipment reduces transition penalty
+    if (isPortableEquipment(exerciseA.equipment) || isPortableEquipment(exerciseB.equipment)) {
+      score += 5;
+    }
+    
+    return score;
+  }
+  
+  // Cross-gym zones (5 pts)
+  return 5;
+}
+
+function getEquipmentZoneReasoning(exerciseA: Exercise, exerciseB: Exercise): string | null {
+  const zoneA = getEquipmentZone(exerciseA.equipment);
+  const zoneB = getEquipmentZone(exerciseB.equipment);
+  
+  if (zoneA === zoneB) {
+    if (exerciseA.equipment === exerciseB.equipment) {
+      return "Same equipment for seamless transitions";
+    }
+    return `Same zone (${zoneA.replace('_', ' ')}) for efficient setup`;
+  }
+  
+  const adjacentPairs = [
+    ['free_weight', 'cable_machine'],
+    ['free_weight', 'bodyweight'],
+    ['cable_machine', 'functional'],
+    ['bodyweight', 'functional']
+  ];
+  
+  const isAdjacent = adjacentPairs.some(pair => 
+    (pair[0] === zoneA && pair[1] === zoneB) ||
+    (pair[1] === zoneA && pair[0] === zoneB)
+  );
+  
+  if (isAdjacent) {
+    return `Adjacent zones allow quick transitions`;
+  }
+  
+  return "Different zones require longer transitions";
 }
