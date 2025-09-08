@@ -10,6 +10,7 @@ interface AirtableRecord {
     "Equipment"?: string;
     "Difficulty Level"?: string;
     "Exercise Type"?: string;
+    "Movement Pattern"?: string;
     "Exercise Category"?: string | string[];
     "Pairing Compatibility"?: string | string[];
     "Coaching Bullet Points"?: string;
@@ -105,7 +106,7 @@ export class AirtableService {
       category: this.parseArrayField(fields["Exercise Category"])[0] || "general",
       primaryMuscles: fields["Primary Muscle Group"] ? [fields["Primary Muscle Group"]] : [],
       secondaryMuscles: this.parseArrayField(fields["Secondary Muscle Group"]),
-      movementPattern: fields["Exercise Type"]?.toLowerCase() || "general",
+      movementPattern: fields["Movement Pattern"]?.toLowerCase()?.replace(/\s+/g, '_').replace('/', '_') || "general",
       difficulty: this.mapDifficultyToNumber(fields["Difficulty Level"]),
       instructions: {
         setup: "See coaching notes",
