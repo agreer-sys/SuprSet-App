@@ -8,8 +8,8 @@ interface AirtableRecord {
     "Primary Muscle Group"?: string;
     "Secondary Muscle Group"?: string | string[];
     "Equipment"?: string;
-    "Equipment Primary"?: string;
-    "Equipment Secondary"?: string | string[];
+    "Equipment (Primary)"?: string;
+    "Equipment 2 (Secondary)"?: string | string[];
     "Difficulty Level"?: string;
     "Exercise Type"?: string;
     "Movement Pattern"?: string;
@@ -86,8 +86,8 @@ export class AirtableService {
       primaryMuscleGroup: fields["Primary Muscle Group"] || null,
       secondaryMuscleGroup: this.parseArrayField(fields["Secondary Muscle Group"]),
       equipment: fields["Equipment"] || "bodyweight",
-      equipmentPrimary: fields["Equipment Primary"] || null,
-      equipmentSecondary: this.parseArrayField(fields["Equipment Secondary"]),
+      equipmentPrimary: fields["Equipment (Primary)"] || null,
+      equipmentSecondary: this.parseArrayField(fields["Equipment 2 (Secondary)"]),
       difficultyLevel: fields["Difficulty Level"] || null,
       exerciseType: fields["Exercise Type"] || null,
       exerciseCategory: this.parseArrayField(fields["Exercise Category"]),
