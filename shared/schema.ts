@@ -11,6 +11,8 @@ export const exercises = pgTable("exercises", {
   primaryMuscleGroup: text("primary_muscle_group"),
   secondaryMuscleGroup: text("secondary_muscle_group").array().notNull().default([]),
   equipment: text("equipment").notNull(),
+  equipmentPrimary: text("equipment_primary"),
+  equipmentSecondary: text("equipment_secondary").array().notNull().default([]),
   difficultyLevel: text("difficulty_level"),
   exerciseType: text("exercise_type"), // Push, Pull, etc.
   exerciseCategory: text("exercise_category").array().notNull().default([]), // Hypertrophy, etc.
