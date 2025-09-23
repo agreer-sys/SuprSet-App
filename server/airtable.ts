@@ -10,6 +10,7 @@ interface AirtableRecord {
     "Equipment"?: string;
     "Equipment (Primary)"?: string;
     "Equipment 2 (Secondary)"?: string | string[];
+    "Equipment Type"?: string | string[];
     "Difficulty Level"?: string;
     "Exercise Type"?: string;
     "Movement Pattern"?: string;
@@ -88,6 +89,7 @@ export class AirtableService {
       equipment: fields["Equipment"] || "bodyweight",
       equipmentPrimary: fields["Equipment (Primary)"] || null,
       equipmentSecondary: this.parseArrayField(fields["Equipment 2 (Secondary)"]),
+      equipmentType: this.parseArrayField(fields["Equipment Type"]),
       difficultyLevel: fields["Difficulty Level"] || null,
       exerciseType: fields["Exercise Type"] || null,
       exerciseCategory: this.parseArrayField(fields["Exercise Category"]),
