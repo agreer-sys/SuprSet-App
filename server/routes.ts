@@ -384,12 +384,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             </div>
             
             <div class="images-grid">
-              ${paginatedContributions.map((c, index) => `
+              ${paginatedContributions.map((c, index) => {
+                // Fix missing data URL prefix for base64 images
+                const imageData = c.imageData.startsWith('data:') 
+                  ? c.imageData 
+                  : `data:image/jpeg;base64,${c.imageData}`;
+                  
+                return `
                 <div class="image-card">
                   <div class="image-container">
                     <img 
                       class="lazy-image" 
-                      data-src="${c.imageData}" 
+                      data-src="${imageData}" 
                       alt="${c.equipment}"
                       loading="lazy"
                       style="opacity: 0; transition: opacity 0.3s ease;"
@@ -406,8 +412,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     <div>Date: ${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'Unknown'}</div>
                     <div>Notes: ${c.notes}</div>
                   </div>
-                </div>
-              `).join('')}
+                </div>`;
+              }).join('')}
             </div>
             
             <div class="navigation">
