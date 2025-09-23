@@ -279,6 +279,119 @@ function getExerciseQualityScore(equipment: string, exerciseType: string): numbe
   return 6;
 }
 
+function calculateEquipmentEcosystemEfficiency(exerciseA: Exercise, exerciseB: Exercise): number {
+  let score = 0;
+  
+  // THREE-FIELD EQUIPMENT SYSTEM SCORING
+  
+  // 1. PRIMARY EQUIPMENT MATCHING (35pts max)
+  if (exerciseA.equipmentPrimary && exerciseB.equipmentPrimary) {
+    if (exerciseA.equipmentPrimary === exerciseB.equipmentPrimary) {
+      score += 35; // Perfect primary equipment match = seamless transition
+    } else if (isCompatiblePrimaryEquipment(exerciseA.equipmentPrimary, exerciseB.equipmentPrimary)) {
+      score += 25; // Compatible primary equipment (e.g., Dumbbells + Kettlebells)
+    }
+  }
+  
+  // 2. SECONDARY EQUIPMENT SYNERGY (25pts max)
+  if (exerciseA.equipmentSecondary && exerciseB.equipmentSecondary) {
+    const sharedSecondary = getSharedEquipment(exerciseA.equipmentSecondary, exerciseB.equipmentSecondary);
+    if (sharedSecondary.length > 0) {
+      // Shared accessories like bench, rack, attachments
+      score += Math.min(25, sharedSecondary.length * 15); // 15pts per shared accessory, max 25
+    }
+  }
+  
+  // 3. EQUIPMENT TYPE COMPATIBILITY (15pts max)  
+  if (exerciseA.equipmentType && exerciseB.equipmentType) {
+    const sharedTypes = getSharedEquipment(exerciseA.equipmentType, exerciseB.equipmentType);
+    if (sharedTypes.length > 0) {
+      // Same variants like Olympic + Olympic, Hex + Hex
+      score += Math.min(15, sharedTypes.length * 8); // 8pts per shared type, max 15
+    }
+  }
+  
+  // FALLBACK: Use legacy equipment field if new fields unavailable
+  if (score === 0) {
+    return calculateLegacyEquipmentScore(exerciseA, exerciseB);
+  }
+  
+  return Math.min(score, 40); // Cap at 40pts total for equipment scoring
+}
+
+// Helper function to check compatible primary equipment
+function isCompatiblePrimaryEquipment(equipmentA: string, equipmentB: string): boolean {
+  const compatibilityGroups = [
+    ['Dumbbells', 'Kettlebells'], // Both free weights, similar movement
+    ['Barbell', 'EZ Barbell'], // Both barbells, similar setup
+    ['Cable Tower', 'Functional Trainer'], // Both cable systems
+    ['Flat Bench', 'Incline Bench', 'Decline Bench'], // All bench variants
+    ['Leg Press Machine', 'Leg Extension Machine', 'Leg Curl Machine'], // Leg machine cluster
+    ['Chest Press Machine', 'Incline Chest Press Machine', 'Pec Fly Machine'] // Chest machine cluster
+  ];
+  
+  return compatibilityGroups.some(group => 
+    group.includes(equipmentA) && group.includes(equipmentB)
+  );
+}
+
+// Helper function to find shared equipment between arrays
+function getSharedEquipment(arrayA: string[], arrayB: string[]): string[] {
+  return arrayA.filter(item => arrayB.includes(item));
+}
+
+// Legacy equipment scoring for backwards compatibility
+function calculateLegacyEquipmentScore(exerciseA: Exercise, exerciseB: Exercise): number {
+  const ecosystemA = getEquipmentEcosystem(exerciseA.equipment);
+  const ecosystemB = getEquipmentEcosystem(exerciseB.equipment);
+  
+  // Same equipment = maximum efficiency (35 pts)
+  if (exerciseA.equipment === exerciseB.equipment) {
+    return 35;
+  }
+  
+  // Equipment ecosystem compatibility (30 pts)
+  if (ecosystemA.type === 'rack_hub') {
+    if (exerciseB.equipment.toLowerCase().includes('barbell') ||
+        exerciseB.equipment.toLowerCase().includes('pull-up') ||
+        exerciseB.equipment.toLowerCase().includes('dumbbell') ||
+        exerciseB.equipment.toLowerCase().includes('bodyweight')) {
+      return 30;
+    }
+  }
+  
+  if (ecosystemA.type === 'bench_barbell_hub' || ecosystemA.type === 'bench_dumbbell') {
+    if (exerciseB.equipment.toLowerCase().includes('barbell') ||
+        exerciseB.equipment.toLowerCase().includes('dumbbell') ||
+        exerciseB.equipment.toLowerCase().includes('bodyweight')) {
+      return 30;
+    }
+  }
+  
+  if (ecosystemA.type === 'cable_hub') {
+    if (exerciseB.equipment.toLowerCase().includes('cable') ||
+        exerciseB.equipment.toLowerCase().includes('dumbbell') ||
+        exerciseB.equipment.toLowerCase().includes('bodyweight')) {
+      return 30;
+    }
+  }
+  
+  // Fixed machine + portable addition (25 pts)
+  if (ecosystemA.type === 'fixed_machine') {
+    if (exerciseB.equipment.toLowerCase().includes('dumbbell') ||
+        exerciseB.equipment.toLowerCase().includes('bodyweight') ||
+        exerciseB.equipment.toLowerCase().includes('band')) {
+      return 25;
+    }
+  }
+  
+  // Portable equipment pairing (20 pts)
+  if (isPortableEquipment(exerciseA.equipment) && isPortableEquipment(exerciseB.equipment)) {
+    return 20;
+  }
+  
+  return 5; // Poor efficiency fallback
+}
 
 function getEquipmentEcosystemReasoning(exerciseA: Exercise, exerciseB: Exercise): string | null {
   const ecosystemA = getEquipmentEcosystem(exerciseA.equipment);
