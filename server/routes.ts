@@ -258,6 +258,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Equipment analysis endpoint for debugging
+  app.get('/api/debug/equipment-analysis', async (req, res) => {
+    try {
+      const exercises = await storage.getAllExercises();
+      
+      // Primary equipment analysis
+      const primaryEquipment: { [key: string]: number } = {};
+      const secondaryEquipment: { [key: string]: number } = {};
+      const equipmentTypes: { [key: string]: number } = {};
+      
+      exercises.forEach(exercise => {
+        // Count primary equipment
+        if (exercise.equipmentPrimary) {
+          primaryEquipment[exercise.equipmentPrimary] = (primaryEquipment[exercise.equipmentPrimary] || 0) + 1;
+        }
+        
+        // Count secondary equipment
+        exercise.equipmentSecondary?.forEach(sec => {
+          secondaryEquipment[sec] = (secondaryEquipment[sec] || 0) + 1;
+        });
+        
+        // Count equipment types
+        exercise.equipmentType?.forEach(type => {
+          equipmentTypes[type] = (equipmentTypes[type] || 0) + 1;
+        });
+      });
+      
+      // Sort by frequency
+      const sortedPrimary = Object.entries(primaryEquipment)
+        .sort(([,a], [,b]) => b - a)
+        .map(([equipment, count]) => ({ equipment, count }));
+      
+      const sortedSecondary = Object.entries(secondaryEquipment)
+        .sort(([,a], [,b]) => b - a)
+        .map(([equipment, count]) => ({ equipment, count }));
+        
+      const sortedTypes = Object.entries(equipmentTypes)
+        .sort(([,a], [,b]) => b - a)
+        .map(([type, count]) => ({ type, count }));
+      
+      res.json({
+        totalExercises: exercises.length,
+        primaryEquipment: sortedPrimary,
+        secondaryEquipment: sortedSecondary,
+        equipmentTypes: sortedTypes,
+        // Sample exercises with each primary equipment
+        samples: sortedPrimary.slice(0, 10).map(({ equipment }) => {
+          const sampleExercise = exercises.find(ex => ex.equipmentPrimary === equipment);
+          return {
+            primaryEquipment: equipment,
+            exampleExercise: sampleExercise?.name,
+            secondary: sampleExercise?.equipmentSecondary,
+            types: sampleExercise?.equipmentType
+          };
+        })
+      });
+    } catch (error) {
+      console.error("Error analyzing equipment:", error);
+      res.status(500).json({ message: "Failed to analyze equipment" });
+    }
+  });
+
   // HTML image viewer page for easy visual inspection
   app.get('/api/debug/image-viewer', async (req, res) => {
     try {
