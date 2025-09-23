@@ -258,6 +258,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // HTML image viewer page for easy visual inspection
+  app.get('/api/debug/image-viewer', async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      const allContributions = await storage.exportTrainingData('all');
+      const paginatedContributions = allContributions.slice(offset, offset + limit);
+      
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>AI Training Images - Label Verification</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+            .container { max-width: 1200px; margin: 0 auto; }
+            .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+            .stats { display: flex; gap: 20px; margin-bottom: 20px; }
+            .stat { background: white; padding: 15px; border-radius: 8px; text-align: center; }
+            .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+            .image-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .image-card img { width: 100%; height: 200px; object-fit: cover; border-radius: 4px; }
+            .equipment-label { font-size: 18px; font-weight: bold; color: #2563eb; margin: 10px 0; }
+            .confidence { background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+            .training-set { background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px; }
+            .metadata { color: #6b7280; font-size: 12px; margin-top: 10px; }
+            .navigation { margin: 20px 0; text-align: center; }
+            .nav-button { padding: 10px 20px; margin: 0 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🤖 AI Training Images - Label Verification</h1>
+              <p>Updated equipment labels for AI Vision training dataset</p>
+            </div>
+            
+            <div class="stats">
+              <div class="stat">
+                <div style="font-size: 24px; font-weight: bold;">${allContributions.length}</div>
+                <div>Total Images</div>
+              </div>
+              <div class="stat">
+                <div style="font-size: 24px; font-weight: bold;">${offset + 1}-${Math.min(offset + limit, allContributions.length)}</div>
+                <div>Showing</div>
+              </div>
+            </div>
+            
+            <div class="navigation">
+              ${offset > 0 ? `<button class="nav-button" onclick="window.location.href='?offset=${Math.max(0, offset - limit)}&limit=${limit}'">&larr; Previous</button>` : ''}
+              ${offset + limit < allContributions.length ? `<button class="nav-button" onclick="window.location.href='?offset=${offset + limit}&limit=${limit}'">Next &rarr;</button>` : ''}
+            </div>
+            
+            <div class="images-grid">
+              ${paginatedContributions.map(c => `
+                <div class="image-card">
+                  <img src="${c.imageData}" alt="${c.equipment}" />
+                  <div class="equipment-label">${c.equipment}</div>
+                  <div>
+                    <span class="confidence">Confidence: ${Math.round(c.confidence * 100)}%</span>
+                    <span class="training-set">${c.trainingSet}</span>
+                  </div>
+                  <div class="metadata">
+                    <div>Size: ${(c.imageSize / 1024).toFixed(1)}KB</div>
+                    <div>Date: ${new Date(c.createdAt).toLocaleDateString()}</div>
+                    <div>Notes: ${c.notes}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            
+            <div class="navigation">
+              ${offset > 0 ? `<button class="nav-button" onclick="window.location.href='?offset=${Math.max(0, offset - limit)}&limit=${limit}'">&larr; Previous</button>` : ''}
+              ${offset + limit < allContributions.length ? `<button class="nav-button" onclick="window.location.href='?offset=${offset + limit}&limit=${limit}'">Next &rarr;</button>` : ''}
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      res.send(html);
+    } catch (error) {
+      console.error("Error generating image viewer:", error);
+      res.status(500).send('Error generating image viewer');
+    }
+  });
+
   // Trainer pairs management endpoints
   app.get('/api/trainer-pairs', async (req: any, res) => {
     try {
