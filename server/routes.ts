@@ -342,7 +342,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .stat { background: white; padding: 15px; border-radius: 8px; text-align: center; }
             .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
             .image-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .image-container { position: relative; width: 100%; height: 200px; border-radius: 4px; overflow: hidden; }
             .image-card img { width: 100%; height: 200px; object-fit: cover; border-radius: 4px; }
+            .loading-placeholder { 
+              position: absolute; 
+              top: 50%; 
+              left: 50%; 
+              transform: translate(-50%, -50%); 
+              color: #6b7280; 
+              font-size: 14px; 
+            }
             .equipment-label { font-size: 18px; font-weight: bold; color: #2563eb; margin: 10px 0; }
             .confidence { background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
             .training-set { background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px; }
@@ -375,9 +384,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             </div>
             
             <div class="images-grid">
-              ${paginatedContributions.map(c => `
+              ${paginatedContributions.map((c, index) => `
                 <div class="image-card">
-                  <img src="${c.imageData}" alt="${c.equipment}" />
+                  <div class="image-container">
+                    <img 
+                      class="lazy-image" 
+                      data-src="${c.imageData}" 
+                      alt="${c.equipment}"
+                      loading="lazy"
+                      style="opacity: 0; transition: opacity 0.3s ease;"
+                    />
+                    <div class="loading-placeholder">Loading...</div>
+                  </div>
                   <div class="equipment-label">${c.equipment}</div>
                   <div>
                     <span class="confidence">Confidence: ${Math.round(c.confidence * 100)}%</span>
@@ -397,6 +415,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ${offset + limit < allContributions.length ? `<button class="nav-button" onclick="window.location.href='?offset=${offset + limit}&limit=${limit}'">Next &rarr;</button>` : ''}
             </div>
           </div>
+          
+          <script>
+            // Lazy loading with progressive enhancement
+            document.addEventListener('DOMContentLoaded', function() {
+              const lazyImages = document.querySelectorAll('.lazy-image');
+              
+              // Create an intersection observer for lazy loading
+              if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                  entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                      const img = entry.target;
+                      const placeholder = img.nextElementSibling;
+                      
+                      img.src = img.dataset.src;
+                      img.onload = () => {
+                        img.style.opacity = '1';
+                        if (placeholder) placeholder.style.display = 'none';
+                      };
+                      img.onerror = () => {
+                        if (placeholder) placeholder.textContent = 'Failed to load';
+                      };
+                      
+                      observer.unobserve(img);
+                    }
+                  });
+                });
+                
+                lazyImages.forEach(img => imageObserver.observe(img));
+              } else {
+                // Fallback for browsers without IntersectionObserver
+                lazyImages.forEach(img => {
+                  const placeholder = img.nextElementSibling;
+                  img.src = img.dataset.src;
+                  img.onload = () => {
+                    img.style.opacity = '1';
+                    if (placeholder) placeholder.style.display = 'none';
+                  };
+                  img.onerror = () => {
+                    if (placeholder) placeholder.textContent = 'Failed to load';
+                  };
+                });
+              }
+            });
+          </script>
         </body>
         </html>
       `;

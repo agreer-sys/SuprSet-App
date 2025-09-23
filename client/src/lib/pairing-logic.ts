@@ -279,62 +279,6 @@ function getExerciseQualityScore(equipment: string, exerciseType: string): numbe
   return 6;
 }
 
-function calculateEquipmentEcosystemEfficiency(exerciseA: Exercise, exerciseB: Exercise): number {
-  const ecosystemA = getEquipmentEcosystem(exerciseA.equipment);
-  const ecosystemB = getEquipmentEcosystem(exerciseB.equipment);
-  
-  // Same equipment = maximum efficiency (35 pts)
-  if (exerciseA.equipment === exerciseB.equipment) {
-    return 35;
-  }
-  
-  // Equipment ecosystem compatibility (30 pts)
-  // Can exercise B be done with exercise A's equipment setup?
-  if (ecosystemA.type === 'rack_hub') {
-    // Rack can support barbell, pullups, dumbbells, bodyweight
-    if (exerciseB.equipment.toLowerCase().includes('barbell') ||
-        exerciseB.equipment.toLowerCase().includes('pull-up') ||
-        exerciseB.equipment.toLowerCase().includes('dumbbell') ||
-        exerciseB.equipment.toLowerCase().includes('bodyweight')) {
-      return 30;
-    }
-  }
-  
-  if (ecosystemA.type === 'bench_barbell_hub' || ecosystemA.type === 'bench_dumbbell') {
-    // Bench can support barbell, dumbbells, bodyweight on/beside bench
-    if (exerciseB.equipment.toLowerCase().includes('barbell') ||
-        exerciseB.equipment.toLowerCase().includes('dumbbell') ||
-        exerciseB.equipment.toLowerCase().includes('bodyweight')) {
-      return 30;
-    }
-  }
-  
-  if (ecosystemA.type === 'cable_hub') {
-    // Cable station can support different cable exercises, dumbbells, bodyweight beside
-    if (exerciseB.equipment.toLowerCase().includes('cable') ||
-        exerciseB.equipment.toLowerCase().includes('dumbbell') ||
-        exerciseB.equipment.toLowerCase().includes('bodyweight')) {
-      return 30;
-    }
-  }
-  
-  // Fixed machine + portable addition (25 pts)
-  if (ecosystemA.type === 'fixed_machine') {
-    if (exerciseB.equipment.toLowerCase().includes('dumbbell') ||
-        exerciseB.equipment.toLowerCase().includes('bodyweight') ||
-        exerciseB.equipment.toLowerCase().includes('band')) {
-      return 25;
-    }
-  }
-  
-  // Portable equipment pairing (20 pts)
-  if (isPortableEquipment(exerciseA.equipment) && isPortableEquipment(exerciseB.equipment)) {
-    return 20;
-  }
-  
-  // Poor efficiency - requires multiple major equipment pieces (5 pts)
-  return 5;
-}
 
 function getEquipmentEcosystemReasoning(exerciseA: Exercise, exerciseB: Exercise): string | null {
   const ecosystemA = getEquipmentEcosystem(exerciseA.equipment);
