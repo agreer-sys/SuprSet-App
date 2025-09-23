@@ -162,9 +162,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("❌ Error creating contribution:", error);
-      if (error.name === 'ZodError') {
-        console.log('Zod validation errors:', error.issues);
-        res.status(400).json({ message: "Invalid contribution data", details: error.issues });
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'ZodError') {
+        console.log('Zod validation errors:', (error as any).issues);
+        res.status(400).json({ message: "Invalid contribution data", details: (error as any).issues });
       } else {
         res.status(500).json({ message: "Failed to submit contribution" });
       }
@@ -322,8 +322,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     <span class="training-set">${c.trainingSet}</span>
                   </div>
                   <div class="metadata">
-                    <div>Size: ${(c.imageSize / 1024).toFixed(1)}KB</div>
-                    <div>Date: ${new Date(c.createdAt).toLocaleDateString()}</div>
+                    <div>Size: ${c.imageSize ? (c.imageSize / 1024).toFixed(1) : 'Unknown'}KB</div>
+                    <div>Date: ${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'Unknown'}</div>
                     <div>Notes: ${c.notes}</div>
                   </div>
                 </div>
