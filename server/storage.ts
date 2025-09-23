@@ -65,6 +65,7 @@ export interface IStorage {
   getUserContributions(userId: string): Promise<Contribution[]>;
   getContributionStats(userId: string): Promise<{ total: number; verified: number }>;
   checkDuplicateImage(imageHash: string): Promise<boolean>;
+  updateContributionLabel(id: string, equipment: string): Promise<Contribution>;
 
   // Super Sets methods
   createSuperSet(superSet: InsertSuperSet): Promise<SuperSet>;
@@ -485,6 +486,23 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return !!result;
+  }
+
+  async updateContributionLabel(id: string, equipment: string): Promise<Contribution> {
+    const [updated] = await db
+      .update(contributions)
+      .set({ 
+        equipment,
+        tags: this.generateEquipmentTags(equipment) // Update tags based on new equipment
+      })
+      .where(eq(contributions.id, id))
+      .returning();
+    
+    if (!updated) {
+      throw new Error('Contribution not found');
+    }
+    
+    return updated;
   }
 
   async deleteContribution(contributionId: string, userId: string): Promise<boolean> {

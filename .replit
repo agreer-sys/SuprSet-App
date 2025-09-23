@@ -37,7 +37,3 @@ integrations = ["javascript_gemini==1.0.0", "javascript_anthropic==1.0.0", "java
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 45015
-externalPort = 3001

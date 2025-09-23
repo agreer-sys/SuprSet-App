@@ -341,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .stats { display: flex; gap: 20px; margin-bottom: 20px; }
             .stat { background: white; padding: 15px; border-radius: 8px; text-align: center; }
             .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-            .image-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .image-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; }
             .image-container { position: relative; width: 100%; height: 200px; border-radius: 4px; overflow: hidden; }
             .image-card img { width: 100%; height: 200px; object-fit: cover; border-radius: 4px; }
             .loading-placeholder { 
@@ -352,12 +352,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               color: #6b7280; 
               font-size: 14px; 
             }
-            .equipment-label { font-size: 18px; font-weight: bold; color: #2563eb; margin: 10px 0; }
+            .equipment-label { font-size: 18px; font-weight: bold; color: #2563eb; margin: 10px 0; cursor: pointer; }
+            .equipment-label:hover { background: #eff6ff; padding: 4px; border-radius: 4px; }
+            .edit-mode { display: none; margin: 10px 0; }
+            .edit-mode.active { display: block; }
+            .equipment-select { padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; width: 100%; margin-bottom: 10px; }
+            .edit-buttons { display: flex; gap: 10px; }
+            .save-btn { background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+            .cancel-btn { background: #6b7280; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+            .edit-icon { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
             .confidence { background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
             .training-set { background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px; }
             .metadata { color: #6b7280; font-size: 12px; margin-top: 10px; }
             .navigation { margin: 20px 0; text-align: center; }
             .nav-button { padding: 10px 20px; margin: 0 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; }
+            .success-flash { background: #d1fae5; border: 1px solid #10b981; color: #047857; padding: 4px 8px; border-radius: 4px; margin-top: 5px; font-size: 12px; }
           </style>
         </head>
         <body>
@@ -391,7 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   : `data:image/jpeg;base64,${c.imageData}`;
                   
                 return `
-                <div class="image-card">
+                <div class="image-card" data-contribution-id="${c.id}">
                   <div class="image-container">
                     <img 
                       class="lazy-image" 
@@ -401,8 +410,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       style="opacity: 0; transition: opacity 0.3s ease;"
                     />
                     <div class="loading-placeholder">Loading...</div>
+                    <button class="edit-icon" onclick="startEdit('${c.id}')" title="Edit label">✏️</button>
                   </div>
-                  <div class="equipment-label">${c.equipment}</div>
+                  
+                  <div class="equipment-label" onclick="startEdit('${c.id}')" title="Click to edit">
+                    ${c.equipment}
+                  </div>
+                  
+                  <div class="edit-mode" id="edit-${c.id}">
+                    <select class="equipment-select" id="select-${c.id}">
+                      <option value="Barbell" ${c.equipment === 'Barbell' ? 'selected' : ''}>Barbell</option>
+                      <option value="Cable Tower" ${c.equipment === 'Cable Tower' ? 'selected' : ''}>Cable Tower</option>
+                      <option value="Chest Press Machine" ${c.equipment === 'Chest Press Machine' ? 'selected' : ''}>Chest Press Machine</option>
+                      <option value="Dumbbells" ${c.equipment === 'Dumbbells' ? 'selected' : ''}>Dumbbells</option>
+                      <option value="Flat Bench" ${c.equipment === 'Flat Bench' ? 'selected' : ''}>Flat Bench</option>
+                      <option value="Kettlebells" ${c.equipment === 'Kettlebells' ? 'selected' : ''}>Kettlebells</option>
+                      <option value="Lat Pulldown Machine" ${c.equipment === 'Lat Pulldown Machine' ? 'selected' : ''}>Lat Pulldown Machine</option>
+                      <option value="Lateral Raise Machine" ${c.equipment === 'Lateral Raise Machine' ? 'selected' : ''}>Lateral Raise Machine</option>
+                      <option value="Leg Curl Machine" ${c.equipment === 'Leg Curl Machine' ? 'selected' : ''}>Leg Curl Machine</option>
+                      <option value="Leg Extension Machine" ${c.equipment === 'Leg Extension Machine' ? 'selected' : ''}>Leg Extension Machine</option>
+                      <option value="Leg Press Machine" ${c.equipment === 'Leg Press Machine' ? 'selected' : ''}>Leg Press Machine</option>
+                      <option value="Medicine Ball" ${c.equipment === 'Medicine Ball' ? 'selected' : ''}>Medicine Ball</option>
+                      <option value="Preacher Curl Machine" ${c.equipment === 'Preacher Curl Machine' ? 'selected' : ''}>Preacher Curl Machine</option>
+                      <option value="Seated Cable Row Machine" ${c.equipment === 'Seated Cable Row Machine' ? 'selected' : ''}>Seated Cable Row Machine</option>
+                      <option value="Smith Machine" ${c.equipment === 'Smith Machine' ? 'selected' : ''}>Smith Machine</option>
+                    </select>
+                    <div class="edit-buttons">
+                      <button class="save-btn" onclick="saveLabel('${c.id}')">Save</button>
+                      <button class="cancel-btn" onclick="cancelEdit('${c.id}')">Cancel</button>
+                    </div>
+                  </div>
+                  
                   <div>
                     <span class="confidence">Confidence: ${Math.round(c.confidence * 100)}%</span>
                     <span class="training-set">${c.trainingSet}</span>
@@ -412,6 +450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     <div>Date: ${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'Unknown'}</div>
                     <div>Notes: ${c.notes}</div>
                   </div>
+                  <div id="success-${c.id}"></div>
                 </div>`;
               }).join('')}
             </div>
@@ -465,6 +504,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
               }
             });
+            
+            // Interactive relabeling functions
+            function startEdit(contributionId) {
+              const editMode = document.getElementById('edit-' + contributionId);
+              const label = document.querySelector('[data-contribution-id="' + contributionId + '"] .equipment-label');
+              
+              editMode.classList.add('active');
+              label.style.display = 'none';
+            }
+            
+            function cancelEdit(contributionId) {
+              const editMode = document.getElementById('edit-' + contributionId);
+              const label = document.querySelector('[data-contribution-id="' + contributionId + '"] .equipment-label');
+              
+              editMode.classList.remove('active');
+              label.style.display = 'block';
+            }
+            
+            async function saveLabel(contributionId) {
+              const select = document.getElementById('select-' + contributionId);
+              const newEquipment = select.value;
+              const editMode = document.getElementById('edit-' + contributionId);
+              const label = document.querySelector('[data-contribution-id="' + contributionId + '"] .equipment-label');
+              const successDiv = document.getElementById('success-' + contributionId);
+              
+              try {
+                const response = await fetch('/api/debug/contributions/' + contributionId + '/label', {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ equipment: newEquipment })
+                });
+                
+                if (response.ok) {
+                  // Update the label display
+                  label.textContent = newEquipment;
+                  editMode.classList.remove('active');
+                  label.style.display = 'block';
+                  
+                  // Show success message
+                  successDiv.innerHTML = '<div class="success-flash">✓ Label updated successfully!</div>';
+                  setTimeout(() => {
+                    successDiv.innerHTML = '';
+                  }, 3000);
+                } else {
+                  throw new Error('Failed to update label');
+                }
+              } catch (error) {
+                alert('Error updating label: ' + error.message);
+                console.error('Error:', error);
+              }
+            }
           </script>
         </body>
         </html>
@@ -474,6 +566,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating image viewer:", error);
       res.status(500).send('Error generating image viewer');
+    }
+  });
+
+  // Update image label endpoint for relabeling
+  app.patch('/api/debug/contributions/:id/label', async (req, res) => {
+    try {
+      const contributionId = req.params.id;
+      const { equipment } = req.body;
+      
+      if (!equipment || typeof equipment !== 'string') {
+        return res.status(400).json({ message: "Equipment label is required" });
+      }
+      
+      const updated = await storage.updateContributionLabel(contributionId, equipment);
+      res.json({ success: true, contribution: updated });
+    } catch (error) {
+      console.error("Error updating contribution label:", error);
+      res.status(500).json({ message: "Failed to update label" });
     }
   });
 
