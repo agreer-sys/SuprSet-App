@@ -453,6 +453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Medicine Ball" ${c.equipment === 'Medicine Ball' ? 'selected' : ''}>Medicine Ball</option>
                       <option value="Nordic Hamstring Curl Machine" ${c.equipment === 'Nordic Hamstring Curl Machine' ? 'selected' : ''}>Nordic Hamstring Curl Machine</option>
                       <option value="Pec Fly Machine" ${c.equipment === 'Pec Fly Machine' ? 'selected' : ''}>Pec Fly Machine</option>
+                      <option value="Pec Fly / Rear Delt Machine" ${c.equipment === 'Pec Fly / Rear Delt Machine' ? 'selected' : ''}>Pec Fly / Rear Delt Machine</option>
                       <option value="Plyo Box" ${c.equipment === 'Plyo Box' ? 'selected' : ''}>Plyo Box</option>
                       <option value="Preacher Curl Machine" ${c.equipment === 'Preacher Curl Machine' ? 'selected' : ''}>Preacher Curl Machine</option>
                       <option value="Pull-Up Bar" ${c.equipment === 'Pull-Up Bar' ? 'selected' : ''}>Pull-Up Bar</option>
