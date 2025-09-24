@@ -11,7 +11,14 @@ import { Upload, Image, CheckCircle, XCircle, BarChart3 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
-// Fetch equipment from API instead of hardcoded list
+// Equipment categories for the stealth dataset collection
+const EQUIPMENT_CATEGORIES = [
+  "Barbell", "Dumbbell", "Kettlebell", "Cable Machine", "Smith Machine",
+  "Leg Press", "Lat Pulldown", "Seated Row", "Chest Press", "Shoulder Press",
+  "Leg Extension", "Leg Curl", "Calf Raise", "Pull-up Bar", "Dip Station",
+  "Bench", "Squat Rack", "Power Rack", "Preacher Curl", "Roman Chair",
+  "Plate Loaded", "Selectorized (Built in weight stack)", "Battle Ropes", "TRX", "Resistance Bands", "Medicine Ball", "Stability Ball"
+];
 
 interface BatchContribution {
   equipment: string;
@@ -35,11 +42,6 @@ export default function BatchContribute() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Fetch equipment from API like other components
-  const { data: equipmentTypes = [] } = useQuery<string[]>({
-    queryKey: ["/api/exercises/equipment"],
-  });
   
   const [selectedEquipment, setSelectedEquipment] = useState<string>("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -288,7 +290,7 @@ export default function BatchContribute() {
                 <SelectValue placeholder="Select equipment type" />
               </SelectTrigger>
               <SelectContent>
-                {equipmentTypes.map((equipment: string) => (
+                {EQUIPMENT_CATEGORIES.map((equipment) => (
                   <SelectItem key={equipment} value={equipment}>
                     {equipment}
                   </SelectItem>

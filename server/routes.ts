@@ -437,8 +437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Elliptical" ${c.equipment === 'Elliptical' ? 'selected' : ''}>Elliptical</option>
                       <option value="EZ Barbell" ${c.equipment === 'EZ Barbell' ? 'selected' : ''}>EZ Barbell</option>
                       <option value="Functional Trainer" ${c.equipment === 'Functional Trainer' ? 'selected' : ''}>Functional Trainer</option>
-                      <option value="Glute Bridge Machine (Cable Stack)" ${c.equipment === 'Glute Bridge Machine (Cable Stack)' ? 'selected' : ''}>Glute Bridge Machine (Cable Stack)</option>
-                      <option value="Glute Bridge Machine (Plate Loaded)" ${c.equipment === 'Glute Bridge Machine (Plate Loaded)' ? 'selected' : ''}>Glute Bridge Machine (Plate Loaded)</option>
+                      <option value="Glute Bridge Machine" ${c.equipment === 'Glute Bridge Machine' ? 'selected' : ''}>Glute Bridge Machine</option>
                       <option value="Glute Ham Raise Unit" ${c.equipment === 'Glute Ham Raise Unit' ? 'selected' : ''}>Glute Ham Raise Unit</option>
                       <option value="Glute Kickback Machine" ${c.equipment === 'Glute Kickback Machine' ? 'selected' : ''}>Glute Kickback Machine</option>
                       <option value="Hack Squat Machine (Cable Stack)" ${c.equipment === 'Hack Squat Machine (Cable Stack)' ? 'selected' : ''}>Hack Squat Machine (Cable Stack)</option>
@@ -464,7 +463,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Olympic Flat Bench" ${c.equipment === 'Olympic Flat Bench' ? 'selected' : ''}>Olympic Flat Bench</option>
                       <option value="Olympic Incline Bench" ${c.equipment === 'Olympic Incline Bench' ? 'selected' : ''}>Olympic Incline Bench</option>
                       <option value="Olympic Military Bench" ${c.equipment === 'Olympic Military Bench' ? 'selected' : ''}>Olympic Military Bench</option>
-                      <option value="Olympic Plate Tree" ${c.equipment === 'Olympic Plate Tree' ? 'selected' : ''}>Olympic Plate Tree</option>
                       <option value="Pec Fly Machine" ${c.equipment === 'Pec Fly Machine' ? 'selected' : ''}>Pec Fly Machine</option>
                       <option value="Pec Fly / Rear Delt Machine" ${c.equipment === 'Pec Fly / Rear Delt Machine' ? 'selected' : ''}>Pec Fly / Rear Delt Machine</option>
                       <option value="Plyo Box" ${c.equipment === 'Plyo Box' ? 'selected' : ''}>Plyo Box</option>
@@ -750,7 +748,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
   // Get all exercises
   app.get("/api/exercises", async (req, res) => {
     try {
@@ -826,47 +823,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get equipment types from dedicated catalog (before :id route)
+  // Get unique equipment types from exercises (before :id route)
   app.get("/api/exercises/equipment", async (req, res) => {
     try {
-      // Use dedicated equipment catalog for consistent dropdown data
-      const { getActiveEquipmentNames } = await import('../shared/equipment-catalog');
-      const equipmentNames = getActiveEquipmentNames();
+      const allExercises = await storage.getAllExercises();
+      const equipment = new Set<string>();
       
-      console.log(`📋 Serving ${equipmentNames.length} equipment items from catalog`);
-      res.json(equipmentNames);
-    } catch (error) {
-      console.error("Error loading equipment catalog:", error);
-      
-      // Fallback to Airtable data if catalog fails (without TEST modifications)
-      try {
-        const allExercises = await storage.getAllExercises();
-        const equipment = new Set<string>();
-        
-        allExercises.forEach(exercise => {
-          if (exercise.equipmentPrimary) {
-            equipment.add(exercise.equipmentPrimary);
-          }
-          if (exercise.equipmentSecondary) {
-            for (const eq of exercise.equipmentSecondary) {
-              if (eq) equipment.add(eq);
-            }
-          }
-          if (exercise.equipment && exercise.equipment !== 'bodyweight') {
-            const equipmentList = exercise.equipment.split(',').map(eq => eq.trim());
-            for (const eq of equipmentList) {
-              if (eq) equipment.add(eq);
-            }
-          }
+      allExercises.forEach(exercise => {
+        const equipmentList = exercise.equipment.split(',').map(eq => eq.trim());
+        equipmentList.forEach(eq => {
+          if (eq) equipment.add(eq);
         });
-        
-        const sortedEquipment = Array.from(equipment).sort();
-        console.log(`📋 Fallback: Serving ${sortedEquipment.length} equipment items from Airtable`);
-        res.json(sortedEquipment);
-      } catch (fallbackError) {
-        console.error("Fallback equipment fetch failed:", fallbackError);
-        res.status(500).json({ message: "Failed to fetch equipment types" });
-      }
+      });
+      
+      res.json(Array.from(equipment).sort());
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch equipment" });
     }
   });
 
