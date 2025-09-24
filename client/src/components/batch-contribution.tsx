@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,16 @@ export default function BatchContribution() {
   const { data: equipmentTypes = [] } = useQuery<string[]>({
     queryKey: ["/api/exercises/equipment"],
   });
+
+  // DEBUG: Log equipment data to console
+  useEffect(() => {
+    console.log("🔧 DEBUG: Batch component equipmentTypes:", equipmentTypes);
+    console.log("🔧 DEBUG: Equipment count:", equipmentTypes.length);
+    if (equipmentTypes.length > 0) {
+      console.log("🔧 DEBUG: First few items:", equipmentTypes.slice(0, 5));
+      console.log("🔧 DEBUG: Contains TEST items:", equipmentTypes.filter(item => item.includes('TEST')));
+    }
+  }, [equipmentTypes]);
 
   const contributionMutation = useMutation({
     mutationFn: async (contribution: any) => {
@@ -229,11 +239,12 @@ export default function BatchContribution() {
             <div>
               <Label htmlFor="global-equipment">Default Equipment Type</Label>
               <Select value={globalEquipment} onValueChange={setGlobalEquipment}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select equipment type" />
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {equipmentTypes.map((equipment) => (
+                  <SelectItem value="">Select Equipment Type</SelectItem>
+                  {equipmentTypes.map((equipment: string) => (
                     <SelectItem key={equipment} value={equipment}>
                       {equipment}
                     </SelectItem>
