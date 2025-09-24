@@ -437,7 +437,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Elliptical" ${c.equipment === 'Elliptical' ? 'selected' : ''}>Elliptical</option>
                       <option value="EZ Barbell" ${c.equipment === 'EZ Barbell' ? 'selected' : ''}>EZ Barbell</option>
                       <option value="Functional Trainer" ${c.equipment === 'Functional Trainer' ? 'selected' : ''}>Functional Trainer</option>
-                      <option value="Glute Bridge Machine" ${c.equipment === 'Glute Bridge Machine' ? 'selected' : ''}>Glute Bridge Machine</option>
+                      <option value="Glute Bridge Machine (Cable Stack)" ${c.equipment === 'Glute Bridge Machine (Cable Stack)' ? 'selected' : ''}>Glute Bridge Machine (Cable Stack)</option>
+                      <option value="Glute Bridge Machine (Plate Loaded)" ${c.equipment === 'Glute Bridge Machine (Plate Loaded)' ? 'selected' : ''}>Glute Bridge Machine (Plate Loaded)</option>
                       <option value="Glute Ham Raise Unit" ${c.equipment === 'Glute Ham Raise Unit' ? 'selected' : ''}>Glute Ham Raise Unit</option>
                       <option value="Glute Kickback Machine" ${c.equipment === 'Glute Kickback Machine' ? 'selected' : ''}>Glute Kickback Machine</option>
                       <option value="Hack Squat Machine (Cable Stack)" ${c.equipment === 'Hack Squat Machine (Cable Stack)' ? 'selected' : ''}>Hack Squat Machine (Cable Stack)</option>
@@ -463,6 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Olympic Flat Bench" ${c.equipment === 'Olympic Flat Bench' ? 'selected' : ''}>Olympic Flat Bench</option>
                       <option value="Olympic Incline Bench" ${c.equipment === 'Olympic Incline Bench' ? 'selected' : ''}>Olympic Incline Bench</option>
                       <option value="Olympic Military Bench" ${c.equipment === 'Olympic Military Bench' ? 'selected' : ''}>Olympic Military Bench</option>
+                      <option value="Olympic Plate Tree" ${c.equipment === 'Olympic Plate Tree' ? 'selected' : ''}>Olympic Plate Tree</option>
                       <option value="Pec Fly Machine" ${c.equipment === 'Pec Fly Machine' ? 'selected' : ''}>Pec Fly Machine</option>
                       <option value="Pec Fly / Rear Delt Machine" ${c.equipment === 'Pec Fly / Rear Delt Machine' ? 'selected' : ''}>Pec Fly / Rear Delt Machine</option>
                       <option value="Plyo Box" ${c.equipment === 'Plyo Box' ? 'selected' : ''}>Plyo Box</option>
