@@ -832,10 +832,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const equipment = new Set<string>();
       
       allExercises.forEach(exercise => {
-        const equipmentList = exercise.equipment.split(',').map(eq => eq.trim());
-        equipmentList.forEach(eq => {
-          if (eq) equipment.add(eq);
-        });
+        // Add primary equipment
+        if (exercise.equipmentPrimary) {
+          equipment.add(exercise.equipmentPrimary);
+        }
+        
+        // Add secondary equipment
+        if (exercise.equipmentSecondary) {
+          exercise.equipmentSecondary.forEach(eq => {
+            if (eq) equipment.add(eq);
+          });
+        }
+        
+        // Fallback to basic equipment field for compatibility
+        if (exercise.equipment && exercise.equipment !== 'bodyweight') {
+          const equipmentList = exercise.equipment.split(',').map(eq => eq.trim());
+          equipmentList.forEach(eq => {
+            if (eq) equipment.add(eq);
+          });
+        }
       });
       
       res.json(Array.from(equipment).sort());
