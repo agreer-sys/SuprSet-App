@@ -446,6 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Laying Leg Curl Machine" ${c.equipment === 'Laying Leg Curl Machine' ? 'selected' : ''}>Laying Leg Curl Machine</option>
                       <option value="Leg Curl Machine" ${c.equipment === 'Leg Curl Machine' ? 'selected' : ''}>Leg Curl Machine</option>
                       <option value="Leg Extension Machine" ${c.equipment === 'Leg Extension Machine' ? 'selected' : ''}>Leg Extension Machine</option>
+                      <option value="Leg Extension / Leg Curl Machine" ${c.equipment === 'Leg Extension / Leg Curl Machine' ? 'selected' : ''}>Leg Extension / Leg Curl Machine</option>
                       <option value="Leg Press Machine" ${c.equipment === 'Leg Press Machine' ? 'selected' : ''}>Leg Press Machine</option>
                       <option value="Loop Band" ${c.equipment === 'Loop Band' ? 'selected' : ''}>Loop Band</option>
                       <option value="Machine Row" ${c.equipment === 'Machine Row' ? 'selected' : ''}>Machine Row</option>
