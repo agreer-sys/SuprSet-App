@@ -428,7 +428,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Barbell" ${c.equipment === 'Barbell' ? 'selected' : ''}>Barbell</option>
                       <option value="Bodyweight" ${c.equipment === 'Bodyweight' ? 'selected' : ''}>Bodyweight</option>
                       <option value="Cable Tower" ${c.equipment === 'Cable Tower' ? 'selected' : ''}>Cable Tower</option>
-                      <option value="Chest Press Machine" ${c.equipment === 'Chest Press Machine' ? 'selected' : ''}>Chest Press Machine</option>
+                      <option value="Calf Raise Machine (Cable Stack)" ${c.equipment === 'Calf Raise Machine (Cable Stack)' ? 'selected' : ''}>Calf Raise Machine (Cable Stack)</option>
+                      <option value="Calf Raise Machine (Plate Loaded)" ${c.equipment === 'Calf Raise Machine (Plate Loaded)' ? 'selected' : ''}>Calf Raise Machine (Plate Loaded)</option>
+                      <option value="Chest Press Machine (Cable Stack)" ${c.equipment === 'Chest Press Machine (Cable Stack)' ? 'selected' : ''}>Chest Press Machine (Cable Stack)</option>
+                      <option value="Chest Press Machine (Plate Loaded)" ${c.equipment === 'Chest Press Machine (Plate Loaded)' ? 'selected' : ''}>Chest Press Machine (Plate Loaded)</option>
                       <option value="Dip Station" ${c.equipment === 'Dip Station' ? 'selected' : ''}>Dip Station</option>
                       <option value="Dumbbells" ${c.equipment === 'Dumbbells' ? 'selected' : ''}>Dumbbells</option>
                       <option value="Elliptical" ${c.equipment === 'Elliptical' ? 'selected' : ''}>Elliptical</option>
@@ -437,6 +440,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Glute Bridge Machine" ${c.equipment === 'Glute Bridge Machine' ? 'selected' : ''}>Glute Bridge Machine</option>
                       <option value="Glute Ham Raise Unit" ${c.equipment === 'Glute Ham Raise Unit' ? 'selected' : ''}>Glute Ham Raise Unit</option>
                       <option value="Glute Kickback Machine" ${c.equipment === 'Glute Kickback Machine' ? 'selected' : ''}>Glute Kickback Machine</option>
+                      <option value="Hack Squat Machine (Cable Stack)" ${c.equipment === 'Hack Squat Machine (Cable Stack)' ? 'selected' : ''}>Hack Squat Machine (Cable Stack)</option>
+                      <option value="Hack Squat Machine (Plate Loaded)" ${c.equipment === 'Hack Squat Machine (Plate Loaded)' ? 'selected' : ''}>Hack Squat Machine (Plate Loaded)</option>
                       <option value="Incline Chest Press Machine" ${c.equipment === 'Incline Chest Press Machine' ? 'selected' : ''}>Incline Chest Press Machine</option>
                       <option value="Jacobs Ladder" ${c.equipment === 'Jacobs Ladder' ? 'selected' : ''}>Jacobs Ladder</option>
                       <option value="Jump Rope" ${c.equipment === 'Jump Rope' ? 'selected' : ''}>Jump Rope</option>
@@ -447,7 +452,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Leg Curl Machine" ${c.equipment === 'Leg Curl Machine' ? 'selected' : ''}>Leg Curl Machine</option>
                       <option value="Leg Extension Machine" ${c.equipment === 'Leg Extension Machine' ? 'selected' : ''}>Leg Extension Machine</option>
                       <option value="Leg Extension / Leg Curl Machine" ${c.equipment === 'Leg Extension / Leg Curl Machine' ? 'selected' : ''}>Leg Extension / Leg Curl Machine</option>
-                      <option value="Leg Press Machine" ${c.equipment === 'Leg Press Machine' ? 'selected' : ''}>Leg Press Machine</option>
+                      <option value="Leg Press Machine (Cable Stack)" ${c.equipment === 'Leg Press Machine (Cable Stack)' ? 'selected' : ''}>Leg Press Machine (Cable Stack)</option>
+                      <option value="Leg Press Machine (Plate Loaded)" ${c.equipment === 'Leg Press Machine (Plate Loaded)' ? 'selected' : ''}>Leg Press Machine (Plate Loaded)</option>
                       <option value="Loop Band" ${c.equipment === 'Loop Band' ? 'selected' : ''}>Loop Band</option>
                       <option value="Machine Row" ${c.equipment === 'Machine Row' ? 'selected' : ''}>Machine Row</option>
                       <option value="Mat" ${c.equipment === 'Mat' ? 'selected' : ''}>Mat</option>
@@ -467,7 +473,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Roman Chair Machine" ${c.equipment === 'Roman Chair Machine' ? 'selected' : ''}>Roman Chair Machine</option>
                       <option value="Rower" ${c.equipment === 'Rower' ? 'selected' : ''}>Rower</option>
                       <option value="Seated Cable Row Machine" ${c.equipment === 'Seated Cable Row Machine' ? 'selected' : ''}>Seated Cable Row Machine</option>
-                      <option value="Shoulder Press Machine" ${c.equipment === 'Shoulder Press Machine' ? 'selected' : ''}>Shoulder Press Machine</option>
+                      <option value="Shoulder Press Machine (Cable Stack)" ${c.equipment === 'Shoulder Press Machine (Cable Stack)' ? 'selected' : ''}>Shoulder Press Machine (Cable Stack)</option>
+                      <option value="Shoulder Press Machine (Plate Loaded)" ${c.equipment === 'Shoulder Press Machine (Plate Loaded)' ? 'selected' : ''}>Shoulder Press Machine (Plate Loaded)</option>
                       <option value="Ski Erg" ${c.equipment === 'Ski Erg' ? 'selected' : ''}>Ski Erg</option>
                       <option value="Sled" ${c.equipment === 'Sled' ? 'selected' : ''}>Sled</option>
                       <option value="Smith Machine" ${c.equipment === 'Smith Machine' ? 'selected' : ''}>Smith Machine</option>
@@ -476,7 +483,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       <option value="Standing Leg Curl Machine" ${c.equipment === 'Standing Leg Curl Machine' ? 'selected' : ''}>Standing Leg Curl Machine</option>
                       <option value="Stationary Bike" ${c.equipment === 'Stationary Bike' ? 'selected' : ''}>Stationary Bike</option>
                       <option value="Strength Band" ${c.equipment === 'Strength Band' ? 'selected' : ''}>Strength Band</option>
-                      <option value="T-Bar Row Machine" ${c.equipment === 'T-Bar Row Machine' ? 'selected' : ''}>T-Bar Row Machine</option>
+                      <option value="T-Bar Row Machine (Cable Stack)" ${c.equipment === 'T-Bar Row Machine (Cable Stack)' ? 'selected' : ''}>T-Bar Row Machine (Cable Stack)</option>
+                      <option value="T-Bar Row Machine (Plate Loaded)" ${c.equipment === 'T-Bar Row Machine (Plate Loaded)' ? 'selected' : ''}>T-Bar Row Machine (Plate Loaded)</option>
                       <option value="Treadmill" ${c.equipment === 'Treadmill' ? 'selected' : ''}>Treadmill</option>
                       <option value="Tricep Extension Machine" ${c.equipment === 'Tricep Extension Machine' ? 'selected' : ''}>Tricep Extension Machine</option>
                       <option value="TRX Unit" ${c.equipment === 'TRX Unit' ? 'selected' : ''}>TRX Unit</option>
