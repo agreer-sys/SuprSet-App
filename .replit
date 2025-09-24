@@ -33,11 +33,3 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_gemini==1.0.0", "javascript_anthropic==1.0.0", "javascript_openai==1.0.0"]
-
-[[ports]]
-localPort = 5000
-externalPort = 80
-
-[[ports]]
-localPort = 46179
-externalPort = 3000
