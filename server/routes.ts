@@ -839,17 +839,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Add secondary equipment
         if (exercise.equipmentSecondary) {
-          exercise.equipmentSecondary.forEach(eq => {
+          for (const eq of exercise.equipmentSecondary) {
             if (eq) equipment.add(eq);
-          });
+          }
         }
         
         // Fallback to basic equipment field for compatibility
         if (exercise.equipment && exercise.equipment !== 'bodyweight') {
           const equipmentList = exercise.equipment.split(',').map(eq => eq.trim());
-          equipmentList.forEach(eq => {
+          for (const eq of equipmentList) {
             if (eq) equipment.add(eq);
-          });
+          }
         }
       });
       

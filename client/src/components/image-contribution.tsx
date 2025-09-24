@@ -58,6 +58,7 @@ export default function ImageContribution({ isVisible, onClose, onSuccess }: Ima
     }
   };
 
+  // UPDATED: Comprehensive equipment list matching batch upload component
   const commonEquipmentTypes = [
     "Abductor Machine", "Adductor Machine", "Adjustable Bench", "Assault Bike", "Assisted Pull-Up Machine",
     "Back Extension Bench", "Barbell", "Bodyweight", "Cable Tower", "Calf Raise Machine (Cable Stack)",
