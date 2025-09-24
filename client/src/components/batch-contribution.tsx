@@ -22,12 +22,22 @@ interface BatchImage {
 }
 
 const EQUIPMENT_PRESETS = [
-  "Bench Press", "Squat Rack", "Smith Machine", "Lat Pulldown Machine", 
-  "Cable Crossover", "Leg Press Machine", "Leg Extension Machine", "Leg Curl Machine",
-  "Chest Fly Machine", "Shoulder Press Machine", "Seated Row Machine", "Preacher Curl Bench",
-  "Dip Station", "Pull-up Bar", "Dumbbells", "Barbells", "Weight Plates", "Kettlebells",
-  "Resistance Bands", "Battle Ropes", "TRX Suspension Trainer", "Foam Rollers", 
-  "Exercise Mats", "Medicine Balls", "Stability Balls"
+  "Abductor Machine", "Adductor Machine", "Adjustable Bench", "Assault Bike", "Assisted Pull-Up Machine",
+  "Back Extension Bench", "Barbell", "Bodyweight", "Cable Tower", "Calf Raise Machine (Cable Stack)",
+  "Calf Raise Machine (Plate Loaded)", "Chest Press Machine (Cable Stack)", "Chest Press Machine (Plate Loaded)",
+  "Dip Station", "Dumbbells", "Elliptical", "EZ Barbell", "Functional Trainer", "Glute Bridge Machine",
+  "Glute Ham Raise Unit", "Glute Kickback Machine", "Hack Squat Machine (Cable Stack)", "Hack Squat Machine (Plate Loaded)",
+  "Incline Chest Press Machine", "Jacobs Ladder", "Jump Rope", "Kettlebells", "Lateral Raise Machine",
+  "Lat Pulldown Machine", "Laying Leg Curl Machine", "Leg Curl Machine", "Leg Extension / Leg Curl Machine",
+  "Leg Extension Machine", "Leg Press Machine (Cable Stack)", "Leg Press Machine (Plate Loaded)", "Loop Band",
+  "Machine Row", "Mat", "Medicine Ball", "Nordic Hamstring Curl Machine", "Olympic Decline Bench",
+  "Olympic Flat Bench", "Olympic Incline Bench", "Olympic Military Bench", "Pec Fly Machine",
+  "Pec Fly / Rear Delt Machine", "Plyo Box", "Preacher Curl Machine", "Pull-Up Bar", "Reverse Fly Machine",
+  "Reverse Hyper Machine", "Roman Chair Machine", "Rower", "Seated Cable Row Machine", 
+  "Shoulder Press Machine (Cable Stack)", "Shoulder Press Machine (Plate Loaded)", "Ski Erg", "Sled",
+  "Smith Machine", "Stability Ball", "Stair Climber", "Standing Leg Curl Machine", "Stationary Bike",
+  "Strength Band", "T-Bar Row Machine (Cable Stack)", "T-Bar Row Machine (Plate Loaded)", "Treadmill",
+  "Tricep Extension Machine", "TRX Unit", "Weight Plates"
 ];
 
 export default function BatchContribution() {
