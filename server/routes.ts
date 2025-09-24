@@ -419,21 +419,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   
                   <div class="edit-mode" id="edit-${c.id}">
                     <select class="equipment-select" id="select-${c.id}">
+                      <option value="Abductor Machine" ${c.equipment === 'Abductor Machine' ? 'selected' : ''}>Abductor Machine</option>
+                      <option value="Adductor Machine" ${c.equipment === 'Adductor Machine' ? 'selected' : ''}>Adductor Machine</option>
+                      <option value="Adjustable Bench" ${c.equipment === 'Adjustable Bench' ? 'selected' : ''}>Adjustable Bench</option>
+                      <option value="Assault Bike" ${c.equipment === 'Assault Bike' ? 'selected' : ''}>Assault Bike</option>
+                      <option value="Assisted Pull-Up Machine" ${c.equipment === 'Assisted Pull-Up Machine' ? 'selected' : ''}>Assisted Pull-Up Machine</option>
+                      <option value="Back Extension Bench" ${c.equipment === 'Back Extension Bench' ? 'selected' : ''}>Back Extension Bench</option>
                       <option value="Barbell" ${c.equipment === 'Barbell' ? 'selected' : ''}>Barbell</option>
+                      <option value="Bodyweight" ${c.equipment === 'Bodyweight' ? 'selected' : ''}>Bodyweight</option>
                       <option value="Cable Tower" ${c.equipment === 'Cable Tower' ? 'selected' : ''}>Cable Tower</option>
                       <option value="Chest Press Machine" ${c.equipment === 'Chest Press Machine' ? 'selected' : ''}>Chest Press Machine</option>
+                      <option value="Dip Station" ${c.equipment === 'Dip Station' ? 'selected' : ''}>Dip Station</option>
                       <option value="Dumbbells" ${c.equipment === 'Dumbbells' ? 'selected' : ''}>Dumbbells</option>
-                      <option value="Flat Bench" ${c.equipment === 'Flat Bench' ? 'selected' : ''}>Flat Bench</option>
+                      <option value="Elliptical" ${c.equipment === 'Elliptical' ? 'selected' : ''}>Elliptical</option>
+                      <option value="EZ Barbell" ${c.equipment === 'EZ Barbell' ? 'selected' : ''}>EZ Barbell</option>
+                      <option value="Functional Trainer" ${c.equipment === 'Functional Trainer' ? 'selected' : ''}>Functional Trainer</option>
+                      <option value="Glute Bridge Machine" ${c.equipment === 'Glute Bridge Machine' ? 'selected' : ''}>Glute Bridge Machine</option>
+                      <option value="Glute Ham Raise Unit" ${c.equipment === 'Glute Ham Raise Unit' ? 'selected' : ''}>Glute Ham Raise Unit</option>
+                      <option value="Glute Kickback Machine" ${c.equipment === 'Glute Kickback Machine' ? 'selected' : ''}>Glute Kickback Machine</option>
+                      <option value="Incline Chest Press Machine" ${c.equipment === 'Incline Chest Press Machine' ? 'selected' : ''}>Incline Chest Press Machine</option>
+                      <option value="Jacobs Ladder" ${c.equipment === 'Jacobs Ladder' ? 'selected' : ''}>Jacobs Ladder</option>
+                      <option value="Jump Rope" ${c.equipment === 'Jump Rope' ? 'selected' : ''}>Jump Rope</option>
                       <option value="Kettlebells" ${c.equipment === 'Kettlebells' ? 'selected' : ''}>Kettlebells</option>
-                      <option value="Lat Pulldown Machine" ${c.equipment === 'Lat Pulldown Machine' ? 'selected' : ''}>Lat Pulldown Machine</option>
                       <option value="Lateral Raise Machine" ${c.equipment === 'Lateral Raise Machine' ? 'selected' : ''}>Lateral Raise Machine</option>
+                      <option value="Lat Pulldown Machine" ${c.equipment === 'Lat Pulldown Machine' ? 'selected' : ''}>Lat Pulldown Machine</option>
+                      <option value="Laying Leg Curl Machine" ${c.equipment === 'Laying Leg Curl Machine' ? 'selected' : ''}>Laying Leg Curl Machine</option>
                       <option value="Leg Curl Machine" ${c.equipment === 'Leg Curl Machine' ? 'selected' : ''}>Leg Curl Machine</option>
                       <option value="Leg Extension Machine" ${c.equipment === 'Leg Extension Machine' ? 'selected' : ''}>Leg Extension Machine</option>
                       <option value="Leg Press Machine" ${c.equipment === 'Leg Press Machine' ? 'selected' : ''}>Leg Press Machine</option>
+                      <option value="Loop Band" ${c.equipment === 'Loop Band' ? 'selected' : ''}>Loop Band</option>
+                      <option value="Machine Row" ${c.equipment === 'Machine Row' ? 'selected' : ''}>Machine Row</option>
+                      <option value="Mat" ${c.equipment === 'Mat' ? 'selected' : ''}>Mat</option>
                       <option value="Medicine Ball" ${c.equipment === 'Medicine Ball' ? 'selected' : ''}>Medicine Ball</option>
+                      <option value="Nordic Hamstring Curl Machine" ${c.equipment === 'Nordic Hamstring Curl Machine' ? 'selected' : ''}>Nordic Hamstring Curl Machine</option>
+                      <option value="Pec Fly Machine" ${c.equipment === 'Pec Fly Machine' ? 'selected' : ''}>Pec Fly Machine</option>
+                      <option value="Plyo Box" ${c.equipment === 'Plyo Box' ? 'selected' : ''}>Plyo Box</option>
                       <option value="Preacher Curl Machine" ${c.equipment === 'Preacher Curl Machine' ? 'selected' : ''}>Preacher Curl Machine</option>
+                      <option value="Pull-Up Bar" ${c.equipment === 'Pull-Up Bar' ? 'selected' : ''}>Pull-Up Bar</option>
+                      <option value="Reverse Fly Machine" ${c.equipment === 'Reverse Fly Machine' ? 'selected' : ''}>Reverse Fly Machine</option>
+                      <option value="Reverse Hyper Machine" ${c.equipment === 'Reverse Hyper Machine' ? 'selected' : ''}>Reverse Hyper Machine</option>
+                      <option value="Roman Chair Machine" ${c.equipment === 'Roman Chair Machine' ? 'selected' : ''}>Roman Chair Machine</option>
+                      <option value="Rower" ${c.equipment === 'Rower' ? 'selected' : ''}>Rower</option>
                       <option value="Seated Cable Row Machine" ${c.equipment === 'Seated Cable Row Machine' ? 'selected' : ''}>Seated Cable Row Machine</option>
+                      <option value="Ski Erg" ${c.equipment === 'Ski Erg' ? 'selected' : ''}>Ski Erg</option>
+                      <option value="Sled" ${c.equipment === 'Sled' ? 'selected' : ''}>Sled</option>
                       <option value="Smith Machine" ${c.equipment === 'Smith Machine' ? 'selected' : ''}>Smith Machine</option>
+                      <option value="Stability Ball" ${c.equipment === 'Stability Ball' ? 'selected' : ''}>Stability Ball</option>
+                      <option value="Stair Climber" ${c.equipment === 'Stair Climber' ? 'selected' : ''}>Stair Climber</option>
+                      <option value="Standing Leg Curl Machine" ${c.equipment === 'Standing Leg Curl Machine' ? 'selected' : ''}>Standing Leg Curl Machine</option>
+                      <option value="Stationary Bike" ${c.equipment === 'Stationary Bike' ? 'selected' : ''}>Stationary Bike</option>
+                      <option value="Strength Band" ${c.equipment === 'Strength Band' ? 'selected' : ''}>Strength Band</option>
+                      <option value="T-Bar Row Machine" ${c.equipment === 'T-Bar Row Machine' ? 'selected' : ''}>T-Bar Row Machine</option>
+                      <option value="Treadmill" ${c.equipment === 'Treadmill' ? 'selected' : ''}>Treadmill</option>
+                      <option value="Tricep Extension Machine" ${c.equipment === 'Tricep Extension Machine' ? 'selected' : ''}>Tricep Extension Machine</option>
+                      <option value="TRX Unit" ${c.equipment === 'TRX Unit' ? 'selected' : ''}>TRX Unit</option>
+                      <option value="Weight Plates" ${c.equipment === 'Weight Plates' ? 'selected' : ''}>Weight Plates</option>
                     </select>
                     <div class="edit-buttons">
                       <button class="save-btn" onclick="saveLabel('${c.id}')">Save</button>
