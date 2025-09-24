@@ -15,6 +15,9 @@ SuprSet is a React-based web application designed to provide intelligent exercis
 - **User Experience Enhancements**: Added individual clear buttons for filter sections, increased exercise search results to 12 items, mobile-responsive design
 - **Database Expansion**: Added 12 new tricep exercises, expanding from 194 to 206 total exercises with real-time Airtable sync
 - **Database Consolidation Plan**: Simplified muscle group structure from 38 to 10 primary categories (Back, Chest, Shoulders, Biceps, Triceps, Legs, Glutes, Core, Posterior Chain, Accessory) with detailed secondary targeting
+- **Unified Equipment Classification**: Implemented revolutionary "Adjustable Bench" system transforming 35+ exercises across flat/incline/decline positions into one versatile equipment type with position indicators
+- **Enhanced Pairing Algorithm**: Advanced three-field equipment scoring system (Primary 35pts + Secondary 25pts + Type 15pts) for superior exercise recommendations
+- **Interactive Training Data**: Added relabeling functionality to image viewer with edit buttons and dropdowns for correcting AI training labels in real-time
 - **Authentication Status**: Authentication working on mobile but web preview shows 401 errors - temporarily deferred to focus on core functionality development
 
 ## System Architecture
@@ -40,7 +43,7 @@ The application follows a client-server architecture with a React frontend and a
 
 **Data Integration**
 - **Airtable Service**: Handles API calls and data transformation for the exercise database.
-- **Exercise Schema**: Standardized interface from Airtable to application with 206 exercises across simplified muscle group structure.
+- **Exercise Schema**: Standardized interface from Airtable to application with 213 exercises across simplified muscle group structure.
 - **Caching Strategy**: 5-minute cache expiry for Airtable data with real-time sync for database updates.
 - **Muscle Group Consolidation**: Simplified from 38 specific targets to 10 primary categories (Back, Chest, Shoulders, Biceps, Triceps, Legs, Glutes, Core, Posterior Chain, Accessory) with secondary muscle group detail for precise targeting.
 
