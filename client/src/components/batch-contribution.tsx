@@ -21,7 +21,7 @@ interface BatchImage {
   errorMessage?: string;
 }
 
-// UPDATED: Comprehensive equipment list with latest additions
+// CACHE-BUST v1.1: Comprehensive equipment list with latest additions - BUILD_ID_20250924_184700
 const EQUIPMENT_PRESETS = [
   "Abductor Machine", "Adductor Machine", "Adjustable Bench", "Assault Bike", "Assisted Pull-Up Machine",
   "Back Extension Bench", "Barbell", "Bodyweight", "Cable Tower", "Calf Raise Machine (Cable Stack)",
