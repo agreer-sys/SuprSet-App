@@ -750,6 +750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // Get all exercises
   app.get("/api/exercises", async (req, res) => {
     try {
