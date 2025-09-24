@@ -826,46 +826,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get unique equipment types from exercises (before :id route)
+  // Get equipment types from dedicated catalog (before :id route)
   app.get("/api/exercises/equipment", async (req, res) => {
     try {
-      const allExercises = await storage.getAllExercises();
-      const equipment = new Set<string>();
+      // Use dedicated equipment catalog for consistent dropdown data
+      const { getActiveEquipmentNames } = await import('../shared/equipment-catalog');
+      const equipmentNames = getActiveEquipmentNames();
       
-      allExercises.forEach(exercise => {
-        // Add primary equipment
-        if (exercise.equipmentPrimary) {
-          equipment.add(exercise.equipmentPrimary);
-        }
-        
-        // Add secondary equipment
-        if (exercise.equipmentSecondary) {
-          for (const eq of exercise.equipmentSecondary) {
-            if (eq) equipment.add(eq);
-          }
-        }
-        
-        // Fallback to basic equipment field for compatibility
-        if (exercise.equipment && exercise.equipment !== 'bodyweight') {
-          const equipmentList = exercise.equipment.split(',').map(eq => eq.trim());
-          for (const eq of equipmentList) {
-            if (eq) equipment.add(eq);
-          }
-        }
-      });
-      
-      // TEST: Modify a few equipment names to check if changes propagate
-      const equipmentArray = Array.from(equipment).sort();
-      const modifiedEquipment = equipmentArray.map(item => {
-        if (item === 'Barbell') return 'TEST Barbell MODIFIED';
-        if (item === 'Dumbbells') return 'TEST Dumbbells CHANGED';
-        if (item === 'Olympic Plate Tree') return 'NEW Olympic Plate Tree UPDATED';
-        return item;
-      });
-      
-      res.json(modifiedEquipment);
+      console.log(`📋 Serving ${equipmentNames.length} equipment items from catalog`);
+      res.json(equipmentNames);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch equipment" });
+      console.error("Error loading equipment catalog:", error);
+      
+      // Fallback to Airtable data if catalog fails (without TEST modifications)
+      try {
+        const allExercises = await storage.getAllExercises();
+        const equipment = new Set<string>();
+        
+        allExercises.forEach(exercise => {
+          if (exercise.equipmentPrimary) {
+            equipment.add(exercise.equipmentPrimary);
+          }
+          if (exercise.equipmentSecondary) {
+            for (const eq of exercise.equipmentSecondary) {
+              if (eq) equipment.add(eq);
+            }
+          }
+          if (exercise.equipment && exercise.equipment !== 'bodyweight') {
+            const equipmentList = exercise.equipment.split(',').map(eq => eq.trim());
+            for (const eq of equipmentList) {
+              if (eq) equipment.add(eq);
+            }
+          }
+        });
+        
+        const sortedEquipment = Array.from(equipment).sort();
+        console.log(`📋 Fallback: Serving ${sortedEquipment.length} equipment items from Airtable`);
+        res.json(sortedEquipment);
+      } catch (fallbackError) {
+        console.error("Fallback equipment fetch failed:", fallbackError);
+        res.status(500).json({ message: "Failed to fetch equipment types" });
+      }
     }
   });
 
