@@ -76,8 +76,104 @@ export class AirtableService {
     return [];
   }
 
+  private transformBenchEquipment(
+    originalPrimary: string | null,
+    originalSecondary: string[],
+    originalType: string[]
+  ): { equipmentPrimary: string | null; equipmentSecondary: string[]; equipmentType: string[] } {
+    // Check if this exercise uses any type of adjustable bench
+    const benchTypes = [
+      'Flat Bench', 'Incline Bench', 'Decline Bench',
+      'Olympic Flat Bench', 'Olympic Incline Bench', 'Olympic Decline Bench'
+    ];
+    
+    // Check primary equipment
+    const primaryUsesBench = originalPrimary && benchTypes.includes(originalPrimary);
+    
+    // Check secondary equipment
+    const secondaryBenches = originalSecondary.filter(item => benchTypes.includes(item));
+    
+    if (primaryUsesBench || secondaryBenches.length > 0) {
+      // Transform to unified Adjustable Bench system
+      let newPrimary = originalPrimary;
+      let newSecondary = [...originalSecondary];
+      let newType = [...originalType];
+      
+      // If primary equipment is a bench type, keep it as the weights/resistance
+      if (primaryUsesBench) {
+        // For exercises like "Flat Bench Press" where bench is primary,
+        // we need to determine what's actually being lifted
+        if (originalPrimary?.includes('Olympic')) {
+          newPrimary = 'Barbell'; // Olympic benches use barbells
+        } else {
+          // Default to dumbbells for non-Olympic bench exercises
+          newPrimary = 'Dumbbells';
+        }
+        
+        // Add the bench position to equipment type
+        if (originalPrimary?.includes('Flat')) {
+          newType = [...newType.filter(t => !['Flat Position', 'Incline Position', 'Decline Position'].includes(t)), 'Flat Position'];
+        } else if (originalPrimary?.includes('Incline')) {
+          newType = [...newType.filter(t => !['Flat Position', 'Incline Position', 'Decline Position'].includes(t)), 'Incline Position'];
+        } else if (originalPrimary?.includes('Decline')) {
+          newType = [...newType.filter(t => !['Flat Position', 'Incline Position', 'Decline Position'].includes(t)), 'Decline Position'];
+        }
+        
+        // Replace bench types in secondary with Adjustable Bench
+        newSecondary = newSecondary.filter(item => !benchTypes.includes(item));
+        if (!newSecondary.includes('Adjustable Bench')) {
+          newSecondary.push('Adjustable Bench');
+        }
+      } else {
+        // Bench is in secondary - replace all bench types with Adjustable Bench
+        newSecondary = newSecondary.filter(item => !benchTypes.includes(item));
+        if (!newSecondary.includes('Adjustable Bench')) {
+          newSecondary.push('Adjustable Bench');
+        }
+        
+        // Determine position from the bench types found
+        const hasFlat = secondaryBenches.some(b => b.includes('Flat'));
+        const hasIncline = secondaryBenches.some(b => b.includes('Incline'));
+        const hasDecline = secondaryBenches.some(b => b.includes('Decline'));
+        
+        if (hasFlat) {
+          newType = [...newType.filter(t => !['Flat Position', 'Incline Position', 'Decline Position'].includes(t)), 'Flat Position'];
+        } else if (hasIncline) {
+          newType = [...newType.filter(t => !['Flat Position', 'Incline Position', 'Decline Position'].includes(t)), 'Incline Position'];
+        } else if (hasDecline) {
+          newType = [...newType.filter(t => !['Flat Position', 'Incline Position', 'Decline Position'].includes(t)), 'Decline Position'];
+        }
+      }
+      
+      return { 
+        equipmentPrimary: newPrimary, 
+        equipmentSecondary: newSecondary, 
+        equipmentType: newType 
+      };
+    }
+    
+    // No bench equipment found, return original values
+    return { 
+      equipmentPrimary: originalPrimary, 
+      equipmentSecondary: originalSecondary, 
+      equipmentType: originalType 
+    };
+  }
+
   private transformRecord(record: AirtableRecord): Exercise {
     const fields = record.fields;
+    
+    // Process equipment data with unified bench classification
+    const originalPrimary = fields["Equipment (Primary)"] || null;
+    const originalSecondary = this.parseArrayField(fields["Equipment 2 (Secondary)"]);
+    const originalType = this.parseArrayField(fields["Equipment Type"]);
+    
+    // Transform bench equipment to unified Adjustable Bench system
+    const { equipmentPrimary, equipmentSecondary, equipmentType } = this.transformBenchEquipment(
+      originalPrimary,
+      originalSecondary, 
+      originalType
+    );
     
     return {
       id: record.id.hashCode(),
@@ -87,9 +183,9 @@ export class AirtableService {
       primaryMuscleGroup: fields["Primary Muscle Group"] || null,
       secondaryMuscleGroup: this.parseArrayField(fields["Secondary Muscle Group"]),
       equipment: fields["Equipment"] || "bodyweight",
-      equipmentPrimary: fields["Equipment (Primary)"] || null,
-      equipmentSecondary: this.parseArrayField(fields["Equipment 2 (Secondary)"]),
-      equipmentType: this.parseArrayField(fields["Equipment Type"]),
+      equipmentPrimary,
+      equipmentSecondary,
+      equipmentType,
       difficultyLevel: fields["Difficulty Level"] || null,
       exerciseType: fields["Exercise Type"] || null,
       exerciseCategory: this.parseArrayField(fields["Exercise Category"]),
