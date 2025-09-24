@@ -38,7 +38,7 @@ export default function ImageContribution({ isVisible, onClose, onSuccess }: Ima
 
   // Fetch equipment from API like main exercise selection component
   const { data: equipmentTypes = [] } = useQuery<string[]>({
-    queryKey: ["/api/equipment"],
+    queryKey: ["/api/exercises/equipment"],
   });
 
   // Setup camera preview in modal

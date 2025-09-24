@@ -33,9 +33,9 @@ export default function BatchContribution() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch equipment from API like main exercise selection component
+  // Fetch equipment from API like main exercise selection component  
   const { data: equipmentTypes = [] } = useQuery<string[]>({
-    queryKey: ["/api/equipment"],
+    queryKey: ["/api/exercises/equipment"],
   });
 
   const contributionMutation = useMutation({
