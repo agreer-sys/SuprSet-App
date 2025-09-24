@@ -853,7 +853,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      res.json(Array.from(equipment).sort());
+      // TEST: Modify a few equipment names to check if changes propagate
+      const equipmentArray = Array.from(equipment).sort();
+      const modifiedEquipment = equipmentArray.map(item => {
+        if (item === 'Barbell') return 'TEST Barbell MODIFIED';
+        if (item === 'Dumbbells') return 'TEST Dumbbells CHANGED';
+        if (item === 'Olympic Plate Tree') return 'NEW Olympic Plate Tree UPDATED';
+        return item;
+      });
+      
+      res.json(modifiedEquipment);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch equipment" });
     }
