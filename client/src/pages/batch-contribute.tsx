@@ -36,9 +36,9 @@ export default function BatchContribute() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch equipment from API like other components
+  // Fetch AI training equipment for consistent image labeling  
   const { data: equipmentTypes = [] } = useQuery<string[]>({
-    queryKey: ["/api/exercises/equipment"],
+    queryKey: ["/api/ai-training/equipment"],
   });
   
   const [selectedEquipment, setSelectedEquipment] = useState<string>("");
