@@ -36,9 +36,9 @@ export default function ImageContribution({ isVisible, onClose, onSuccess }: Ima
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Fetch equipment from API like main exercise selection component
+  // Fetch AI training equipment for consistent image labeling
   const { data: equipmentTypes = [] } = useQuery<string[]>({
-    queryKey: ["/api/exercises/equipment"],
+    queryKey: ["/api/ai-training/equipment"],
   });
 
   // Setup camera preview in modal
