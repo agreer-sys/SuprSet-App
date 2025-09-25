@@ -870,6 +870,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get AI training equipment for image labeling and batch uploads
+  app.get("/api/ai-training/equipment", async (req, res) => {
+    try {
+      const { getAITrainingEquipment } = await import('../shared/ai-equipment-catalog');
+      const aiEquipment = getAITrainingEquipment();
+      
+      console.log(`🤖 Serving ${aiEquipment.length} AI training equipment items`);
+      res.json(aiEquipment);
+    } catch (error) {
+      console.error("Error loading AI training equipment catalog:", error);
+      res.status(500).json({ message: "Failed to fetch AI training equipment types" });
+    }
+  });
+
   // Get unique Primary Muscle Groups from Airtable (before :id route)
   app.get("/api/exercises/muscle-groups", async (req, res) => {
     try {
