@@ -33,9 +33,9 @@ export default function BatchContribution() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch equipment from API like main exercise selection component  
+  // Fetch AI training equipment for consistent image labeling  
   const { data: equipmentTypes = [] } = useQuery<string[]>({
-    queryKey: ["/api/exercises/equipment"],
+    queryKey: ["/api/ai-training/equipment"],
   });
 
 
