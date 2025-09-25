@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,24 +21,7 @@ interface BatchImage {
   errorMessage?: string;
 }
 
-const EQUIPMENT_PRESETS = [
-  "Abductor Machine", "Adductor Machine", "Adjustable Bench", "Assault Bike", "Assisted Pull-Up Machine",
-  "Back Extension Bench", "Barbell", "Bodyweight", "Cable Tower", "Calf Raise Machine (Cable Stack)",
-  "Calf Raise Machine (Plate Loaded)", "Chest Press Machine (Cable Stack)", "Chest Press Machine (Plate Loaded)",
-  "Dip Station", "Dumbbells", "Elliptical", "EZ Barbell", "Functional Trainer", "Glute Bridge Machine",
-  "Glute Ham Raise Unit", "Glute Kickback Machine", "Hack Squat Machine (Cable Stack)", "Hack Squat Machine (Plate Loaded)",
-  "Incline Chest Press Machine", "Jacobs Ladder", "Jump Rope", "Kettlebells", "Lateral Raise Machine",
-  "Lat Pulldown Machine", "Laying Leg Curl Machine", "Leg Curl Machine", "Leg Extension / Leg Curl Machine",
-  "Leg Extension Machine", "Leg Press Machine (Cable Stack)", "Leg Press Machine (Plate Loaded)", "Loop Band",
-  "Machine Row", "Mat", "Medicine Ball", "Nordic Hamstring Curl Machine", "Olympic Decline Bench",
-  "Olympic Flat Bench", "Olympic Incline Bench", "Olympic Military Bench", "Pec Fly Machine",
-  "Pec Fly / Rear Delt Machine", "Plyo Box", "Preacher Curl Machine", "Pull-Up Bar", "Reverse Fly Machine",
-  "Reverse Hyper Machine", "Roman Chair Machine", "Rower", "Seated Cable Row Machine", 
-  "Shoulder Press Machine (Cable Stack)", "Shoulder Press Machine (Plate Loaded)", "Ski Erg", "Sled",
-  "Smith Machine", "Stability Ball", "Stair Climber", "Standing Leg Curl Machine", "Stationary Bike",
-  "Strength Band", "T-Bar Row Machine (Cable Stack)", "T-Bar Row Machine (Plate Loaded)", "Treadmill",
-  "Tricep Extension Machine", "TRX Unit", "Weight Plates"
-];
+// Using dynamic API endpoint like main exercise selection component
 
 export default function BatchContribution() {
   const [images, setImages] = useState<BatchImage[]>([]);
@@ -49,6 +32,12 @@ export default function BatchContribution() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch equipment from API like main exercise selection component  
+  const { data: equipmentTypes = [] } = useQuery<string[]>({
+    queryKey: ["/api/exercises/equipment"],
+  });
+
 
   const contributionMutation = useMutation({
     mutationFn: async (contribution: any) => {
@@ -241,11 +230,12 @@ export default function BatchContribution() {
             <div>
               <Label htmlFor="global-equipment">Default Equipment Type</Label>
               <Select value={globalEquipment} onValueChange={setGlobalEquipment}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select equipment type" />
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {EQUIPMENT_PRESETS.map((equipment) => (
+                  <SelectItem value="">Select Equipment Type</SelectItem>
+                  {equipmentTypes.map((equipment: string) => (
                     <SelectItem key={equipment} value={equipment}>
                       {equipment}
                     </SelectItem>
@@ -402,7 +392,7 @@ export default function BatchContribution() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {EQUIPMENT_PRESETS.map((equipment) => (
+                      {equipmentTypes.map((equipment) => (
                         <SelectItem key={equipment} value={equipment}>
                           {equipment}
                         </SelectItem>

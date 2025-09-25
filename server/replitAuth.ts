@@ -89,6 +89,7 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
+  // Create strategies for all domains and a fallback strategy
   for (const domain of process.env
     .REPLIT_DOMAINS!.split(",")) {
     const strategy = new Strategy(
@@ -102,6 +103,18 @@ export async function setupAuth(app: Express) {
     );
     passport.use(strategy);
   }
+  
+  // Add fallback strategy for localhost and other development scenarios
+  const fallbackStrategy = new Strategy(
+    {
+      name: "replitauth:fallback",
+      config,
+      scope: "openid email profile offline_access",
+      callbackURL: `https://${process.env.REPLIT_DOMAINS!.split(",")[0]}/api/callback`,
+    },
+    verify,
+  );
+  passport.use(fallbackStrategy);
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
@@ -115,7 +128,14 @@ export async function setupAuth(app: Express) {
       return res.redirect("/");
     }
     
-    passport.authenticate(`replitauth:${req.hostname}`)(req, res, next);
+    // Check if hostname strategy exists, otherwise use fallback
+    const configuredDomains = process.env.REPLIT_DOMAINS!.split(",");
+    const strategyName = configuredDomains.includes(req.hostname) 
+      ? `replitauth:${req.hostname}` 
+      : "replitauth:fallback";
+    
+    console.log(`Using strategy: ${strategyName}`);
+    passport.authenticate(strategyName)(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
@@ -123,7 +143,15 @@ export async function setupAuth(app: Express) {
     console.log("Session ID:", req.sessionID);
     console.log("Query params:", req.query);
     
-    passport.authenticate(`replitauth:${req.hostname}`, (err, user, info) => {
+    // Check if hostname strategy exists, otherwise use fallback
+    const configuredDomains = process.env.REPLIT_DOMAINS!.split(",");
+    const strategyName = configuredDomains.includes(req.hostname) 
+      ? `replitauth:${req.hostname}` 
+      : "replitauth:fallback";
+    
+    console.log(`Using strategy: ${strategyName}`);
+    
+    passport.authenticate(strategyName, (err: any, user: any, info: any) => {
       console.log("Auth result - err:", err, "user:", !!user, "info:", info);
       
       if (err) {
