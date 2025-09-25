@@ -57,10 +57,10 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
+  // ALWAYS serve the app on port 45269 for deployment
   // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  // Port configured to match .replit deployment settings.
+  const port = 45269;
   server.listen({
     port,
     host: "0.0.0.0",
