@@ -1297,6 +1297,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Voice transcription endpoint
+  app.post('/api/coaching/:sessionId/transcribe', isAuthenticated, async (req: any, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const audioBuffer = req.body; // Expecting binary audio data
+      
+      const coaching = await storage.getCoachingSession(sessionId);
+      if (!coaching) {
+        return res.status(404).json({ message: "Coaching session not found" });
+      }
+
+      // Transcribe audio using OpenAI Whisper via LangChain
+      const transcription = await langchainCoach.transcribeAudio(audioBuffer);
+      
+      res.json({ text: transcription });
+    } catch (error: any) {
+      console.error("Error transcribing audio:", error);
+      res.status(500).json({ message: "Failed to transcribe audio" });
+    }
+  });
+
+  // Generate speech from text
+  app.post('/api/coaching/:sessionId/speech', isAuthenticated, async (req: any, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const { text, voice } = req.body;
+      
+      const coaching = await storage.getCoachingSession(sessionId);
+      if (!coaching) {
+        return res.status(404).json({ message: "Coaching session not found" });
+      }
+
+      // Generate speech using OpenAI TTS via LangChain
+      const audioBuffer = await langchainCoach.generateSpeech(text, voice);
+      
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.byteLength.toString()
+      });
+      
+      res.send(Buffer.from(audioBuffer));
+    } catch (error: any) {
+      console.error("Error generating speech:", error);
+      res.status(500).json({ message: "Failed to generate speech" });
+    }
+  });
+
   // Enhanced pairing recommendation with superset creation
   app.post('/api/supersets/from-recommendation', isAuthenticated, async (req: any, res) => {
     try {
