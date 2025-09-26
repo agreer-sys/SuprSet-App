@@ -232,14 +232,28 @@ COACHING GUIDELINES:
    */
   async transcribeAudio(audioBuffer: Buffer): Promise<string> {
     try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const os = await import('os');
+      
       // Create temporary file for audio processing
-      const tempFile = new File([audioBuffer], 'audio.webm', { type: 'audio/webm' });
+      const tempDir = os.tmpdir();
+      const tempFilePath = path.join(tempDir, `audio_${Date.now()}.webm`);
+      
+      // Write buffer to temporary file
+      fs.writeFileSync(tempFilePath, audioBuffer);
+      
+      // Create stream for OpenAI
+      const fileStream = fs.createReadStream(tempFilePath);
       
       const transcription = await openai.audio.transcriptions.create({
-        file: tempFile,
+        file: fileStream,
         model: 'whisper-1',
         language: 'en'
       });
+      
+      // Clean up temporary file
+      fs.unlinkSync(tempFilePath);
       
       return transcription.text;
     } catch (error) {

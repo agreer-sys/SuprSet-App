@@ -1250,7 +1250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/coaching/:sessionId/message', isAuthenticated, async (req: any, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
-      const { message, exerciseId, setNumber } = req.body;
+      const { message, exerciseId, setNumber, workoutContext } = req.body;
       
       const coaching = await storage.getCoachingSession(sessionId);
       if (!coaching) {
@@ -1263,8 +1263,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get exercise details for context
       const exercise = exerciseId ? await storage.getExercise(exerciseId) : null;
       
-      // Generate AI coaching response using LangChain
-      const aiResponse = await generateCoachingResponse(message, exercise || null, coaching);
+      // Build enhanced workout state from client data
+      const workoutState = {
+        currentExercise: exercise || undefined,
+        currentSet: workoutContext?.currentSet || setNumber || coaching.currentSet,
+        totalSets: workoutContext?.totalSets || 6,
+        isRestPeriod: workoutContext?.isRestPeriod || false,
+        restTimeRemaining: workoutContext?.restTimeRemaining,
+        workoutPhase: workoutContext?.isRestPeriod ? 'cooldown' as const : 'working' as const,
+        supersetProgress: {
+          exerciseA: { sets: workoutContext?.completedSets || 0 },
+          exerciseB: { sets: workoutContext?.completedSets || 0 }
+        }
+      };
+
+      // Enhanced coaching context with real data
+      const context = {
+        coaching,
+        workoutState,
+        exercise: exercise || undefined,
+        sessionHistory: coaching.messages || []
+      };
+      
+      // Generate AI coaching response using LangChain with real context
+      const aiResponse = await langchainCoach.generateCoachingResponse(message, context);
       
       // Update coaching session with new messages
       const updatedMessages = [

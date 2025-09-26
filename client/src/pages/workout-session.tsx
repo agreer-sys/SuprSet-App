@@ -69,13 +69,24 @@ export default function WorkoutSessionPage() {
     }
   });
 
-  // Send coaching message mutation
+  // Send coaching message mutation with real workout context
   const sendCoachingMessageMutation = useMutation({
     mutationFn: async (message: string) => {
       return await apiRequest(`/api/coaching/${session?.id}/message`, 'POST', { 
         message, 
         exerciseId: getCurrentExerciseId(),
-        setNumber: currentSet 
+        setNumber: currentSet,
+        // Send real workout context
+        workoutContext: {
+          currentExercise: currentExercise,
+          currentSet: currentSet,
+          totalSets: 6, // Get from actual workout data
+          isRestPeriod: isResting,
+          restTimeRemaining: restTimer,
+          superSetId: session?.superSetId || null,
+          sessionId: session?.id,
+          completedSets: setLogs?.length || 0
+        }
       });
     },
     onSuccess: (data: any) => {
