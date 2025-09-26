@@ -13,52 +13,43 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { isTrainerApprovedPair } from "./trainer-pairs";
+import { langchainCoach } from "./langchain-coach";
 
-// LLM Coaching Integration
+// LangChain LLM Coaching Integration
 async function generateCoachingResponse(
   userMessage: string, 
   exercise: Exercise | null, 
   coaching: CoachingSession
 ): Promise<string> {
-  // Exercise context for AI
-  const exerciseContext = exercise ? `
-Current Exercise: ${exercise.name}
-Primary Muscle Group: ${exercise.primaryMuscleGroup}
-Exercise Type: ${exercise.exerciseType}
-Equipment: ${exercise.equipment}
-Coaching Tips: ${exercise.coachingBulletPoints || 'None available'}
-Common Mistakes: ${exercise.commonMistakes || 'None listed'}
-Ideal Rep Range: ${exercise.idealRepRange || 'Not specified'}
-Rest Period: ${exercise.restPeriodSec ? `${exercise.restPeriodSec} seconds` : 'Not specified'}
-` : '';
+  try {
+    // Create workout state context for LangChain
+    const workoutState = {
+      currentExercise: exercise || undefined,
+      currentSet: coaching.currentSet,
+      totalSets: 3, // Default assumption, could be enhanced with actual workout data
+      isRestPeriod: false, // Could be enhanced with timer state
+      workoutPhase: 'working' as const,
+      supersetProgress: {
+        exerciseA: { sets: coaching.currentSet },
+        exerciseB: { sets: coaching.currentSet }
+      }
+    };
 
-  // Coaching style context
-  const stylePrompts = {
-    motivational: "Be encouraging, energetic, and supportive. Use motivational language to keep the user pushing through their workout.",
-    technical: "Focus on form, technique, and precise execution. Provide detailed biomechanical guidance.",
-    casual: "Keep it friendly and conversational. Be supportive but relaxed in tone."
-  };
+    const context = {
+      coaching,
+      workoutState,
+      exercise: exercise || undefined,
+      sessionHistory: coaching.messages || []
+    };
 
-  const systemPrompt = `You are SuprSet AI, a professional strength training coach specializing in superset workouts. ${stylePrompts[coaching.preferredStyle as keyof typeof stylePrompts]}
-
-Current Context:
-- Current Set: ${coaching.currentSet}
-- Voice Enabled: ${coaching.voiceEnabled ? 'Yes (keep responses concise for speech)' : 'No'}
-${exerciseContext}
-
-Guidelines:
-- Keep responses under 100 words if voice is enabled, under 200 words otherwise
-- Focus on form, safety, and motivation
-- Reference specific exercise details when relevant
-- Acknowledge user's progress and effort
-- Provide actionable advice for the current situation
-- If user asks about form, reference the exercise's coaching tips and common mistakes`;
-
-  // For now, provide intelligent rule-based responses
-  // This can be replaced with OpenAI, Anthropic, or other LLM API calls
-  const responses = generateRuleBasedCoachingResponse(userMessage, exercise, coaching);
-  
-  return responses;
+    // Use LangChain AI Coach service
+    const response = await langchainCoach.generateCoachingResponse(userMessage, context);
+    return response;
+  } catch (error) {
+    console.error('LangChain coaching error, falling back to rule-based:', error);
+    // Fallback to rule-based response
+    return generateRuleBasedCoachingResponse(userMessage, exercise, coaching);
+  }
 }
 
 function generateRuleBasedCoachingResponse(
@@ -1266,11 +1257,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Coaching session not found" });
       }
 
+      // Initialize LangChain coaching session if needed
+      await langchainCoach.initializeCoachingSession(coaching);
+
       // Get exercise details for context
       const exercise = exerciseId ? await storage.getExercise(exerciseId) : null;
       
-      // Generate AI coaching response
-      const aiResponse = await generateCoachingResponse(message, exercise, coaching);
+      // Generate AI coaching response using LangChain
+      const aiResponse = await generateCoachingResponse(message, exercise || null, coaching);
       
       // Update coaching session with new messages
       const updatedMessages = [
