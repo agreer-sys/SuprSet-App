@@ -57,10 +57,10 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 45269 for deployment
+  // ALWAYS serve the app on port 5000 for Replit preview
   // this serves both the API and the client.
-  // Port configured to match .replit deployment settings.
-  const port = 45269;
+  // Port configured to match Replit frontend requirements.
+  const port = 5000;
   server.listen({
     port,
     host: "0.0.0.0",
