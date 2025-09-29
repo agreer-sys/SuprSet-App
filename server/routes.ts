@@ -1145,7 +1145,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     coachingOptions: any, 
     workoutInfo?: { name: string; duration: number; exercises: Array<{ name: string; sets?: number; workSeconds?: number; restSeconds?: number }> }
   ) {
+    console.log('🎯 createCoachingSessionIfRequested called with:', { sessionId, enableCoaching: coachingOptions?.enableCoaching, workoutInfo: workoutInfo?.name });
+    
     if (coachingOptions?.enableCoaching) {
+      console.log('✅ Coaching enabled, creating session...');
       const initialMessages = [];
       
       // Generate workout introduction message if workout info provided
@@ -1185,13 +1188,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      await storage.createCoachingSession({
+      const coachingSession = await storage.createCoachingSession({
         sessionId,
         voiceEnabled: coachingOptions.voiceEnabled || false,
         preferredStyle: coachingOptions.coachingStyle || 'motivational',
         messages: initialMessages,
         currentSet: 1
       });
+      console.log('✅ Coaching session created successfully:', coachingSession);
+    } else {
+      console.log('❌ Coaching not enabled, skipping session creation');
     }
   }
 

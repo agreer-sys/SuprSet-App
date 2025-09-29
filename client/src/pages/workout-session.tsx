@@ -32,7 +32,7 @@ export default function WorkoutSessionPage() {
 
   // Fetch coaching session
   const { data: coaching } = useQuery<CoachingSession>({
-    queryKey: ['/api/coaching', session?.id],
+    queryKey: [`/api/coaching/${session?.id}`],
     enabled: !!session?.id,
   });
 
@@ -110,7 +110,7 @@ export default function WorkoutSessionPage() {
       }
       
       // Invalidate coaching to keep it in sync
-      queryClient.invalidateQueries({ queryKey: ['/api/coaching', session?.id] });
+      queryClient.invalidateQueries({ queryKey: [`/api/coaching/${session?.id}`] });
     }
   });
 
