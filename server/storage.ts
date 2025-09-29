@@ -10,6 +10,9 @@ import {
   workoutSessionsNew,
   setLogs,
   coachingSessions,
+  workoutTemplates,
+  workoutSections,
+  workoutExercises,
   type Exercise, 
   type InsertExercise,
   type WorkoutSession,
@@ -31,7 +34,13 @@ import {
   type SetLog,
   type InsertSetLog,
   type CoachingSession,
-  type InsertCoachingSession
+  type InsertCoachingSession,
+  type WorkoutTemplate,
+  type InsertWorkoutTemplate,
+  type WorkoutSection,
+  type InsertWorkoutSection,
+  type WorkoutExercise,
+  type InsertWorkoutExercise
 } from "@shared/schema";
 import { airtableService } from "./airtable";
 import { db } from "./db";
@@ -96,6 +105,18 @@ export interface IStorage {
   createCoachingSession(coaching: InsertCoachingSession): Promise<CoachingSession>;
   updateCoachingSession(id: number, updates: Partial<InsertCoachingSession>): Promise<CoachingSession>;
   getCoachingSession(sessionId: number): Promise<CoachingSession | undefined>;
+  
+  // Pre-built Workout Template methods
+  createWorkoutTemplate(template: InsertWorkoutTemplate): Promise<WorkoutTemplate>;
+  getWorkoutTemplates(filter?: { workoutType?: string; category?: string; difficulty?: number }): Promise<WorkoutTemplate[]>;
+  getWorkoutTemplate(id: number): Promise<WorkoutTemplate | undefined>;
+  getWorkoutTemplateWithSections(id: number): Promise<WorkoutTemplate & { sections: (WorkoutSection & { exercises: (WorkoutExercise & { exercise: Exercise })[] })[] } | undefined>;
+  
+  createWorkoutSection(section: InsertWorkoutSection): Promise<WorkoutSection>;
+  getWorkoutSections(workoutTemplateId: number): Promise<WorkoutSection[]>;
+  
+  createWorkoutExercise(exercise: InsertWorkoutExercise): Promise<WorkoutExercise>;
+  getWorkoutExercises(workoutSectionId: number): Promise<(WorkoutExercise & { exercise: Exercise })[]>;
   
   // Training data export methods
   exportTrainingData(dataset?: string): Promise<Contribution[]>;
@@ -889,6 +910,82 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return coaching;
+  }
+
+  // Pre-built Workout Template methods implementation
+  async createWorkoutTemplate(template: InsertWorkoutTemplate): Promise<WorkoutTemplate> {
+    const [workoutTemplate] = await db.insert(workoutTemplates).values(template).returning();
+    return workoutTemplate;
+  }
+
+  async getWorkoutTemplates(filter?: { workoutType?: string; category?: string; difficulty?: number }): Promise<WorkoutTemplate[]> {
+    let query = db.select().from(workoutTemplates).where(eq(workoutTemplates.isPublic, true));
+    
+    if (filter?.workoutType) {
+      query = query.where(eq(workoutTemplates.workoutType, filter.workoutType));
+    }
+    if (filter?.category) {
+      query = query.where(eq(workoutTemplates.category, filter.category));
+    }
+    if (filter?.difficulty) {
+      query = query.where(eq(workoutTemplates.difficulty, filter.difficulty));
+    }
+    
+    return await query.orderBy(workoutTemplates.name);
+  }
+
+  async getWorkoutTemplate(id: number): Promise<WorkoutTemplate | undefined> {
+    const [template] = await db.select().from(workoutTemplates).where(eq(workoutTemplates.id, id));
+    return template;
+  }
+
+  async getWorkoutTemplateWithSections(id: number): Promise<WorkoutTemplate & { sections: (WorkoutSection & { exercises: (WorkoutExercise & { exercise: Exercise })[] })[] } | undefined> {
+    const template = await this.getWorkoutTemplate(id);
+    if (!template) return undefined;
+
+    const sections = await this.getWorkoutSections(id);
+    const sectionsWithExercises = await Promise.all(
+      sections.map(async (section) => ({
+        ...section,
+        exercises: await this.getWorkoutExercises(section.id)
+      }))
+    );
+
+    return {
+      ...template,
+      sections: sectionsWithExercises
+    };
+  }
+
+  async createWorkoutSection(section: InsertWorkoutSection): Promise<WorkoutSection> {
+    const [workoutSection] = await db.insert(workoutSections).values(section).returning();
+    return workoutSection;
+  }
+
+  async getWorkoutSections(workoutTemplateId: number): Promise<WorkoutSection[]> {
+    return await db.select().from(workoutSections)
+      .where(eq(workoutSections.workoutTemplateId, workoutTemplateId))
+      .orderBy(workoutSections.orderIndex);
+  }
+
+  async createWorkoutExercise(exercise: InsertWorkoutExercise): Promise<WorkoutExercise> {
+    const [workoutExercise] = await db.insert(workoutExercises).values(exercise).returning();
+    return workoutExercise;
+  }
+
+  async getWorkoutExercises(workoutSectionId: number): Promise<(WorkoutExercise & { exercise: Exercise })[]> {
+    // Refresh cache to ensure we have the latest exercises
+    await this.refreshCache();
+    
+    const workoutExerciseRows = await db.select().from(workoutExercises)
+      .where(eq(workoutExercises.workoutSectionId, workoutSectionId))
+      .orderBy(workoutExercises.orderIndex);
+
+    // Join with exercise data from cache
+    return workoutExerciseRows.map(we => ({
+      ...we,
+      exercise: this.exerciseCache.get(we.exerciseId)!
+    })).filter(we => we.exercise); // Filter out exercises that don't exist in cache
   }
 }
 

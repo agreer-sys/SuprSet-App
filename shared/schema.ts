@@ -171,6 +171,65 @@ export const coachingSessions = pgTable("coaching_sessions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Pre-built Workout Templates - Support traditional strength & timed cross-training
+export const workoutTemplates = pgTable("workout_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  workoutType: text("workout_type").notNull(), // "strength", "cross_training", "hybrid"
+  category: text("category").notNull(), // "push_pull_legs", "upper_lower", "amrap", "emom", "tabata"
+  difficulty: integer("difficulty").notNull().default(3), // 1-5 scale
+  estimatedDuration: integer("estimated_duration").notNull(), // minutes
+  muscleGroups: text("muscle_groups").array().notNull().default([]),
+  equipmentNeeded: text("equipment_needed").array().notNull().default([]),
+  tags: text("tags").array().notNull().default([]),
+  isPublic: boolean("is_public").notNull().default(true),
+  createdBy: varchar("created_by"),
+  timingStructure: text("timing_structure").notNull(), // "traditional", "amrap", "emom", "tabata", "circuit"
+  totalRounds: integer("total_rounds"), // For AMRAP/circuit workouts
+  workDuration: integer("work_duration"), // seconds - for timed workouts
+  restDuration: integer("rest_duration"), // seconds - for timed workouts
+  instructions: text("instructions"), // Special instructions for the workout
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Workout Sections - Different phases of a workout (warmup, main work, cooldown)
+export const workoutSections = pgTable("workout_sections", {
+  id: serial("id").primaryKey(),
+  workoutTemplateId: integer("workout_template_id").references(() => workoutTemplates.id).notNull(),
+  name: text("name").notNull(), // "Warm-up", "Main Work", "Cooldown"
+  orderIndex: integer("order_index").notNull(),
+  sectionType: text("section_type").notNull(), // "warmup", "main", "cooldown", "finisher"
+  duration: integer("duration"), // minutes - for timed sections
+  rounds: integer("rounds"), // For multi-round sections
+  restBetweenRounds: integer("rest_between_rounds"), // seconds
+  instructions: text("instructions"),
+});
+
+// Workout Exercises - Flexible exercise structure for all workout types
+export const workoutExercises = pgTable("workout_exercises", {
+  id: serial("id").primaryKey(),
+  workoutSectionId: integer("workout_section_id").references(() => workoutSections.id).notNull(),
+  exerciseId: integer("exercise_id").references(() => exercises.id).notNull(),
+  orderIndex: integer("order_index").notNull(),
+  
+  // Traditional strength training fields
+  sets: integer("sets"),
+  reps: text("reps"), // Can be "8-12", "AMRAP", "Max", etc.
+  weight: text("weight"), // "Bodyweight", "50% 1RM", "RPE 8", etc.
+  restSeconds: integer("rest_seconds"),
+  
+  // Timed workout fields  
+  workSeconds: integer("work_seconds"), // For EMOM, Tabata, etc.
+  restAfterExercise: integer("rest_after_exercise"), // seconds
+  targetReps: integer("target_reps"), // For EMOM/timed workouts
+  
+  // Flexible instructions
+  notes: text("notes"), // Special instructions for this exercise
+  modification: text("modification"), // Easier/harder variations
+});
+
 // Insert schemas for new tables
 export const insertSuperSetSchema = createInsertSchema(superSets).omit({
   id: true,
@@ -195,6 +254,20 @@ export const insertWorkoutSessionNewSchema = createInsertSchema(workoutSessionsN
 export const insertSetLogSchema = createInsertSchema(setLogs).omit({
   id: true,
   completedAt: true,
+});
+
+export const insertWorkoutTemplateSchema = createInsertSchema(workoutTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWorkoutSectionSchema = createInsertSchema(workoutSections).omit({
+  id: true,
+});
+
+export const insertWorkoutExerciseSchema = createInsertSchema(workoutExercises).omit({
+  id: true,
 });
 
 export const insertCoachingSessionSchema = createInsertSchema(coachingSessions).omit({
@@ -304,3 +377,11 @@ export type CoachingSession = typeof coachingSessions.$inferSelect;
 
 export type Contribution = typeof contributions.$inferSelect;
 export type InsertContribution = z.infer<typeof insertContributionSchema>;
+
+// Pre-built workout template types
+export type InsertWorkoutTemplate = z.infer<typeof insertWorkoutTemplateSchema>;
+export type WorkoutTemplate = typeof workoutTemplates.$inferSelect;
+export type InsertWorkoutSection = z.infer<typeof insertWorkoutSectionSchema>;
+export type WorkoutSection = typeof workoutSections.$inferSelect;
+export type InsertWorkoutExercise = z.infer<typeof insertWorkoutExerciseSchema>;
+export type WorkoutExercise = typeof workoutExercises.$inferSelect;
