@@ -6,7 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, Target, Zap, User, Play, Calendar, Users } from 'lucide-react';
+import { Clock, Target, Zap, User, Play, Calendar, Users, Brain, Volume2, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Link, useLocation } from 'wouter';
 
 interface WorkoutTemplate {
@@ -74,6 +78,11 @@ export default function PreBuiltWorkouts() {
     category: '',
     difficulty: '',
   });
+  const [coachingOptions, setCoachingOptions] = useState({
+    enableCoaching: false,
+    voiceEnabled: false,
+    coachingStyle: 'motivational' as 'motivational' | 'technical' | 'casual'
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -109,7 +118,10 @@ export default function PreBuiltWorkouts() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           templateId, 
-          userId: 'user123' // TODO: Get from auth context
+          userId: 'user123', // TODO: Get from auth context
+          enableCoaching: coachingOptions.enableCoaching,
+          voiceEnabled: coachingOptions.voiceEnabled,
+          coachingStyle: coachingOptions.coachingStyle
         }),
       }),
     onSuccess: (data) => {
@@ -365,6 +377,69 @@ export default function PreBuiltWorkouts() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* AI Coaching Options */}
+              <div className="border-t pt-6 mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Brain className="h-5 w-5" />
+                  <h3 className="font-semibold">AI Coach Options</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="enable-coaching" className="flex items-center gap-2">
+                      <Brain className="h-4 w-4" />
+                      Enable AI Coach
+                    </Label>
+                    <Switch
+                      id="enable-coaching"
+                      checked={coachingOptions.enableCoaching}
+                      onCheckedChange={(checked) => 
+                        setCoachingOptions(prev => ({ ...prev, enableCoaching: checked }))
+                      }
+                      data-testid="coaching-enable-switch"
+                    />
+                  </div>
+                  
+                  {coachingOptions.enableCoaching && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="voice-enabled" className="flex items-center gap-2">
+                          <Volume2 className="h-4 w-4" />
+                          Voice Coaching
+                        </Label>
+                        <Switch
+                          id="voice-enabled"
+                          checked={coachingOptions.voiceEnabled}
+                          onCheckedChange={(checked) => 
+                            setCoachingOptions(prev => ({ ...prev, voiceEnabled: checked }))
+                          }
+                          data-testid="coaching-voice-switch"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="coaching-style">Coaching Style</Label>
+                        <Select
+                          value={coachingOptions.coachingStyle}
+                          onValueChange={(value) => 
+                            setCoachingOptions(prev => ({ ...prev, coachingStyle: value as 'motivational' | 'technical' | 'casual' }))
+                          }
+                        >
+                          <SelectTrigger data-testid="coaching-style-select">
+                            <SelectValue placeholder="Select coaching style" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="motivational">Motivational - Energetic & encouraging</SelectItem>
+                            <SelectItem value="technical">Technical - Form & technique focused</SelectItem>
+                            <SelectItem value="casual">Casual - Friendly & conversational</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-3 mt-6">

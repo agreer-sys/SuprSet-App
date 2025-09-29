@@ -1139,6 +1139,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Shared helper function for creating coaching sessions
+  async function createCoachingSessionIfRequested(sessionId: number, coachingOptions: any) {
+    if (coachingOptions?.enableCoaching) {
+      await storage.createCoachingSession({
+        sessionId,
+        voiceEnabled: coachingOptions.voiceEnabled || false,
+        preferredStyle: coachingOptions.coachingStyle || 'motivational',
+        messages: [],
+        currentSet: 1
+      });
+    }
+  }
+
   // Workout Sessions API routes
   app.post('/api/workout-sessions/start', isAuthenticated, async (req: any, res) => {
     try {
@@ -1160,16 +1173,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const session = await storage.startWorkoutSession(sessionData);
       
-      // Create coaching session if requested
-      if (req.body.enableCoaching) {
-        await storage.createCoachingSession({
-          sessionId: session.id,
-          voiceEnabled: req.body.voiceEnabled || false,
-          preferredStyle: req.body.coachingStyle || 'motivational',
-          messages: [],
-          currentSet: 1
-        });
-      }
+      // Create coaching session if requested using shared helper
+      await createCoachingSessionIfRequested(session.id, req.body);
 
       res.status(201).json(session);
     } catch (error: any) {
@@ -1433,7 +1438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/workout-sessions/from-template", async (req, res) => {
     try {
-      const { templateId, userId } = req.body;
+      const { templateId, userId, enableCoaching, voiceEnabled, coachingStyle } = req.body;
       
       if (!templateId || !userId) {
         return res.status(400).json({ message: "Template ID and User ID are required" });
@@ -1454,6 +1459,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentExerciseIndex: 0,
         currentRound: 1,
         notes: `Started from template: ${template.name}`,
+      });
+      
+      // Create coaching session if requested using shared helper
+      await createCoachingSessionIfRequested(workoutSession.id, {
+        enableCoaching,
+        voiceEnabled,
+        coachingStyle
       });
       
       // Create a workout with super sets for each section
