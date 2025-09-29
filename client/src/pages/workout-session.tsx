@@ -22,6 +22,7 @@ export default function WorkoutSessionPage() {
   const [isResting, setIsResting] = useState(false);
   const [coachingMessage, setCoachingMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: string}>>([]);
+  const [countdown, setCountdown] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch active workout session
@@ -34,6 +35,13 @@ export default function WorkoutSessionPage() {
     queryKey: ['/api/coaching', session?.id],
     enabled: !!session?.id,
   });
+
+  // Load coaching messages from backend when coaching session is available
+  useEffect(() => {
+    if (coaching?.messages && coaching.messages.length > 0) {
+      setChatMessages(coaching.messages);
+    }
+  }, [coaching]);
 
   // Fetch set logs for current session
   const { data: setLogs } = useQuery<SetLog[]>({
@@ -95,6 +103,14 @@ export default function WorkoutSessionPage() {
         { role: 'assistant', content: data.message, timestamp: new Date().toISOString() }
       ]);
       setCoachingMessage('');
+      
+      // Handle countdown trigger
+      if (data.startCountdown) {
+        setCountdown(10);
+      }
+      
+      // Invalidate coaching to keep it in sync
+      queryClient.invalidateQueries({ queryKey: ['/api/coaching', session?.id] });
     }
   });
 
@@ -110,6 +126,20 @@ export default function WorkoutSessionPage() {
     }
     return () => clearInterval(interval);
   }, [isResting, restTimer]);
+
+  // Countdown timer effect (10 seconds before workout starts)
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (countdown !== null && countdown > 0) {
+      interval = setInterval(() => {
+        setCountdown(prev => prev !== null ? prev - 1 : null);
+      }, 1000);
+    } else if (countdown === 0) {
+      setCountdown(null);
+      // Start the first exercise work timer here
+    }
+    return () => clearInterval(interval);
+  }, [countdown]);
 
   const getCurrentExerciseId = () => {
     // Mock exercise IDs for demo - in real implementation, get from workout data
@@ -211,8 +241,24 @@ export default function WorkoutSessionPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Workout Area */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Countdown Timer */}
+          {countdown !== null && (
+            <Card className="border-green-200 bg-green-50">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <Timer className="h-12 w-12 mx-auto mb-2 text-green-600 animate-pulse" />
+                  <h3 className="text-2xl font-semibold text-green-800 mb-2">Get Ready!</h3>
+                  <div className="text-6xl font-bold text-green-600 mb-2">
+                    {countdown}
+                  </div>
+                  <p className="text-sm text-green-700">Workout starts soon...</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Rest Timer */}
-          {isResting && (
+          {isResting && !countdown && (
             <Card className="border-orange-200 bg-orange-50">
               <CardContent className="pt-6">
                 <div className="text-center">
@@ -322,18 +368,19 @@ export default function WorkoutSessionPage() {
             </CardHeader>
             <CardContent>
               {/* Chat Messages */}
-              <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-                <div className="flex gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback><Brain className="h-4 w-4" /></AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 p-2 bg-muted rounded-lg">
-                    <p className="text-sm">
-                      Welcome to your superset session! I'm here to help with form, 
-                      motivation, and technique. How are you feeling?
-                    </p>
+              <div className="space-y-3 mb-4 max-h-64 overflow-y-auto" data-testid="chat-messages">
+                {chatMessages.length === 0 && (
+                  <div className="flex gap-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback><Brain className="h-4 w-4" /></AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 p-2 bg-muted rounded-lg">
+                      <p className="text-sm">
+                        AI Coach is ready! Send a message to get started.
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {chatMessages.map((msg, index) => (
                   <div key={index} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : ''}`}>
@@ -347,7 +394,7 @@ export default function WorkoutSessionPage() {
                         ? 'bg-primary text-primary-foreground ml-8' 
                         : 'bg-muted'
                     }`}>
-                      <p className="text-sm">{msg.content}</p>
+                      <p className="text-sm whitespace-pre-line">{msg.content}</p>
                     </div>
                   </div>
                 ))}
