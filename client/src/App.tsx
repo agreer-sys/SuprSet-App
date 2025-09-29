@@ -13,6 +13,7 @@ import SuperSets from "@/pages/supersets";
 import Workouts from "@/pages/workouts";
 import WorkoutSession from "@/pages/workout-session";
 import TrainerPairs from "@/pages/trainer-pairs";
+import PreBuiltWorkouts from "@/pages/pre-built-workouts";
 
 function Router() {
   return (
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/workouts" component={Workouts} />
       <Route path="/workout-session" component={WorkoutSession} />
       <Route path="/trainer-pairs" component={TrainerPairs} />
+      <Route path="/pre-built-workouts" component={PreBuiltWorkouts} />
       <Route component={NotFound} />
     </Switch>
   );

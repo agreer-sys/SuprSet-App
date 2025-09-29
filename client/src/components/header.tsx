@@ -1,4 +1,4 @@
-import { Dumbbell, Bell, Camera, Home, Menu, User, LogOut, Upload } from "lucide-react";
+import { Dumbbell, Bell, Camera, Home, Menu, User, LogOut, Upload, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
@@ -36,6 +36,17 @@ export default function Header() {
               >
                 <Home className="h-4 w-4" />
                 Home
+              </Button>
+            </Link>
+            
+            <Link href="/pre-built-workouts">
+              <Button 
+                variant={location === "/pre-built-workouts" ? "default" : "ghost"} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Target className="h-4 w-4" />
+                Pre-Built Workouts
               </Button>
             </Link>
             
@@ -168,9 +179,22 @@ export default function Header() {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Home className="h-4 w-4" />
-                  Workouts
+                  Home
                 </Button>
               </Link>
+              
+              <Link href="/pre-built-workouts">
+                <Button 
+                  variant={location === "/pre-built-workouts" ? "default" : "ghost"} 
+                  size="sm"
+                  className="w-full justify-start gap-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Target className="h-4 w-4" />
+                  Pre-Built Workouts
+                </Button>
+              </Link>
+              
               <Link href="/gym-mapping">
                 <Button 
                   variant={location === "/gym-mapping" ? "default" : "ghost"} 
