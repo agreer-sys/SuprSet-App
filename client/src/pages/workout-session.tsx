@@ -23,6 +23,7 @@ export default function WorkoutSessionPage() {
   const [coachingMessage, setCoachingMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: string}>>([]);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch active workout session
@@ -40,8 +41,37 @@ export default function WorkoutSessionPage() {
   useEffect(() => {
     if (coaching?.messages && coaching.messages.length > 0) {
       setChatMessages(coaching.messages);
+      // Auto-enable voice if coaching has voiceEnabled
+      if (coaching.voiceEnabled) {
+        setVoiceEnabled(true);
+      }
     }
   }, [coaching]);
+
+  // Auto-play voice for new assistant messages when voice is enabled
+  useEffect(() => {
+    if (voiceEnabled && chatMessages.length > 0) {
+      const lastMessage = chatMessages[chatMessages.length - 1];
+      if (lastMessage.role === 'assistant') {
+        playVoiceMessage(lastMessage.content);
+      }
+    }
+  }, [chatMessages, voiceEnabled]);
+
+  // Function to play voice message using browser's speech synthesis
+  const playVoiceMessage = (text: string) => {
+    if ('speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      
+      window.speechSynthesis.speak(utterance);
+    }
+  };
 
   // Fetch set logs for current session
   const { data: setLogs } = useQuery<SetLog[]>({
@@ -361,8 +391,19 @@ export default function WorkoutSessionPage() {
               <CardTitle className="flex items-center gap-2">
                 <Brain className="h-5 w-5" />
                 AI Coach
-                <Button variant="ghost" size="sm">
-                  <Volume2 className="h-4 w-4" />
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setVoiceEnabled(!voiceEnabled);
+                    if (voiceEnabled) {
+                      // Stop any ongoing speech when disabling
+                      window.speechSynthesis.cancel();
+                    }
+                  }}
+                  data-testid="button-voice-toggle"
+                >
+                  {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                 </Button>
               </CardTitle>
             </CardHeader>
