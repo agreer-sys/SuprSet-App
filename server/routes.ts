@@ -1516,6 +1516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/workout-sessions/from-template", async (req, res) => {
     try {
       const { templateId, userId, enableCoaching, voiceEnabled, coachingStyle } = req.body;
+      console.log('📥 Received workout session request:', { templateId, userId, enableCoaching, voiceEnabled, coachingStyle });
       
       if (!templateId || !userId) {
         return res.status(400).json({ message: "Template ID and User ID are required" });
