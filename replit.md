@@ -10,7 +10,7 @@ SuprSet is a React-based web application designed to provide intelligent exercis
 - **Strategic Vision**: Build community-driven AI model rather than relying on generic solutions - create competitive moat through proprietary datasets
 
 ## Recent Changes (January 2025)
-- **AI Workout Coach (September 2025)**: Integrated LangChain + OpenAI GPT-4 powered real-time coaching system for pre-built template workouts with personalized introduction messages, 10-second countdown trigger on user readiness confirmation, browser-based text-to-speech voice output, and three coaching style options (motivational/technical/casual)
+- **AI Workout Coach (September 2025)**: Integrated LangChain + OpenAI GPT-3.5-turbo powered real-time coaching system (cost-optimized from GPT-4) for pre-built template workouts. Features: personalized introduction messages, 10-second countdown trigger on user readiness confirmation, browser-based text-to-speech voice output, three coaching styles (motivational/technical/casual) with enhanced human-like conversational prompts, and workout control command detection (STOP/PAUSE/RESUME/READY) for natural voice-based interaction
 - **Enhanced Trainer Pairs Interface**: Added advanced exercise filtering system with category, equipment, and muscle group filters matching main "Select Exercise" functionality
 - **Improved Navigation**: Integrated header navigation in trainer pairs page with Home and Super Sets links for seamless app navigation
 - **User Experience Enhancements**: Added individual clear buttons for filter sections, increased exercise search results to 12 items, mobile-responsive design
@@ -41,7 +41,7 @@ The application follows a client-server architecture with a React frontend and a
 - **API Endpoints**: RESTful design for exercises, recommendations, search, and handling user contributions.
 - **Authentication**: Full Replit Auth system with OpenID Connect integration, using a PostgreSQL database for session and user management.
 - **AI Training Pipeline**: Supports image compression (640x640 pixels, 70% JPEG quality) for efficient training data handling. Includes a PostgreSQL schema for AI training optimization with automatic training dataset management (70% train, 15% validation, 15% test split), quality control (moderation status, duplicate detection), and a training data export API.
-- **AI Workout Coach**: Real-time LangChain + OpenAI GPT-4 powered coaching system with context-aware responses, workout-specific introductions, readiness detection for countdown triggers, and browser-based speech synthesis for voice output. Supports three coaching styles (motivational, technical, casual) and maintains conversation history for personalized guidance.
+- **AI Workout Coach**: Real-time LangChain + OpenAI GPT-3.5-turbo powered coaching system (cost-optimized) with context-aware responses, enhanced human-like conversational prompts, workout-specific introductions, readiness detection for countdown triggers, workout control command detection (STOP/PAUSE/RESUME/READY), and browser-based speech synthesis for voice output. Supports three coaching styles (motivational, technical, casual) and maintains conversation history for personalized guidance.
 
 **Data Integration**
 - **Airtable Service**: Handles API calls and data transformation for the exercise database.
@@ -63,5 +63,5 @@ The application follows a client-server architecture with a React frontend and a
 - **TensorFlow.js**: Underlying library for machine learning models, with CPU backend fallback for development environments.
 - **PostgreSQL**: Database for user authentication, session management, and storing community contributions for AI training.
 - **Replit Auth (OpenID Connect)**: For user authentication and session management.
-- **OpenAI GPT-4**: Powers the AI Workout Coach with intelligent, context-aware coaching responses and conversation management.
+- **OpenAI GPT-3.5-turbo**: Powers the AI Workout Coach (cost-optimized from GPT-4) with intelligent, context-aware coaching responses, enhanced conversational prompts, and workout command detection.
 - **LangChain**: Framework for orchestrating AI coach conversations, managing conversation history, and integrating with OpenAI GPT-4.

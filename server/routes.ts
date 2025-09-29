@@ -1344,6 +1344,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let aiResponse: string;
       let startCountdown = false;
+      let shouldPause = false;
+      let shouldResume = false;
       
       if (isReadyConfirmation) {
         // User confirmed they're ready - initiate countdown
@@ -1358,7 +1360,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startCountdown = true;
       } else {
         // Normal coaching response using LangChain
-        aiResponse = await langchainCoach.generateCoachingResponse(message, context);
+        const response = await langchainCoach.generateCoachingResponse(message, context);
+        aiResponse = response.message;
+        startCountdown = response.startCountdown || false;
+        shouldPause = response.shouldPause || false;
+        shouldResume = response.shouldResume || false;
       }
       
       // Update coaching session with new messages
@@ -1385,7 +1391,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         message: aiResponse,
         coaching: updatedCoaching,
-        startCountdown // Signal frontend to start countdown timer
+        startCountdown, // Signal frontend to start countdown timer
+        shouldPause,    // Signal frontend to pause workout
+        shouldResume    // Signal frontend to resume workout
       });
     } catch (error: any) {
       console.error("Error processing coaching message:", error);

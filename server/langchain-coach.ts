@@ -70,8 +70,11 @@ export class LangChainAICoach {
   async generateCoachingResponse(
     userMessage: string,
     context: CoachingContext
-  ): Promise<string> {
+  ): Promise<{ message: string, shouldPause?: boolean, shouldResume?: boolean, startCountdown?: boolean }> {
     const { coaching, workoutState, exercise } = context;
+    
+    // Detect workout control commands
+    const commandDetection = this.detectWorkoutCommand(userMessage);
     
     // Ensure coaching session is initialized
     if (!this.conversationHistory.has(coaching.id)) {
@@ -107,10 +110,22 @@ export class LangChainAICoach {
       history.push({ role: 'user', content: userMessage });
       history.push({ role: 'assistant', content: response.content as string });
       
-      return this.processCoachingResponse(response.content as string, context);
+      const processedMessage = this.processCoachingResponse(response.content as string, context);
+      
+      return {
+        message: processedMessage,
+        shouldPause: commandDetection.shouldPause,
+        shouldResume: commandDetection.shouldResume,
+        startCountdown: commandDetection.startCountdown
+      };
     } catch (error) {
       console.error('LangChain coaching error:', error);
-      return this.getFallbackResponse(userMessage, context);
+      return {
+        message: this.getFallbackResponse(userMessage, context),
+        shouldPause: commandDetection.shouldPause,
+        shouldResume: commandDetection.shouldResume,
+        startCountdown: commandDetection.startCountdown
+      };
     }
   }
 
@@ -119,9 +134,9 @@ export class LangChainAICoach {
    */
   private buildSystemPrompt(style: 'motivational' | 'technical' | 'casual', workoutState: WorkoutState, exercise?: Exercise): string {
     const stylePrompts = {
-      motivational: "You are an energetic, supportive personal trainer. Use encouraging language, celebrate progress, and motivate the user to push through challenges. Keep responses concise but inspiring.",
-      technical: "You are a technical fitness expert. Focus on proper form, biomechanics, and precise execution. Provide detailed guidance on technique and safety. Reference specific muscle groups and movement patterns.",
-      casual: "You are a friendly gym buddy. Keep the tone relaxed and conversational while still being helpful. Use casual language but maintain expertise in fitness guidance."
+      motivational: "You are an energetic, supportive personal trainer who knows the user personally. Use their name occasionally, celebrate small wins, and inject humor when appropriate. Speak naturally like you're in the gym together - use contractions (you're, let's, we're), exclamations, and casual phrases. Keep it concise but genuinely enthusiastic.",
+      technical: "You are an experienced strength coach who explains things clearly without jargon overload. Break down form cues into simple, actionable steps. Use analogies to make biomechanics relatable. Speak conversationally but precisely - like a knowledgeable friend who happens to be an expert.",
+      casual: "You are their favorite workout buddy who keeps things light but effective. Use casual language, throw in encouragement naturally, and don't be afraid of a well-placed 'let's go!' or 'crushing it!'. Keep responses short and conversational - like texting between sets."
     };
 
     const workoutContext = this.formatWorkoutContext(workoutState, exercise);
@@ -138,7 +153,12 @@ COACHING GUIDELINES:
 - If asked about form, reference specific technique points
 - For timer requests, acknowledge and provide guidance
 - For rep/weight questions, ask for specifics and provide feedback
-- Stay focused on the current superset and workout goals`;
+- Stay focused on the current superset and workout goals
+
+WORKOUT CONTROL COMMANDS:
+- If user says "STOP", "PAUSE", "HOLD", or "WAIT": Acknowledge immediately and confirm the workout is paused
+- If user says "START", "RESUME", "GO", or "CONTINUE": Encourage them and confirm workout is resuming
+- If user says "READY": Trigger the countdown to start/resume workout`;
   }
 
 
@@ -162,6 +182,35 @@ COACHING GUIDELINES:
     }
     
     return context.join(' | ');
+  }
+
+  /**
+   * Detect workout control commands from user message
+   */
+  private detectWorkoutCommand(userMessage: string): { 
+    command: 'pause' | 'resume' | 'ready' | null, 
+    shouldPause: boolean,
+    shouldResume: boolean,
+    startCountdown: boolean
+  } {
+    const message = userMessage.toLowerCase().trim();
+    
+    // Pause commands
+    if (/(^|\s)(stop|pause|hold|wait)(\s|$|!|\.)/.test(message)) {
+      return { command: 'pause', shouldPause: true, shouldResume: false, startCountdown: false };
+    }
+    
+    // Resume commands
+    if (/(^|\s)(start|resume|go|continue|let's go)(\s|$|!|\.)/.test(message)) {
+      return { command: 'resume', shouldPause: false, shouldResume: true, startCountdown: false };
+    }
+    
+    // Ready command (triggers countdown)
+    if (/(^|\s)(ready|i'm ready|let's do this)(\s|$|!|\.)/.test(message)) {
+      return { command: 'ready', shouldPause: false, shouldResume: false, startCountdown: true };
+    }
+    
+    return { command: null, shouldPause: false, shouldResume: false, startCountdown: false };
   }
 
   /**

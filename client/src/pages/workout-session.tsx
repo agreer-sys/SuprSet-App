@@ -146,6 +146,9 @@ export default function WorkoutSessionPage() {
         setCountdown(10);
       }
       
+      // Note: pause/resume commands are acknowledged by the coach but don't control timers
+      // The coach will respond appropriately to STOP/PAUSE/START/RESUME commands
+      
       // Invalidate coaching to keep it in sync
       queryClient.invalidateQueries({ queryKey: [`/api/coaching/${session?.id}`] });
     }
@@ -262,7 +265,7 @@ export default function WorkoutSessionPage() {
           </div>
           <Button 
             variant="destructive" 
-            onClick={() => completeWorkoutMutation.mutate()}
+            onClick={() => completeWorkoutMutation.mutate(undefined)}
             disabled={completeWorkoutMutation.isPending}
           >
             {completeWorkoutMutation.isPending ? 'Ending...' : 'End Workout'}
