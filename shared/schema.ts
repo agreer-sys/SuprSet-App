@@ -211,7 +211,7 @@ export const workoutSections = pgTable("workout_sections", {
 export const workoutExercises = pgTable("workout_exercises", {
   id: serial("id").primaryKey(),
   workoutSectionId: integer("workout_section_id").references(() => workoutSections.id).notNull(),
-  exerciseId: integer("exercise_id").references(() => exercises.id).notNull(),
+  exerciseId: integer("exercise_id").notNull(), // References Airtable exercise ID
   orderIndex: integer("order_index").notNull(),
   
   // Traditional strength training fields
