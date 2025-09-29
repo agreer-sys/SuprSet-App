@@ -89,14 +89,16 @@ export default function PreBuiltWorkouts() {
   // Fetch workout templates
   const { data: templatesResponse, isLoading } = useQuery({
     queryKey: ['/api/workout-templates', filters],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (filters.workoutType) params.append('workoutType', filters.workoutType);
       if (filters.category) params.append('category', filters.category);
       if (filters.difficulty) params.append('difficulty', filters.difficulty);
       
       const url = `/api/workout-templates${params.toString() ? '?' + params.toString() : ''}`;
-      return apiRequest(url);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch templates');
+      return response.json();
     },
   });
 
@@ -104,16 +106,16 @@ export default function PreBuiltWorkouts() {
   const templates = Array.isArray(templatesResponse) ? templatesResponse : [];
 
   // Fetch detailed template when selected
-  const { data: detailedTemplate, isLoading: isLoadingDetails } = useQuery({
+  const { data: detailedTemplate, isLoading: isLoadingDetails } = useQuery<DetailedWorkoutTemplate>({
     queryKey: ['/api/workout-templates', selectedTemplate?.id],
-    queryFn: () => apiRequest(`/api/workout-templates/${selectedTemplate?.id}`),
+    queryFn: () => fetch(`/api/workout-templates/${selectedTemplate?.id}`).then(r => r.json()),
     enabled: !!selectedTemplate?.id,
   });
 
   // Start workout session mutation
   const startWorkoutMutation = useMutation({
-    mutationFn: (templateId: number) => 
-      apiRequest('/api/workout-sessions/from-template', {
+    mutationFn: async (templateId: number) => {
+      const response = await fetch('/api/workout-sessions/from-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -123,11 +125,14 @@ export default function PreBuiltWorkouts() {
           voiceEnabled: coachingOptions.voiceEnabled,
           coachingStyle: coachingOptions.coachingStyle
         }),
-      }),
-    onSuccess: (data) => {
+      });
+      if (!response.ok) throw new Error('Failed to start workout');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
       toast({
         title: 'Workout Started!',
-        description: `${data.template.name} has been started successfully.`,
+        description: `Workout started successfully.`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/workout-sessions'] });
       setLocation('/workout-session'); // Navigate to workout session page
@@ -296,7 +301,7 @@ export default function PreBuiltWorkouts() {
                     variant="outline" 
                     size="sm" 
                     className="flex-1"
-                    onClick={() => setSelectedTemplate(template)}
+                    onClick={() => setSelectedTemplate(template as any)}
                     data-testid={`view-details-${template.id}`}
                   >
                     View Details
