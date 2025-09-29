@@ -11,13 +11,13 @@ import { HumanMessage, SystemMessage, AIMessage } from '@langchain/core/messages
 import type { Exercise, CoachingSession } from '@shared/schema';
 
 // Initialize OpenAI clients
-// the newest OpenAI model is "gpt-4" which we'll use for now
+// Using GPT-4o-mini for better availability and cost efficiency
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY 
 });
 
 const llm = new ChatOpenAI({
-  model: "gpt-4",
+  model: "gpt-4o-mini",
   apiKey: process.env.OPENAI_API_KEY,
   temperature: 0.7
 });

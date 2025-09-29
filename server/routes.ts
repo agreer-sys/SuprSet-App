@@ -1145,10 +1145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     coachingOptions: any, 
     workoutInfo?: { name: string; duration: number; exercises: Array<{ name: string; sets?: number; workSeconds?: number; restSeconds?: number }> }
   ) {
-    console.log('🎯 createCoachingSessionIfRequested called with:', { sessionId, enableCoaching: coachingOptions?.enableCoaching, workoutInfo: workoutInfo?.name });
-    
     if (coachingOptions?.enableCoaching) {
-      console.log('✅ Coaching enabled, creating session...');
       const initialMessages = [];
       
       // Generate workout introduction message if workout info provided
@@ -1188,16 +1185,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const coachingSession = await storage.createCoachingSession({
+      await storage.createCoachingSession({
         sessionId,
         voiceEnabled: coachingOptions.voiceEnabled || false,
         preferredStyle: coachingOptions.coachingStyle || 'motivational',
         messages: initialMessages,
         currentSet: 1
       });
-      console.log('✅ Coaching session created successfully:', coachingSession);
-    } else {
-      console.log('❌ Coaching not enabled, skipping session creation');
     }
   }
 
@@ -1516,7 +1510,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/workout-sessions/from-template", async (req, res) => {
     try {
       const { templateId, userId, enableCoaching, voiceEnabled, coachingStyle } = req.body;
-      console.log('📥 Received workout session request:', { templateId, userId, enableCoaching, voiceEnabled, coachingStyle });
       
       if (!templateId || !userId) {
         return res.status(400).json({ message: "Template ID and User ID are required" });

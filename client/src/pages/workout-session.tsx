@@ -40,7 +40,15 @@ export default function WorkoutSessionPage() {
   // Load coaching messages from backend when coaching session is available
   useEffect(() => {
     if (coaching?.messages && coaching.messages.length > 0) {
-      setChatMessages(coaching.messages);
+      // Filter out system messages and map to expected format
+      const userMessages = coaching.messages
+        .filter(msg => msg.role !== 'system')
+        .map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: msg.timestamp
+        }));
+      setChatMessages(userMessages);
       // Auto-enable voice if coaching has voiceEnabled
       if (coaching.voiceEnabled) {
         setVoiceEnabled(true);
@@ -121,7 +129,6 @@ export default function WorkoutSessionPage() {
           totalSets: 6, // Get from actual workout data
           isRestPeriod: isResting,
           restTimeRemaining: restTimer,
-          superSetId: session?.superSetId || null,
           sessionId: session?.id,
           completedSets: setLogs?.length || 0
         }
@@ -347,7 +354,7 @@ export default function WorkoutSessionPage() {
 
                 <Button 
                   className="w-full" 
-                  onClick={() => handleLogSet(12, 135, 8)} // Mock data for demo
+                  onClick={() => handleLogSet(12, 135)} // Mock data for demo
                   disabled={logSetMutation.isPending}
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
