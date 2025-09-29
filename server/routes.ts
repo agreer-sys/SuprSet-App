@@ -1139,14 +1139,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Shared helper function for creating coaching sessions
-  async function createCoachingSessionIfRequested(sessionId: number, coachingOptions: any) {
+  // Shared helper function for creating coaching sessions with initial introduction
+  async function createCoachingSessionIfRequested(
+    sessionId: number, 
+    coachingOptions: any, 
+    workoutInfo?: { name: string; duration: number; exercises: Array<{ name: string; sets?: number; workSeconds?: number; restSeconds?: number }> }
+  ) {
     if (coachingOptions?.enableCoaching) {
+      const initialMessages = [];
+      
+      // Generate workout introduction message if workout info provided
+      if (workoutInfo) {
+        const style = coachingOptions.coachingStyle || 'motivational';
+        let introMessage = '';
+        
+        if (style === 'motivational') {
+          introMessage = `Hey there! 💪 Ready to crush today's workout?\n\nToday we're doing **${workoutInfo.name}** - a ${workoutInfo.duration}-minute session.\n\n`;
+        } else if (style === 'technical') {
+          introMessage = `Welcome to your workout session. Today's program:\n\n**${workoutInfo.name}** (${workoutInfo.duration} minutes)\n\n`;
+        } else {
+          introMessage = `Hey! Let's get this workout started 🔥\n\n**${workoutInfo.name}** - ${workoutInfo.duration} minutes\n\n`;
+        }
+        
+        introMessage += "**Exercises:**\n";
+        workoutInfo.exercises.forEach((ex, idx) => {
+          if (ex.sets && ex.workSeconds) {
+            introMessage += `${idx + 1}. ${ex.name} - ${ex.sets} sets × ${ex.workSeconds}s work / ${ex.restSeconds || 30}s rest\n`;
+          } else {
+            introMessage += `${idx + 1}. ${ex.name}\n`;
+          }
+        });
+        
+        if (style === 'motivational') {
+          introMessage += `\n**Are you ready to get started?** Let me know when you're warmed up and ready to go! 🚀`;
+        } else if (style === 'technical') {
+          introMessage += `\nReply "ready" when you've completed your warm-up and are prepared to begin.`;
+        } else {
+          introMessage += `\n**Ready to roll?** Just say the word and we'll get going! 👊`;
+        }
+        
+        initialMessages.push({
+          role: 'assistant' as const,
+          content: introMessage,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       await storage.createCoachingSession({
         sessionId,
         voiceEnabled: coachingOptions.voiceEnabled || false,
         preferredStyle: coachingOptions.coachingStyle || 'motivational',
-        messages: [],
+        messages: initialMessages,
         currentSet: 1
       });
     }
@@ -1290,8 +1333,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionHistory: coaching.messages || []
       };
       
-      // Generate AI coaching response using LangChain with real context
-      const aiResponse = await langchainCoach.generateCoachingResponse(message, context);
+      // Check if user is confirming readiness to start (only if there's exactly 1 message - the intro)
+      const userMessage = message.toLowerCase().trim();
+      const readyKeywords = ['ready', 'yes', 'let\'s go', 'lets go', 'start', 'go', 'yeah', 'yep', 'sure', 'ok', 'okay'];
+      const isReadyConfirmation = coaching.messages.length === 1 && 
+                                  readyKeywords.some(keyword => userMessage.includes(keyword));
+      
+      let aiResponse: string;
+      let startCountdown = false;
+      
+      if (isReadyConfirmation) {
+        // User confirmed they're ready - initiate countdown
+        const style = coaching.preferredStyle;
+        if (style === 'motivational') {
+          aiResponse = "🔥 **Let's do this!** Get ready - starting countdown in 3... 2... 1...";
+        } else if (style === 'technical') {
+          aiResponse = "Confirmed. Initiating 10-second countdown sequence. Prepare for first exercise.";
+        } else {
+          aiResponse = "**Alright, let's roll!** 🚀 Countdown starting now!";
+        }
+        startCountdown = true;
+      } else {
+        // Normal coaching response using LangChain
+        aiResponse = await langchainCoach.generateCoachingResponse(message, context);
+      }
       
       // Update coaching session with new messages
       const updatedMessages = [
@@ -1316,7 +1381,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         message: aiResponse,
-        coaching: updatedCoaching 
+        coaching: updatedCoaching,
+        startCountdown // Signal frontend to start countdown timer
       });
     } catch (error: any) {
       console.error("Error processing coaching message:", error);
@@ -1455,55 +1521,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         workoutId: null, // Will be created separately
         startedAt: new Date(),
-        isActive: true,
-        currentExerciseIndex: 0,
-        currentRound: 1,
+        status: 'active',
         notes: `Started from template: ${template.name}`,
       });
       
-      // Create coaching session if requested using shared helper
-      await createCoachingSessionIfRequested(workoutSession.id, {
-        enableCoaching,
-        voiceEnabled,
-        coachingStyle
-      });
-      
-      // Create a workout with super sets for each section
-      const workout = await storage.createWorkout({
+      // Prepare workout info for coaching introduction
+      const workoutInfo = {
         name: template.name,
-        description: template.description,
-        userId,
-        workoutType: template.workoutType,
-        estimatedDuration: template.estimatedDuration,
-        isPublic: false,
-        tags: ['from-template'],
-      });
+        duration: template.estimatedDuration,
+        exercises: template.sections.flatMap(section => 
+          section.exercises.map(ex => ({
+            name: ex.exercise.name,
+            sets: ex.sets || undefined,
+            workSeconds: ex.workSeconds || undefined,
+            restSeconds: ex.restAfterExercise || undefined
+          }))
+        )
+      };
       
-      // Update the session with the workout ID
-      await storage.updateWorkoutSession(workoutSession.id, {
-        workoutId: workout.id,
-      });
+      // Create coaching session if requested using shared helper
+      await createCoachingSessionIfRequested(
+        workoutSession.id, 
+        { enableCoaching, voiceEnabled, coachingStyle },
+        workoutInfo
+      );
       
-      // Create super sets for each section
-      for (const section of template.sections) {
-        if (section.exercises.length > 0) {
-          const superSet = await storage.createSuperSet({
-            name: section.name,
-            description: section.instructions || '',
-            exercises: section.exercises.map(we => we.exerciseId),
-            restPeriod: section.restBetweenRounds || 90,
-            notes: section.instructions || '',
-          });
-          
-          await storage.createWorkoutSuperSet({
-            workoutId: workout.id,
-            superSetId: superSet.id,
-            orderIndex: section.orderIndex,
-            targetSets: section.sectionType === 'main' ? 3 : 1, // Main sections get 3 sets, others get 1
-            completedSets: 0,
-          });
-        }
-      }
+      // Note: Pre-built template workouts don't need workout or superset creation
+      // The workout session references the template directly through notes
+      // The frontend will use the template structure for workout flow
       
       res.json({
         workoutSession,
