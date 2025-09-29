@@ -11,13 +11,13 @@ import { HumanMessage, SystemMessage, AIMessage } from '@langchain/core/messages
 import type { Exercise, CoachingSession } from '@shared/schema';
 
 // Initialize OpenAI clients
-// Using GPT-4o-mini for better availability and cost efficiency
+// Using GPT-3.5-turbo for cost efficiency during development and testing
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY 
 });
 
 const llm = new ChatOpenAI({
-  model: "gpt-4o-mini",
+  model: "gpt-3.5-turbo",
   apiKey: process.env.OPENAI_API_KEY,
   temperature: 0.7
 });
