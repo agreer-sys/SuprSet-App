@@ -1394,6 +1394,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Pre-built Workout Template API Routes
+  app.get("/api/workout-templates", async (req, res) => {
+    try {
+      const { workoutType, category, difficulty } = req.query;
+      
+      const filter: { workoutType?: string; category?: string; difficulty?: number } = {};
+      if (workoutType) filter.workoutType = workoutType as string;
+      if (category) filter.category = category as string;
+      if (difficulty) filter.difficulty = parseInt(difficulty as string);
+      
+      const templates = await storage.getWorkoutTemplates(filter);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching workout templates:", error);
+      res.status(500).json({ message: "Failed to fetch workout templates" });
+    }
+  });
+
+  app.get("/api/workout-templates/:id", async (req, res) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) {
+        return res.status(400).json({ message: "Invalid template ID" });
+      }
+      
+      const template = await storage.getWorkoutTemplateWithSections(templateId);
+      if (!template) {
+        return res.status(404).json({ message: "Workout template not found" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching workout template:", error);
+      res.status(500).json({ message: "Failed to fetch workout template" });
+    }
+  });
+
+  app.post("/api/workout-sessions/from-template", async (req, res) => {
+    try {
+      const { templateId, userId } = req.body;
+      
+      if (!templateId || !userId) {
+        return res.status(400).json({ message: "Template ID and User ID are required" });
+      }
+      
+      // Get the template with all its sections and exercises
+      const template = await storage.getWorkoutTemplateWithSections(templateId);
+      if (!template) {
+        return res.status(404).json({ message: "Workout template not found" });
+      }
+      
+      // Create a new workout session based on the template
+      const workoutSession = await storage.startWorkoutSession({
+        userId,
+        workoutId: null, // Will be created separately
+        startedAt: new Date(),
+        isActive: true,
+        currentExerciseIndex: 0,
+        currentRound: 1,
+        notes: `Started from template: ${template.name}`,
+      });
+      
+      // Create a workout with super sets for each section
+      const workout = await storage.createWorkout({
+        name: template.name,
+        description: template.description,
+        userId,
+        workoutType: template.workoutType,
+        estimatedDuration: template.estimatedDuration,
+        isPublic: false,
+        tags: ['from-template'],
+      });
+      
+      // Update the session with the workout ID
+      await storage.updateWorkoutSession(workoutSession.id, {
+        workoutId: workout.id,
+      });
+      
+      // Create super sets for each section
+      for (const section of template.sections) {
+        if (section.exercises.length > 0) {
+          const superSet = await storage.createSuperSet({
+            name: section.name,
+            description: section.instructions || '',
+            exercises: section.exercises.map(we => we.exerciseId),
+            restPeriod: section.restBetweenRounds || 90,
+            notes: section.instructions || '',
+          });
+          
+          await storage.createWorkoutSuperSet({
+            workoutId: workout.id,
+            superSetId: superSet.id,
+            orderIndex: section.orderIndex,
+            targetSets: section.sectionType === 'main' ? 3 : 1, // Main sections get 3 sets, others get 1
+            completedSets: 0,
+          });
+        }
+      }
+      
+      res.json({
+        workoutSession,
+        template,
+        message: "Workout session created successfully from template"
+      });
+    } catch (error) {
+      console.error("Error creating workout session from template:", error);
+      res.status(500).json({ message: "Failed to create workout session from template" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
@@ -1901,3 +2011,4 @@ function generatePairingReasoning(exerciseA: Exercise, exerciseB: Exercise): str
   const result = calculateCompatibilityScoreWithReasoning(exerciseA, exerciseB);
   return result.reasoning;
 }
+
