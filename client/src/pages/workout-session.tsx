@@ -180,24 +180,8 @@ export default function WorkoutSessionPage() {
       }, 1000);
       
       // Coach announcements during work period - only announce once per timer value
-      if (workTimer === 15 && lastWorkAnnouncement !== 15) {
-        // Get first coaching tip from exercise data, or use generic cue
-        const bulletPoints = currentTemplateExercise?.exercise?.coachingBulletPoints;
-        let coachingTip = "Keep pushing!";
-        if (bulletPoints) {
-          // Split by newlines or semicolons, remove bullet markers, get first tip
-          const tips = bulletPoints
-            .split(/[\n;]/)
-            .map((t: string) => t.trim().replace(/^[•\-\*]\s*/, ''))
-            .filter((t: string) => t.length > 0);
-          if (tips.length > 0) {
-            coachingTip = tips[0];
-          }
-        }
-        sendAutomaticCoachMessage(coachingTip);
-        setLastWorkAnnouncement(15);
-      } else if (workTimer === 10 && lastWorkAnnouncement !== 10) {
-        sendAutomaticCoachMessage("10 seconds!");
+      if (workTimer === 10 && lastWorkAnnouncement !== 10) {
+        sendAutomaticCoachMessage("10 seconds left.");
         setLastWorkAnnouncement(10);
       }
     } else if (workTimer === 0 && isWorking) {
@@ -209,7 +193,7 @@ export default function WorkoutSessionPage() {
           const restTime = completedExercise.restAfterExercise || 30;
           setRestTimer(restTime);
           setIsResting(true);
-          sendAutomaticCoachMessage("Rest!");
+          sendAutomaticCoachMessage(`${restTime} seconds recovery..`);
           // DO NOT increment index here - wait until rest ends
         }
       }
@@ -227,10 +211,30 @@ export default function WorkoutSessionPage() {
       
       // Coach announcements during rest period - only announce once per timer value
       if (restTimer === 15 && lastRestAnnouncement !== 15) {
-        sendAutomaticCoachMessage("15 seconds");
+        sendAutomaticCoachMessage("Half way through");
         setLastRestAnnouncement(15);
       } else if (restTimer === 5 && lastRestAnnouncement !== 5) {
-        sendAutomaticCoachMessage("5 seconds");
+        // Announce what's coming next
+        if (isTemplateWorkout && templateExercises.length > 0) {
+          const nextIndex = currentWorkExerciseIndex + 1;
+          if (nextIndex < templateExercises.length) {
+            const nextExercise = templateExercises[nextIndex];
+            const currentExercise = templateExercises[currentWorkExerciseIndex];
+            
+            // Determine which round and exercise we're on
+            const totalExercisesInWorkout = templateExercises.length / (session?.workoutTemplate?.totalRounds || 3);
+            const nextSetNumberInExercise = (nextIndex % totalExercisesInWorkout) + 1;
+            
+            // Check if it's the same exercise or different
+            if (currentExercise?.exercise?.name === nextExercise?.exercise?.name) {
+              // Same exercise, different set
+              sendAutomaticCoachMessage(`Get ready for ${nextSetNumberInExercise}${nextSetNumberInExercise === 2 ? 'nd' : nextSetNumberInExercise === 3 ? 'rd' : 'th'} ${nextExercise.exercise?.name} set`);
+            } else {
+              // Different exercise
+              sendAutomaticCoachMessage(`Get ready for ${nextExercise.exercise?.name}`);
+            }
+          }
+        }
         setLastRestAnnouncement(5);
       }
     } else if (restTimer === 0 && isResting) {
@@ -257,18 +261,20 @@ export default function WorkoutSessionPage() {
           setWorkTimer(workTime);
           setIsWorking(true);
           
-          // Determine which round and exercise we're on
-          const totalExercisesInWorkout = templateExercises.length / (session?.workoutTemplate?.totalRounds || 3);
-          const setNumberInExercise = (currentWorkExerciseIndex % totalExercisesInWorkout) + 1;
-          const nextSetNumberInExercise = (nextIndex % totalExercisesInWorkout) + 1;
-          
-          // Check if we're moving to a different exercise or just another set
-          if (currentExercise?.exercise?.name !== nextExercise?.exercise?.name) {
-            sendAutomaticCoachMessage(`${nextExercise.exercise?.name}`);
-          } else {
-            const setsPerExercise = session?.workoutTemplate?.totalRounds || 3;
-            sendAutomaticCoachMessage(`Set ${nextSetNumberInExercise}. ${nextExercise.exercise?.name}`);
+          // Get coaching tip for work start message
+          const bulletPoints = nextExercise?.exercise?.coachingBulletPoints;
+          let coachingTip = "keep pushing";
+          if (bulletPoints) {
+            const tips = bulletPoints
+              .split(/[\n;]/)
+              .map((t: string) => t.trim().replace(/^[•\-\*]\s*/, ''))
+              .filter((t: string) => t.length > 0);
+            if (tips.length > 0) {
+              coachingTip = tips[0].toLowerCase();
+            }
           }
+          
+          sendAutomaticCoachMessage(`Get in as many reps as possible in the ${workTime} seconds of work, and remember, ${coachingTip}`);
           
           // Reset time announcements for next cycle
           setLastWorkAnnouncement(null);
@@ -283,6 +289,15 @@ export default function WorkoutSessionPage() {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (countdown !== null && countdown > 0) {
+      // Pre-announce at countdown start
+      if (countdown === 10 && isTemplateWorkout && templateExercises.length > 0) {
+        const firstExercise = templateExercises[0];
+        const totalRounds = session?.workoutTemplate?.totalRounds || 3;
+        if (firstExercise?.exercise?.name) {
+          sendAutomaticCoachMessage(`Ok, ready to go in 10 with ${firstExercise.exercise.name} for ${totalRounds} sets.`);
+        }
+      }
+      
       interval = setInterval(() => {
         setCountdown(prev => prev !== null ? prev - 1 : null);
       }, 1000);
@@ -297,12 +312,26 @@ export default function WorkoutSessionPage() {
           const workTime = firstExercise.workSeconds || 30;
           setWorkTimer(workTime);
           setIsWorking(true);
-          sendAutomaticCoachMessage(`Go! ${firstExercise.exercise?.name}`);
+          
+          // Get coaching tip for work start message
+          const bulletPoints = firstExercise?.exercise?.coachingBulletPoints;
+          let coachingTip = "keep pushing";
+          if (bulletPoints) {
+            const tips = bulletPoints
+              .split(/[\n;]/)
+              .map((t: string) => t.trim().replace(/^[•\-\*]\s*/, ''))
+              .filter((t: string) => t.length > 0);
+            if (tips.length > 0) {
+              coachingTip = tips[0].toLowerCase();
+            }
+          }
+          
+          sendAutomaticCoachMessage(`Get in as many reps as possible in the ${workTime} seconds of work, and remember, ${coachingTip}`);
         }
       }
     }
     return () => clearInterval(interval);
-  }, [countdown, isTemplateWorkout, templateExercises]);
+  }, [countdown, isTemplateWorkout, templateExercises, session]);
 
   const getCurrentExerciseId = () => {
     // Mock exercise IDs for demo - in real implementation, get from workout data

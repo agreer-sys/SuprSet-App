@@ -1154,11 +1154,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let introMessage = '';
         
         if (style === 'motivational') {
-          introMessage = `Hey there! 💪 Ready to crush today's workout?\n\nToday we're doing **${workoutInfo.name}** - a ${workoutInfo.duration}-minute session.\n\n`;
+          introMessage = `Hey there! Ready to crush today's workout?\n\nToday we're doing **${workoutInfo.name}** - a ${workoutInfo.duration}-minute session.\n\n`;
         } else if (style === 'technical') {
           introMessage = `Welcome to your workout session. Today's program:\n\n**${workoutInfo.name}** (${workoutInfo.duration} minutes)\n\n`;
         } else {
-          introMessage = `Hey! Let's get this workout started 🔥\n\n**${workoutInfo.name}** - ${workoutInfo.duration} minutes\n\n`;
+          introMessage = `Hey! Let's get this workout started\n\n**${workoutInfo.name}** - ${workoutInfo.duration} minutes\n\n`;
         }
         
         introMessage += "**Exercises:**\n";
@@ -1171,11 +1171,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         if (style === 'motivational') {
-          introMessage += `\n**Are you ready to get started?** Let me know when you're warmed up and ready to go! 🚀`;
+          introMessage += `\n**Are you ready to get started?** Let me know when you're warmed up and ready to go!`;
         } else if (style === 'technical') {
           introMessage += `\nReply "ready" when you've completed your warm-up and are prepared to begin.`;
         } else {
-          introMessage += `\n**Ready to roll?** Just say the word and we'll get going! 👊`;
+          introMessage += `\n**Ready to roll?** Just say the word and we'll get going!`;
         }
         
         initialMessages.push({
@@ -1354,11 +1354,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // User confirmed they're ready - initiate countdown (countdown is visual, not narrated)
         const style = coaching.preferredStyle;
         if (style === 'motivational') {
-          aiResponse = "Let's do this! 🔥";
+          aiResponse = "Let's do this!";
         } else if (style === 'technical') {
           aiResponse = "Confirmed. Get ready.";
         } else {
-          aiResponse = "Alright, let's roll! 🚀";
+          aiResponse = "Alright, let's roll!";
         }
         startCountdown = true;
       } else {
