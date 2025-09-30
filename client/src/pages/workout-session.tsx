@@ -376,36 +376,18 @@ export default function WorkoutSessionPage() {
   const sendAutomaticCoachMessage = (message: string) => {
     if (!session?.id) return;
     
-    // Send message to backend
-    apiRequest(`/api/coaching/${session.id}/message`, 'POST', { 
-      message, 
-      exerciseId: null,
-      setNumber: currentSet,
-      workoutContext: {
-        currentExercise: currentTemplateExercise,
-        currentSet: currentSet,
-        totalSets: 9, // 3 exercises × 3 rounds
-        isRestPeriod: isResting,
-        restTimeRemaining: restTimer,
-        sessionId: session.id,
-        completedSets: 0
-      }
-    }).then((data: any) => {
-      // Add both the automatic trigger and coach response to chat
-      setChatMessages(prev => [...prev, 
-        { role: 'assistant', content: data.message, timestamp: new Date().toISOString() }
-      ]);
-      
-      // Speak the response if voice is enabled
-      if (voiceEnabled && 'speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(data.message);
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        window.speechSynthesis.speak(utterance);
-      }
-    }).catch(err => {
-      console.error('Error sending automatic coach message:', err);
-    });
+    // Add message directly to chat as assistant message (no AI processing)
+    setChatMessages(prev => [...prev, 
+      { role: 'assistant', content: message, timestamp: new Date().toISOString() }
+    ]);
+    
+    // Speak the message directly if voice is enabled
+    if (voiceEnabled && 'speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
   const handleSendCoachingMessage = () => {
