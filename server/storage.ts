@@ -93,7 +93,7 @@ export interface IStorage {
 
   // Workout Session methods
   startWorkoutSession(session: InsertWorkoutSessionNew): Promise<WorkoutSessionNew>;
-  getActiveWorkoutSession(userId: string): Promise<WorkoutSessionNew | undefined>;
+  getActiveWorkoutSession(userId: string): Promise<any>;
   updateWorkoutSession(id: number, updates: Partial<InsertWorkoutSessionNew>): Promise<WorkoutSessionNew>;
   completeWorkoutSession(id: number, notes?: string): Promise<WorkoutSessionNew>;
 
@@ -815,7 +815,7 @@ export class DatabaseStorage implements IStorage {
     return session;
   }
 
-  async getActiveWorkoutSession(userId: string): Promise<WorkoutSessionNew | undefined> {
+  async getActiveWorkoutSession(userId: string): Promise<any> {
     const [session] = await db
       .select()
       .from(workoutSessionsNew)
@@ -824,6 +824,19 @@ export class DatabaseStorage implements IStorage {
         eq(workoutSessionsNew.status, "active")
       ))
       .limit(1);
+    
+    if (!session) {
+      return undefined;
+    }
+
+    // If session has a workout template, fetch it with exercises
+    if (session.workoutTemplateId) {
+      const template = await this.getWorkoutTemplateWithSections(session.workoutTemplateId);
+      return {
+        ...session,
+        workoutTemplate: template
+      };
+    }
     
     return session;
   }

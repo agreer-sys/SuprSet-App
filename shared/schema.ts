@@ -132,6 +132,7 @@ export const workoutSessionsNew = pgTable("workout_sessions_new", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   workoutId: integer("workout_id").references(() => workouts.id),
+  workoutTemplateId: integer("workout_template_id").references(() => workoutTemplates.id),
   status: text("status").notNull().default("active"), // active, completed, paused
   startedAt: timestamp("started_at").defaultNow(),
   completedAt: timestamp("completed_at"),
