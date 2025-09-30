@@ -100,6 +100,44 @@ export default function WorkoutSessionPage() {
     }
   };
 
+  // Function to play short beep (for countdown 3, 2, 1)
+  const playShortBeep = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800; // 800 Hz tone
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.2); // 200ms short beep
+  };
+
+  // Function to play long beep (for start and end of set)
+  const playLongBeep = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 1000; // 1000 Hz tone
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 1.0); // 1 second long beep
+  };
+
   // Fetch set logs for current session
   const { data: setLogs } = useQuery<SetLog[]>({
     queryKey: ['/api/workout-sessions', session?.id, 'sets'],
@@ -187,6 +225,9 @@ export default function WorkoutSessionPage() {
         setLastWorkAnnouncement(10);
       }
     } else if (workTimer === 0 && isWorking) {
+      // Play long beep at end of work period
+      playLongBeep();
+      
       // Work period ended - get rest time from exercise we just completed
       setIsWorking(false);
       if (isTemplateWorkout && templateExercises.length > 0) {
@@ -300,10 +341,18 @@ export default function WorkoutSessionPage() {
         }
       }
       
+      // Play short beeps at 3, 2, 1
+      if (countdown === 3 || countdown === 2 || countdown === 1) {
+        playShortBeep();
+      }
+      
       interval = setInterval(() => {
         setCountdown(prev => prev !== null ? prev - 1 : null);
       }, 1000);
     } else if (countdown === 0) {
+      // Play long beep at 0 (work starts)
+      playLongBeep();
+      
       setCountdown(null);
       // Reset to first exercise and start work timer
       if (isTemplateWorkout && templateExercises.length > 0) {
