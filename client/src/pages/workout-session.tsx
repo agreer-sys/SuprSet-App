@@ -76,12 +76,16 @@ export default function WorkoutSessionPage() {
   //   }
   // }, [coaching]);
 
+  // Track last spoken message to prevent duplicates
+  const lastSpokenMessageRef = useRef<string>('');
+
   // Auto-play voice for new assistant messages when voice is enabled
   useEffect(() => {
     if (voiceEnabled && chatMessages.length > 0) {
       const lastMessage = chatMessages[chatMessages.length - 1];
-      if (lastMessage.role === 'assistant') {
+      if (lastMessage.role === 'assistant' && lastMessage.content !== lastSpokenMessageRef.current) {
         playVoiceMessage(lastMessage.content);
+        lastSpokenMessageRef.current = lastMessage.content;
       }
     }
   }, [chatMessages, voiceEnabled]);
@@ -103,6 +107,7 @@ export default function WorkoutSessionPage() {
 
   // Create persistent audio context (only once)
   const audioContextRef = useRef<AudioContext | null>(null);
+  const audioContextReady = useRef(false);
   
   const getAudioContext = () => {
     if (!audioContextRef.current) {
@@ -111,8 +116,30 @@ export default function WorkoutSessionPage() {
     return audioContextRef.current;
   };
 
+  // Resume AudioContext after user interaction (required for autoplay policy)
+  const resumeAudioContext = async () => {
+    const audioContext = getAudioContext();
+    if (audioContext.state === 'suspended') {
+      try {
+        await audioContext.resume();
+        audioContextReady.current = true;
+        console.log('AudioContext resumed successfully, state:', audioContext.state);
+      } catch (error) {
+        console.error('Failed to resume AudioContext:', error);
+      }
+    } else if (audioContext.state === 'running') {
+      audioContextReady.current = true;
+      console.log('AudioContext already running');
+    }
+  };
+
   // Function to play short beep (for countdown 3, 2, 1)
   const playShortBeep = () => {
+    if (!audioContextReady.current) {
+      console.warn('AudioContext not ready. Beep skipped.');
+      return;
+    }
+    
     try {
       const audioContext = getAudioContext();
       const oscillator = audioContext.createOscillator();
@@ -139,6 +166,11 @@ export default function WorkoutSessionPage() {
 
   // Function to play long beep (for start and end of set)
   const playLongBeep = () => {
+    if (!audioContextReady.current) {
+      console.warn('AudioContext not ready. Beep skipped.');
+      return;
+    }
+    
     try {
       const audioContext = getAudioContext();
       const oscillator = audioContext.createOscillator();
@@ -461,21 +493,18 @@ export default function WorkoutSessionPage() {
     if (!session?.id) return;
     
     // Add message directly to chat as assistant message (no AI processing)
+    // The useEffect will handle speaking it automatically
     setChatMessages(prev => [...prev, 
       { role: 'assistant', content: message, timestamp: new Date().toISOString() }
     ]);
-    
-    // Speak the message directly if voice is enabled
-    if (voiceEnabled && 'speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(message);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
-    }
   };
 
-  const handleSendCoachingMessage = () => {
+  const handleSendCoachingMessage = async () => {
     if (!coachingMessage.trim()) return;
+    
+    // Resume AudioContext on user interaction (required for browser autoplay policy)
+    await resumeAudioContext();
+    
     sendCoachingMessageMutation.mutate(coachingMessage);
   };
 
