@@ -181,10 +181,23 @@ export default function WorkoutSessionPage() {
       
       // Coach announcements during work period - only announce once per timer value
       if (workTimer === 15 && lastWorkAnnouncement !== 15) {
-        sendAutomaticCoachMessage("Halfway there! Keep pushing!");
+        // Get first coaching tip from exercise data, or use generic cue
+        const bulletPoints = currentTemplateExercise?.exercise?.coachingBulletPoints;
+        let coachingTip = "Keep pushing!";
+        if (bulletPoints) {
+          // Split by newlines or semicolons, remove bullet markers, get first tip
+          const tips = bulletPoints
+            .split(/[\n;]/)
+            .map((t: string) => t.trim().replace(/^[•\-\*]\s*/, ''))
+            .filter((t: string) => t.length > 0);
+          if (tips.length > 0) {
+            coachingTip = tips[0];
+          }
+        }
+        sendAutomaticCoachMessage(coachingTip);
         setLastWorkAnnouncement(15);
       } else if (workTimer === 10 && lastWorkAnnouncement !== 10) {
-        sendAutomaticCoachMessage("10 seconds left! Finish strong!");
+        sendAutomaticCoachMessage("10 seconds!");
         setLastWorkAnnouncement(10);
       }
     } else if (workTimer === 0 && isWorking) {
@@ -196,7 +209,7 @@ export default function WorkoutSessionPage() {
           const restTime = completedExercise.restAfterExercise || 30;
           setRestTimer(restTime);
           setIsResting(true);
-          sendAutomaticCoachMessage(`Great work! Rest now for ${restTime} seconds.`);
+          sendAutomaticCoachMessage("Rest!");
           // DO NOT increment index here - wait until rest ends
         }
       }
@@ -214,10 +227,10 @@ export default function WorkoutSessionPage() {
       
       // Coach announcements during rest period - only announce once per timer value
       if (restTimer === 15 && lastRestAnnouncement !== 15) {
-        sendAutomaticCoachMessage("15 seconds of rest left. Get ready!");
+        sendAutomaticCoachMessage("15 seconds");
         setLastRestAnnouncement(15);
       } else if (restTimer === 5 && lastRestAnnouncement !== 5) {
-        sendAutomaticCoachMessage("5 seconds! Prepare to work!");
+        sendAutomaticCoachMessage("5 seconds");
         setLastRestAnnouncement(5);
       }
     } else if (restTimer === 0 && isResting) {
@@ -251,10 +264,10 @@ export default function WorkoutSessionPage() {
           
           // Check if we're moving to a different exercise or just another set
           if (currentExercise?.exercise?.name !== nextExercise?.exercise?.name) {
-            sendAutomaticCoachMessage(`Moving to ${nextExercise.exercise?.name}! Let's go!`);
+            sendAutomaticCoachMessage(`${nextExercise.exercise?.name}`);
           } else {
             const setsPerExercise = session?.workoutTemplate?.totalRounds || 3;
-            sendAutomaticCoachMessage(`Set ${nextSetNumberInExercise} of ${setsPerExercise}. Begin ${nextExercise.exercise?.name}!`);
+            sendAutomaticCoachMessage(`Set ${nextSetNumberInExercise}. ${nextExercise.exercise?.name}`);
           }
           
           // Reset time announcements for next cycle
@@ -284,7 +297,7 @@ export default function WorkoutSessionPage() {
           const workTime = firstExercise.workSeconds || 30;
           setWorkTimer(workTime);
           setIsWorking(true);
-          sendAutomaticCoachMessage(`Let's go! Begin ${firstExercise.exercise?.name} for ${workTime} seconds!`);
+          sendAutomaticCoachMessage(`Go! ${firstExercise.exercise?.name}`);
         }
       }
     }

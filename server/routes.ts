@@ -1351,14 +1351,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let shouldResume = false;
       
       if (isReadyConfirmation) {
-        // User confirmed they're ready - initiate countdown
+        // User confirmed they're ready - initiate countdown (countdown is visual, not narrated)
         const style = coaching.preferredStyle;
         if (style === 'motivational') {
-          aiResponse = "🔥 **Let's do this!** Get ready - starting countdown in 3... 2... 1...";
+          aiResponse = "Let's do this! 🔥";
         } else if (style === 'technical') {
-          aiResponse = "Confirmed. Initiating 10-second countdown sequence. Prepare for first exercise.";
+          aiResponse = "Confirmed. Get ready.";
         } else {
-          aiResponse = "**Alright, let's roll!** 🚀 Countdown starting now!";
+          aiResponse = "Alright, let's roll! 🚀";
         }
         startCountdown = true;
       } else {
