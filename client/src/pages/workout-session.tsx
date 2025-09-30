@@ -27,7 +27,9 @@ export default function WorkoutSessionPage() {
   const [coachingMessage, setCoachingMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: string}>>([]);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true); // Enable voice by default for coach dictation
+  const [lastWorkAnnouncement, setLastWorkAnnouncement] = useState<number | null>(null);
+  const [lastRestAnnouncement, setLastRestAnnouncement] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch active workout session (may include workoutTemplate)
@@ -176,6 +178,15 @@ export default function WorkoutSessionPage() {
       interval = setInterval(() => {
         setWorkTimer(prev => prev - 1);
       }, 1000);
+      
+      // Coach announcements during work period - only announce once per timer value
+      if (workTimer === 15 && lastWorkAnnouncement !== 15) {
+        sendAutomaticCoachMessage("Halfway there! Keep pushing!");
+        setLastWorkAnnouncement(15);
+      } else if (workTimer === 10 && lastWorkAnnouncement !== 10) {
+        sendAutomaticCoachMessage("10 seconds left! Finish strong!");
+        setLastWorkAnnouncement(10);
+      }
     } else if (workTimer === 0 && isWorking) {
       // Work period ended - get rest time from exercise we just completed
       setIsWorking(false);
@@ -185,12 +196,13 @@ export default function WorkoutSessionPage() {
           const restTime = completedExercise.restAfterExercise || 30;
           setRestTimer(restTime);
           setIsResting(true);
+          sendAutomaticCoachMessage(`Great work! Rest now for ${restTime} seconds.`);
           // DO NOT increment index here - wait until rest ends
         }
       }
     }
     return () => clearInterval(interval);
-  }, [isWorking, workTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex]);
+  }, [isWorking, workTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, lastWorkAnnouncement]);
 
   // Timer effect for rest periods
   useEffect(() => {
@@ -199,12 +211,31 @@ export default function WorkoutSessionPage() {
       interval = setInterval(() => {
         setRestTimer(prev => prev - 1);
       }, 1000);
+      
+      // Coach announcements during rest period - only announce once per timer value
+      if (restTimer === 15 && lastRestAnnouncement !== 15) {
+        sendAutomaticCoachMessage("15 seconds of rest left. Get ready!");
+        setLastRestAnnouncement(15);
+      } else if (restTimer === 5 && lastRestAnnouncement !== 5) {
+        sendAutomaticCoachMessage("5 seconds! Prepare to work!");
+        setLastRestAnnouncement(5);
+      }
     } else if (restTimer === 0 && isResting) {
       setIsResting(false);
       // Rest ended - advance to NEXT exercise and start work
       if (isTemplateWorkout && templateExercises.length > 0) {
         const nextIndex = currentWorkExerciseIndex + 1;
-        const nextExercise = templateExercises[nextIndex % templateExercises.length];
+        
+        // Check if workout is complete
+        if (nextIndex >= templateExercises.length) {
+          sendAutomaticCoachMessage("Workout complete! Great job!");
+          setIsWorking(false);
+          setIsResting(false);
+          return;
+        }
+        
+        const nextExercise = templateExercises[nextIndex];
+        const currentExercise = templateExercises[currentWorkExerciseIndex];
         
         if (nextExercise) {
           const workTime = nextExercise.workSeconds || 30;
@@ -212,11 +243,28 @@ export default function WorkoutSessionPage() {
           setTemplateExerciseIndex(nextIndex); // Keep templateExerciseIndex in sync for logging
           setWorkTimer(workTime);
           setIsWorking(true);
+          
+          // Determine which round and exercise we're on
+          const totalExercisesInWorkout = templateExercises.length / (session?.workoutTemplate?.totalRounds || 3);
+          const setNumberInExercise = (currentWorkExerciseIndex % totalExercisesInWorkout) + 1;
+          const nextSetNumberInExercise = (nextIndex % totalExercisesInWorkout) + 1;
+          
+          // Check if we're moving to a different exercise or just another set
+          if (currentExercise?.exercise?.name !== nextExercise?.exercise?.name) {
+            sendAutomaticCoachMessage(`Moving to ${nextExercise.exercise?.name}! Let's go!`);
+          } else {
+            const setsPerExercise = session?.workoutTemplate?.totalRounds || 3;
+            sendAutomaticCoachMessage(`Set ${nextSetNumberInExercise} of ${setsPerExercise}. Begin ${nextExercise.exercise?.name}!`);
+          }
+          
+          // Reset time announcements for next cycle
+          setLastWorkAnnouncement(null);
+          setLastRestAnnouncement(null);
         }
       }
     }
     return () => clearInterval(interval);
-  }, [isResting, restTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex]);
+  }, [isResting, restTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, session, lastRestAnnouncement]);
 
   // Countdown timer effect (10 seconds before workout starts)
   useEffect(() => {
@@ -236,6 +284,7 @@ export default function WorkoutSessionPage() {
           const workTime = firstExercise.workSeconds || 30;
           setWorkTimer(workTime);
           setIsWorking(true);
+          sendAutomaticCoachMessage(`Let's go! Begin ${firstExercise.exercise?.name} for ${workTime} seconds!`);
         }
       }
     }
@@ -279,6 +328,42 @@ export default function WorkoutSessionPage() {
         setCurrentSet(prev => prev + 1);
       }
     }
+  };
+
+  // Automatic coach message sender for timer events
+  const sendAutomaticCoachMessage = (message: string) => {
+    if (!session?.id) return;
+    
+    // Send message to backend
+    apiRequest(`/api/coaching/${session.id}/message`, 'POST', { 
+      message, 
+      exerciseId: null,
+      setNumber: currentSet,
+      workoutContext: {
+        currentExercise: currentTemplateExercise,
+        currentSet: currentSet,
+        totalSets: 9, // 3 exercises × 3 rounds
+        isRestPeriod: isResting,
+        restTimeRemaining: restTimer,
+        sessionId: session.id,
+        completedSets: 0
+      }
+    }).then((data: any) => {
+      // Add both the automatic trigger and coach response to chat
+      setChatMessages(prev => [...prev, 
+        { role: 'assistant', content: data.message, timestamp: new Date().toISOString() }
+      ]);
+      
+      // Speak the response if voice is enabled
+      if (voiceEnabled && 'speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(data.message);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    }).catch(err => {
+      console.error('Error sending automatic coach message:', err);
+    });
   };
 
   const handleSendCoachingMessage = () => {
