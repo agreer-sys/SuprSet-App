@@ -135,7 +135,7 @@ export default function WorkoutSessionPage() {
     mutationFn: async (message: string) => {
       return await apiRequest(`/api/coaching/${session?.id}/message`, 'POST', { 
         message, 
-        exerciseId: getCurrentExerciseId(),
+        exerciseId: isTemplateWorkout ? null : getCurrentExerciseId(), // Don't send exercise ID for template workouts
         setNumber: currentSet,
         // Send real workout context
         workoutContext: {
@@ -403,25 +403,54 @@ export default function WorkoutSessionPage() {
 
           {/* Waiting to Start - For timed workouts that haven't begun */}
           {isTemplateWorkout && !countdown && !isWorking && !isResting && (
-            <Card className="border-purple-200 bg-purple-50">
-              <CardContent className="pt-6">
-                <div className="text-center space-y-4">
-                  <Dumbbell className="h-16 w-16 mx-auto mb-2 text-purple-600" />
-                  <h3 className="text-2xl font-semibold text-purple-800">Ready to Begin?</h3>
-                  <p className="text-purple-700 max-w-md mx-auto">
-                    When you're ready to start your timed workout, tell the AI Coach "I'm ready" and a 10-second countdown will begin!
-                  </p>
-                  <div className="bg-white rounded-lg p-4 max-w-md mx-auto">
-                    <h4 className="font-semibold text-sm mb-2 text-purple-900">Workout Overview:</h4>
-                    <div className="text-sm text-gray-700 space-y-1">
-                      <p><strong>{templateExercises.length}</strong> exercises</p>
-                      <p><strong>{session?.workoutTemplate?.totalRounds || 3}</strong> rounds</p>
-                      <p><strong>{templateExercises[0]?.workSeconds || 30}s</strong> work / <strong>{templateExercises[0]?.restSeconds || 30}s</strong> rest</p>
+            <>
+              <Card className="border-purple-200 bg-purple-50">
+                <CardContent className="pt-6">
+                  <div className="text-center space-y-4">
+                    <Dumbbell className="h-16 w-16 mx-auto mb-2 text-purple-600" />
+                    <h3 className="text-2xl font-semibold text-purple-800">Ready to Begin?</h3>
+                    <p className="text-purple-700 max-w-md mx-auto">
+                      When you're ready to start your timed workout, tell the AI Coach "I'm ready" and a 10-second countdown will begin!
+                    </p>
+                    <div className="bg-white rounded-lg p-4 max-w-md mx-auto">
+                      <h4 className="font-semibold text-sm mb-2 text-purple-900">Workout Overview:</h4>
+                      <div className="text-sm text-gray-700 space-y-1">
+                        <p><strong>{templateExercises.length}</strong> exercises</p>
+                        <p><strong>{session?.workoutTemplate?.totalRounds || 3}</strong> rounds</p>
+                        <p><strong>{templateExercises[0]?.workSeconds || 30}s</strong> work / <strong>{templateExercises[0]?.restSeconds || 30}s</strong> rest</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* Exercise List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Exercises in This Workout</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {templateExercises.map((exercise: any, index: number) => (
+                      <div key={index} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                        <Badge variant="outline" className="mt-1">{index + 1}</Badge>
+                        <div className="flex-1">
+                          <h4 className="font-semibold">{exercise.exercise?.name || 'Exercise'}</h4>
+                          <p className="text-sm text-muted-foreground">{exercise.primaryMuscleGroup || 'Muscle group'}</p>
+                          {exercise.equipment && (
+                            <p className="text-xs text-muted-foreground mt-1">Equipment: {exercise.equipment}</p>
+                          )}
+                        </div>
+                        <div className="text-right text-sm">
+                          <p className="font-medium">{exercise.workSeconds || 30}s work</p>
+                          <p className="text-muted-foreground">{exercise.restSeconds || 30}s rest</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
           )}
 
           {/* Current Exercise - Only show for non-timed workouts */}
