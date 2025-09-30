@@ -109,10 +109,10 @@ export default function WorkoutSessionPage() {
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    oscillator.frequency.value = 800; // 800 Hz tone
+    oscillator.frequency.value = 440; // 440 Hz (A note - more audible)
     oscillator.type = 'sine';
     
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
     
     oscillator.start(audioContext.currentTime);
@@ -128,10 +128,10 @@ export default function WorkoutSessionPage() {
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    oscillator.frequency.value = 1000; // 1000 Hz tone
+    oscillator.frequency.value = 523; // 523 Hz (C note - pleasant and audible)
     oscillator.type = 'sine';
     
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
     
     oscillator.start(audioContext.currentTime);
