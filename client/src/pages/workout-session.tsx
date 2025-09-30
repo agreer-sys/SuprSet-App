@@ -30,6 +30,7 @@ export default function WorkoutSessionPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(true); // Enable voice by default for coach dictation
   const [lastWorkAnnouncement, setLastWorkAnnouncement] = useState<number | null>(null);
   const [lastRestAnnouncement, setLastRestAnnouncement] = useState<number | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
   const hasLoadedInitialMessages = useRef(false);
   const queryClient = useQueryClient();
 
@@ -214,7 +215,7 @@ export default function WorkoutSessionPage() {
   // Timer effect for work periods
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isWorking && workTimer > 0) {
+    if (isWorking && workTimer > 0 && !isPaused) {
       interval = setInterval(() => {
         setWorkTimer(prev => prev - 1);
       }, 1000);
@@ -224,7 +225,7 @@ export default function WorkoutSessionPage() {
         sendAutomaticCoachMessage("10 seconds left.");
         setLastWorkAnnouncement(10);
       }
-    } else if (workTimer === 0 && isWorking) {
+    } else if (workTimer === 0 && isWorking && !isPaused) {
       // Play long beep at end of work period
       playLongBeep();
       
@@ -242,12 +243,12 @@ export default function WorkoutSessionPage() {
       }
     }
     return () => clearInterval(interval);
-  }, [isWorking, workTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, lastWorkAnnouncement]);
+  }, [isWorking, workTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, lastWorkAnnouncement, isPaused]);
 
   // Timer effect for rest periods
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isResting && restTimer > 0) {
+    if (isResting && restTimer > 0 && !isPaused) {
       interval = setInterval(() => {
         setRestTimer(prev => prev - 1);
       }, 1000);
@@ -280,7 +281,7 @@ export default function WorkoutSessionPage() {
         }
         setLastRestAnnouncement(5);
       }
-    } else if (restTimer === 0 && isResting) {
+    } else if (restTimer === 0 && isResting && !isPaused) {
       setIsResting(false);
       // Rest ended - advance to NEXT exercise and start work
       if (isTemplateWorkout && templateExercises.length > 0) {
@@ -326,12 +327,12 @@ export default function WorkoutSessionPage() {
       }
     }
     return () => clearInterval(interval);
-  }, [isResting, restTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, session, lastRestAnnouncement]);
+  }, [isResting, restTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, session, lastRestAnnouncement, isPaused]);
 
   // Countdown timer effect (10 seconds before workout starts)
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (countdown !== null && countdown > 0) {
+    if (countdown !== null && countdown > 0 && !isPaused) {
       // Pre-announce at countdown start
       if (countdown === 10 && isTemplateWorkout && templateExercises.length > 0) {
         const firstExercise = templateExercises[0];
@@ -349,7 +350,7 @@ export default function WorkoutSessionPage() {
       interval = setInterval(() => {
         setCountdown(prev => prev !== null ? prev - 1 : null);
       }, 1000);
-    } else if (countdown === 0) {
+    } else if (countdown === 0 && !isPaused) {
       // Play long beep at 0 (work starts)
       playLongBeep();
       
@@ -382,7 +383,7 @@ export default function WorkoutSessionPage() {
       }
     }
     return () => clearInterval(interval);
-  }, [countdown, isTemplateWorkout, templateExercises, session]);
+  }, [countdown, isTemplateWorkout, templateExercises, session, isPaused]);
 
   const getCurrentExerciseId = () => {
     // Mock exercise IDs for demo - in real implementation, get from workout data
@@ -503,9 +504,33 @@ export default function WorkoutSessionPage() {
         </div>
         
         <Progress value={progressPercentage} className="h-2" />
-        <p className="text-sm text-muted-foreground mt-1">
-          {completedSets} of {totalSets} sets completed
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-sm text-muted-foreground">
+            {completedSets} of {totalSets} sets completed
+          </p>
+          {/* Pause/Resume Button */}
+          {(countdown !== null || isWorking || isResting) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPaused(!isPaused)}
+              className="gap-2"
+              data-testid="button-pause-resume"
+            >
+              {isPaused ? (
+                <>
+                  <Play className="h-4 w-4" />
+                  Resume
+                </>
+              ) : (
+                <>
+                  <Pause className="h-4 w-4" />
+                  Pause
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
