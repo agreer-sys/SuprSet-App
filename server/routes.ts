@@ -1387,11 +1387,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       ];
 
-      const updatedCoaching = await storage.updateCoachingSession(coaching.id, {
+      // Build update object - only include currentExercise if it's a valid ID
+      const updateData: any = {
         messages: updatedMessages,
-        currentExercise: exerciseId || coaching.currentExercise,
         currentSet: setNumber || coaching.currentSet
-      });
+      };
+      
+      // Only update currentExercise if we have a valid exerciseId (not null/undefined)
+      if (exerciseId !== null && exerciseId !== undefined) {
+        updateData.currentExercise = exerciseId;
+      }
+      
+      const updatedCoaching = await storage.updateCoachingSession(coaching.id, updateData);
 
       res.json({ 
         message: aiResponse,
