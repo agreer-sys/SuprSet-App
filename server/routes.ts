@@ -1336,11 +1336,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionHistory: coaching.messages || []
       };
       
-      // Check if user is confirming readiness to start (only if there's exactly 1 message - the intro)
+      // Check if user is confirming readiness to start
+      // This is the first user message if there's only the intro message (1) or intro + first exchange (3 or fewer)
       const userMessage = message.toLowerCase().trim();
-      const readyKeywords = ['ready', 'yes', 'let\'s go', 'lets go', 'start', 'go', 'yeah', 'yep', 'sure', 'ok', 'okay'];
-      const isReadyConfirmation = coaching.messages.length === 1 && 
+      const readyKeywords = ['ready', 'yes', 'let\'s go', 'lets go', 'start', 'go', 'begin', 'yeah', 'yep', 'sure', 'ok', 'okay'];
+      // Count only user messages to see if this is the first user interaction
+      const userMessageCount = coaching.messages.filter(m => m.role === 'user').length;
+      const isReadyConfirmation = userMessageCount === 0 && 
                                   readyKeywords.some(keyword => userMessage.includes(keyword));
+      
+      console.log(`Coaching message: "${message}", User message count: ${userMessageCount}, Is ready confirmation: ${isReadyConfirmation}`);
       
       let aiResponse: string;
       let startCountdown = false;
