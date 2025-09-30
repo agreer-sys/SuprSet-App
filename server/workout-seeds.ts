@@ -1,4 +1,5 @@
 import { storage } from './storage.js';
+import { airtableService } from './airtable.js';
 
 interface SeedWorkout {
   template: {
@@ -111,11 +112,26 @@ export async function seedWorkouts() {
         
         // Create exercises for this section
         for (const exerciseData of sectionData.exercises) {
+          // Fetch exercise details from Airtable to snapshot coach context
+          const airtableExercise = await storage.getExercise(exerciseData.exerciseId);
+          
+          if (!airtableExercise) {
+            console.warn(`⚠️  Exercise ID ${exerciseData.exerciseId} not found in database, skipping...`);
+            continue;
+          }
+          
+          // Create workout exercise with snapshot of Airtable data
           const exercise = await storage.createWorkoutExercise({
             ...exerciseData,
-            workoutSectionId: section.id
+            workoutSectionId: section.id,
+            // Snapshot AI Coach context from Airtable
+            primaryMuscleGroup: airtableExercise.primaryMuscleGroup,
+            movementPattern: airtableExercise.movementPattern,
+            equipmentPrimary: airtableExercise.equipmentPrimary,
+            equipmentSecondary: airtableExercise.equipmentSecondary,
+            coachingBulletPoints: airtableExercise.coachingBulletPoints
           });
-          console.log(`Created exercise with ID: ${exercise.id} in section: ${section.name}`);
+          console.log(`✓ Created exercise: ${airtableExercise.name} (ID: ${exercise.id})`);
         }
       }
     }
