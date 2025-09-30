@@ -40,7 +40,57 @@ interface SeedWorkout {
 }
 
 const workoutSeeds: SeedWorkout[] = [
-  // 1. Classic Push Day - Traditional Strength Training
+  // 1. 9-Minute Power Block - High-Intensity Circuit
+  {
+    template: {
+      name: "9-Minute Power Block",
+      description: "High-intensity circuit focusing on explosive power, tricep strength, and lower body plyometrics. Perfect for time-efficient training.",
+      workoutType: "cross_training",
+      category: "Timed Circuit",
+      difficulty: 4,
+      estimatedDuration: 9,
+      isPublic: true,
+      timingStructure: "circuit",
+      totalRounds: 3,
+      workDuration: 30,  // 30 seconds work
+      restDuration: 30,  // 30 seconds rest
+    },
+    sections: [
+      {
+        name: "Power Circuit",
+        sectionType: "main",
+        orderIndex: 0,
+        rounds: 3,
+        restBetweenRounds: 0,
+        instructions: "Complete 3 rounds of all exercises. 30 seconds work, 30 seconds rest between exercises. Focus on explosive power and proper form.",
+        exercises: [
+          { 
+            exerciseId: 801608340, // Dumbbell Clean and Press
+            orderIndex: 0,
+            workSeconds: 30,
+            restAfterExercise: 30,
+            notes: "Explosive power - drive through heels, catch at shoulders with control"
+          },
+          { 
+            exerciseId: 1540917265, // Tricep Pushdown (Rope)
+            orderIndex: 1,
+            workSeconds: 30,
+            restAfterExercise: 30,
+            notes: "Control the eccentric - 2 second squeeze at full extension, split rope at bottom"
+          },
+          { 
+            exerciseId: 199586794, // Squat Jump
+            orderIndex: 2,
+            workSeconds: 30,
+            restAfterExercise: 30,
+            notes: "Soft landing, immediate rebound - maximize height each rep"
+          }
+        ]
+      }
+    ]
+  },
+  
+  // 2. Classic Push Day - Traditional Strength Training
   {
     template: {
       name: "Classic Push Day",
@@ -116,8 +166,11 @@ export async function seedWorkouts() {
           const airtableExercise = await storage.getExercise(exerciseData.exerciseId);
           
           if (!airtableExercise) {
-            console.warn(`⚠️  Exercise ID ${exerciseData.exerciseId} not found in database, skipping...`);
-            continue;
+            throw new Error(
+              `❌ CRITICAL: Exercise ID ${exerciseData.exerciseId} not found in database! ` +
+              `Cannot create workout "${workoutSeed.template.name}" without complete exercise data. ` +
+              `Please verify the exercise exists in Airtable.`
+            );
           }
           
           // Create workout exercise with snapshot of Airtable data
