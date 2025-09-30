@@ -27,6 +27,11 @@ export default function WorkoutSessionPage() {
   const [coachingMessage, setCoachingMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: string}>>([]);
   const [countdown, setCountdown] = useState<number | null>(null);
+  
+  // Debug countdown changes
+  useEffect(() => {
+    console.log('Countdown state changed:', countdown);
+  }, [countdown]);
   const [voiceEnabled, setVoiceEnabled] = useState(true); // Enable voice by default for coach dictation
   const [lastWorkAnnouncement, setLastWorkAnnouncement] = useState<number | null>(null);
   const [lastRestAnnouncement, setLastRestAnnouncement] = useState<number | null>(null);
@@ -152,6 +157,9 @@ export default function WorkoutSessionPage() {
       });
     },
     onSuccess: (data: any) => {
+      console.log('Coach response received:', data);
+      console.log('startCountdown flag:', data.startCountdown);
+      
       setChatMessages(prev => [...prev, 
         { role: 'user', content: coachingMessage, timestamp: new Date().toISOString() },
         { role: 'assistant', content: data.message, timestamp: new Date().toISOString() }
@@ -160,6 +168,7 @@ export default function WorkoutSessionPage() {
       
       // Handle countdown trigger
       if (data.startCountdown) {
+        console.log('Setting countdown to 10!');
         setCountdown(10);
       }
       
