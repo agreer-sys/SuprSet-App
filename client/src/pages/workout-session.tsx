@@ -28,10 +28,10 @@ export default function WorkoutSessionPage() {
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: string}>>([]);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true); // Enable voice by default for coach dictation
-  const [lastWorkAnnouncement, setLastWorkAnnouncement] = useState<number | null>(null);
-  const [lastRestAnnouncement, setLastRestAnnouncement] = useState<number | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const hasLoadedInitialMessages = useRef(false);
+  const lastWorkAnnouncement = useRef<number | null>(null);
+  const lastRestAnnouncement = useRef<number | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch active workout session (may include workoutTemplate)
@@ -221,9 +221,9 @@ export default function WorkoutSessionPage() {
       }, 1000);
       
       // Coach announcements during work period - only announce once per timer value
-      if (workTimer === 10 && lastWorkAnnouncement !== 10) {
+      if (workTimer === 10 && lastWorkAnnouncement.current !== 10) {
         sendAutomaticCoachMessage("10 seconds left.");
-        setLastWorkAnnouncement(10);
+        lastWorkAnnouncement.current = 10;
       }
     } else if (workTimer === 0 && isWorking && !isPaused) {
       // Play long beep at end of work period
@@ -243,7 +243,7 @@ export default function WorkoutSessionPage() {
       }
     }
     return () => clearInterval(interval);
-  }, [isWorking, workTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, lastWorkAnnouncement, isPaused]);
+  }, [isWorking, workTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, isPaused]);
 
   // Timer effect for rest periods
   useEffect(() => {
@@ -253,11 +253,16 @@ export default function WorkoutSessionPage() {
         setRestTimer(prev => prev - 1);
       }, 1000);
       
+      // Play countdown beeps before next set starts (3, 2, 1)
+      if (restTimer === 3 || restTimer === 2 || restTimer === 1) {
+        playShortBeep();
+      }
+      
       // Coach announcements during rest period - only announce once per timer value
-      if (restTimer === 15 && lastRestAnnouncement !== 15) {
+      if (restTimer === 15 && lastRestAnnouncement.current !== 15) {
         sendAutomaticCoachMessage("Half way through");
-        setLastRestAnnouncement(15);
-      } else if (restTimer === 5 && lastRestAnnouncement !== 5) {
+        lastRestAnnouncement.current = 15;
+      } else if (restTimer === 5 && lastRestAnnouncement.current !== 5) {
         // Announce what's coming next
         if (isTemplateWorkout && templateExercises.length > 0) {
           const nextIndex = currentWorkExerciseIndex + 1;
@@ -279,9 +284,12 @@ export default function WorkoutSessionPage() {
             }
           }
         }
-        setLastRestAnnouncement(5);
+        lastRestAnnouncement.current = 5;
       }
     } else if (restTimer === 0 && isResting && !isPaused) {
+      // Play long beep when set starts (rest ends, work begins)
+      playLongBeep();
+      
       setIsResting(false);
       // Rest ended - advance to NEXT exercise and start work
       if (isTemplateWorkout && templateExercises.length > 0) {
@@ -321,13 +329,13 @@ export default function WorkoutSessionPage() {
           sendAutomaticCoachMessage(`Get in as many reps as possible in the ${workTime} seconds of work, and remember, ${coachingTip}`);
           
           // Reset time announcements for next cycle
-          setLastWorkAnnouncement(null);
-          setLastRestAnnouncement(null);
+          lastWorkAnnouncement.current = null;
+          lastRestAnnouncement.current = null;
         }
       }
     }
     return () => clearInterval(interval);
-  }, [isResting, restTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, session, lastRestAnnouncement, isPaused]);
+  }, [isResting, restTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, session, isPaused]);
 
   // Countdown timer effect (10 seconds before workout starts)
   useEffect(() => {
