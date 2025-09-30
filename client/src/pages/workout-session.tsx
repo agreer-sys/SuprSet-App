@@ -101,42 +101,66 @@ export default function WorkoutSessionPage() {
     }
   };
 
+  // Create persistent audio context (only once)
+  const audioContextRef = useRef<AudioContext | null>(null);
+  
+  const getAudioContext = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return audioContextRef.current;
+  };
+
   // Function to play short beep (for countdown 3, 2, 1)
   const playShortBeep = () => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.value = 440; // 440 Hz (A note - more audible)
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.2); // 200ms short beep
+    try {
+      const audioContext = getAudioContext();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 440; // 440 Hz (A note - more audible)
+      oscillator.type = 'sine';
+      
+      const now = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(0.5, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      
+      oscillator.start(now);
+      oscillator.stop(now + 0.2); // 200ms short beep
+      
+      console.log('Short beep played at', new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Error playing short beep:', error);
+    }
   };
 
   // Function to play long beep (for start and end of set)
   const playLongBeep = () => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.value = 523; // 523 Hz (C note - pleasant and audible)
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 1.0); // 1 second long beep
+    try {
+      const audioContext = getAudioContext();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 523; // 523 Hz (C note - pleasant and audible)
+      oscillator.type = 'sine';
+      
+      const now = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(0.5, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 1.0);
+      
+      oscillator.start(now);
+      oscillator.stop(now + 1.0); // 1 second long beep
+      
+      console.log('Long beep played at', new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Error playing long beep:', error);
+    }
   };
 
   // Fetch set logs for current session
