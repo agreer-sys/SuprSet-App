@@ -823,6 +823,7 @@ export class DatabaseStorage implements IStorage {
         eq(workoutSessionsNew.userId, userId),
         eq(workoutSessionsNew.status, "active")
       ))
+      .orderBy(desc(workoutSessionsNew.id))
       .limit(1);
     
     if (!session) {
