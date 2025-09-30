@@ -19,6 +19,9 @@ export default function WorkoutSessionPage() {
   const [currentExercise, setCurrentExercise] = useState<'A' | 'B'>('A');
   const [currentSet, setCurrentSet] = useState(1);
   const [templateExerciseIndex, setTemplateExerciseIndex] = useState(0);
+  const [currentWorkExerciseIndex, setCurrentWorkExerciseIndex] = useState(0); // Tracks which exercise is currently being worked
+  const [workTimer, setWorkTimer] = useState(0);
+  const [isWorking, setIsWorking] = useState(false);
   const [restTimer, setRestTimer] = useState(0);
   const [isResting, setIsResting] = useState(false);
   const [coachingMessage, setCoachingMessage] = useState('');
@@ -38,7 +41,7 @@ export default function WorkoutSessionPage() {
   ) || [];
   
   const currentTemplateExercise = templateExercises.length > 0 
-    ? templateExercises[templateExerciseIndex % templateExercises.length]
+    ? templateExercises[currentWorkExerciseIndex % templateExercises.length]
     : null;
   
   const isTemplateWorkout = !!session?.workoutTemplate;
@@ -166,6 +169,29 @@ export default function WorkoutSessionPage() {
     }
   });
 
+  // Timer effect for work periods
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isWorking && workTimer > 0) {
+      interval = setInterval(() => {
+        setWorkTimer(prev => prev - 1);
+      }, 1000);
+    } else if (workTimer === 0 && isWorking) {
+      // Work period ended - get rest time from exercise we just completed
+      setIsWorking(false);
+      if (isTemplateWorkout && templateExercises.length > 0) {
+        const completedExercise = templateExercises[currentWorkExerciseIndex % templateExercises.length];
+        if (completedExercise) {
+          const restTime = completedExercise.restAfterExercise || 30;
+          setRestTimer(restTime);
+          setIsResting(true);
+          // DO NOT increment index here - wait until rest ends
+        }
+      }
+    }
+    return () => clearInterval(interval);
+  }, [isWorking, workTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex]);
+
   // Timer effect for rest periods
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -175,9 +201,22 @@ export default function WorkoutSessionPage() {
       }, 1000);
     } else if (restTimer === 0 && isResting) {
       setIsResting(false);
+      // Rest ended - advance to NEXT exercise and start work
+      if (isTemplateWorkout && templateExercises.length > 0) {
+        const nextIndex = currentWorkExerciseIndex + 1;
+        const nextExercise = templateExercises[nextIndex % templateExercises.length];
+        
+        if (nextExercise) {
+          const workTime = nextExercise.workSeconds || 30;
+          setCurrentWorkExerciseIndex(nextIndex); // Move to next exercise
+          setTemplateExerciseIndex(nextIndex); // Keep templateExerciseIndex in sync for logging
+          setWorkTimer(workTime);
+          setIsWorking(true);
+        }
+      }
     }
     return () => clearInterval(interval);
-  }, [isResting, restTimer]);
+  }, [isResting, restTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex]);
 
   // Countdown timer effect (10 seconds before workout starts)
   useEffect(() => {
@@ -188,10 +227,20 @@ export default function WorkoutSessionPage() {
       }, 1000);
     } else if (countdown === 0) {
       setCountdown(null);
-      // Start the first exercise work timer here
+      // Reset to first exercise and start work timer
+      if (isTemplateWorkout && templateExercises.length > 0) {
+        setCurrentWorkExerciseIndex(0); // RESET to first exercise
+        setTemplateExerciseIndex(0); // Keep in sync for logging
+        const firstExercise = templateExercises[0];
+        if (firstExercise) {
+          const workTime = firstExercise.workSeconds || 30;
+          setWorkTimer(workTime);
+          setIsWorking(true);
+        }
+      }
     }
     return () => clearInterval(interval);
-  }, [countdown]);
+  }, [countdown, isTemplateWorkout, templateExercises]);
 
   const getCurrentExerciseId = () => {
     // Mock exercise IDs for demo - in real implementation, get from workout data
@@ -318,23 +367,35 @@ export default function WorkoutSessionPage() {
             </Card>
           )}
 
+          {/* Work Timer */}
+          {isWorking && !countdown && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <Timer className="h-12 w-12 mx-auto mb-2 text-blue-600 animate-pulse" />
+                  <h3 className="text-2xl font-semibold text-blue-800 mb-2">WORK!</h3>
+                  <div className="text-6xl font-bold text-blue-600 mb-2">
+                    {workTimer}
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    {currentTemplateExercise?.exercise?.name || 'Exercise in progress'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Rest Timer */}
-          {isResting && !countdown && (
+          {isResting && !countdown && !isWorking && (
             <Card className="border-orange-200 bg-orange-50">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <Timer className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                  <h3 className="text-lg font-semibold text-orange-800">Rest Period</h3>
-                  <div className="text-3xl font-bold text-orange-600 mb-2">
-                    {formatTime(restTimer)}
+                  <Timer className="h-12 w-12 mx-auto mb-2 text-orange-600 animate-pulse" />
+                  <h3 className="text-2xl font-semibold text-orange-800 mb-2">Rest</h3>
+                  <div className="text-6xl font-bold text-orange-600 mb-2">
+                    {restTimer}
                   </div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsResting(false)}
-                    className="text-orange-600 border-orange-300"
-                  >
-                    Skip Rest
-                  </Button>
+                  <p className="text-sm text-orange-700">Next: {templateExercises[(currentWorkExerciseIndex + 1) % templateExercises.length]?.exercise?.name || 'Next exercise'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -346,7 +407,7 @@ export default function WorkoutSessionPage() {
               <div className="flex justify-between items-center">
                 <CardTitle className="flex items-center gap-2">
                   {currentTemplateExercise ? (
-                    <Badge variant="default">Exercise {(templateExerciseIndex % templateExercises.length) + 1}</Badge>
+                    <Badge variant="default">Exercise {(currentWorkExerciseIndex % templateExercises.length) + 1}</Badge>
                   ) : (
                     <Badge variant={currentExercise === 'A' ? 'default' : 'secondary'}>
                       Exercise {currentExercise}
@@ -356,7 +417,7 @@ export default function WorkoutSessionPage() {
                 </CardTitle>
                 <Badge variant="outline">
                   {currentTemplateExercise 
-                    ? `Round ${Math.floor(templateExerciseIndex / templateExercises.length) + 1}`
+                    ? `Round ${Math.floor(currentWorkExerciseIndex / templateExercises.length) + 1}`
                     : `Set ${currentSet}`
                   }
                 </Badge>
