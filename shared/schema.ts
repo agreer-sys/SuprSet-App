@@ -228,6 +228,13 @@ export const workoutExercises = pgTable("workout_exercises", {
   // Flexible instructions
   notes: text("notes"), // Special instructions for this exercise
   modification: text("modification"), // Easier/harder variations
+  
+  // AI Coach Context - Snapshot of exercise data from Airtable at workout creation
+  primaryMuscleGroup: text("primary_muscle_group"),
+  movementPattern: text("movement_pattern"),
+  equipmentPrimary: text("equipment_primary"),
+  equipmentSecondary: text("equipment_secondary").array().notNull().default([]),
+  coachingBulletPoints: text("coaching_bullet_points"),
 });
 
 // Insert schemas for new tables

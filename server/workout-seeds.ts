@@ -19,18 +19,21 @@ interface SeedWorkout {
     sectionType: string;
     orderIndex: number;
     duration?: number;
-    restBetweenExercises?: number;
+    rounds?: number;
+    restBetweenRounds?: number;
     instructions?: string;
     exercises: Array<{
       exerciseId: number;
       orderIndex: number;
       sets?: number;
-      reps?: number;
-      duration?: number;
-      weight?: number;
-      distance?: number;
-      restTime?: number;
-      instructions?: string;
+      reps?: string;
+      weight?: string;
+      restSeconds?: number;
+      workSeconds?: number;
+      restAfterExercise?: number;
+      targetReps?: number;
+      notes?: string;
+      modification?: string;
     }>;
   }>;
 }
@@ -56,21 +59,20 @@ const workoutSeeds: SeedWorkout[] = [
         duration: 10,
         instructions: "Light cardio and dynamic stretching to prepare for pushing movements",
         exercises: [
-          { exerciseId: 72654685, orderIndex: 0, duration: 300, instructions: "5 minutes light cardio" }, // Treadmill
-          { exerciseId: 50300173, orderIndex: 1, sets: 2, reps: 10, instructions: "Shoulder activation" }, // Band Pull-Apart
+          { exerciseId: 72654685, orderIndex: 0, workSeconds: 300, notes: "5 minutes light cardio" }, // Treadmill
+          { exerciseId: 50300173, orderIndex: 1, sets: 2, reps: "10", notes: "Shoulder activation" }, // Band Pull-Apart
         ]
       },
       {
         name: "Main Work",
         sectionType: "main",
         orderIndex: 1,
-        restBetweenExercises: 90,
         instructions: "Progressive overload focusing on compound movements first, then isolation",
         exercises: [
-          { exerciseId: 1638050019, orderIndex: 0, sets: 4, reps: 8, restTime: 120, instructions: "Focus on controlled descent" }, // Barbell Bench Press
-          { exerciseId: 192231439, orderIndex: 1, sets: 3, reps: 10, restTime: 90, instructions: "Keep core tight throughout movement" }, // Barbell Shoulder Press
-          { exerciseId: 368233190, orderIndex: 2, sets: 3, reps: 12, restTime: 60, instructions: "Focus on mind-muscle connection" }, // Cable Lateral Raise
-          { exerciseId: 340289936, orderIndex: 3, sets: 3, reps: 12, restTime: 60, instructions: "Keep elbows close to body" }, // Bench Dip
+          { exerciseId: 1638050019, orderIndex: 0, sets: 4, reps: "8", restSeconds: 120, notes: "Focus on controlled descent" }, // Barbell Bench Press
+          { exerciseId: 192231439, orderIndex: 1, sets: 3, reps: "10", restSeconds: 90, notes: "Keep core tight throughout movement" }, // Barbell Shoulder Press
+          { exerciseId: 368233190, orderIndex: 2, sets: 3, reps: "12", restSeconds: 60, notes: "Focus on mind-muscle connection" }, // Cable Lateral Raise
+          { exerciseId: 340289936, orderIndex: 3, sets: 3, reps: "12", restSeconds: 60, notes: "Keep elbows close to body" }, // Bench Dip
         ]
       },
       {
@@ -80,7 +82,7 @@ const workoutSeeds: SeedWorkout[] = [
         duration: 10,
         instructions: "Static stretching focusing on chest, shoulders, and triceps",
         exercises: [
-          { exerciseId: 50300173, orderIndex: 0, duration: 180, instructions: "Hold stretches for 30 seconds each" }, // Band Pull-Apart for stretching
+          { exerciseId: 50300173, orderIndex: 0, workSeconds: 180, notes: "Hold stretches for 30 seconds each" }, // Band Pull-Apart for stretching
         ]
       }
     ]
@@ -100,10 +102,10 @@ export async function seedWorkouts() {
       
       // Create sections for this template
       for (const sectionData of workoutSeed.sections) {
+        const { exercises: _, ...sectionWithoutExercises } = sectionData;
         const section = await storage.createWorkoutSection({
-          ...sectionData,
-          workoutTemplateId: template.id,
-          exercises: undefined // Remove exercises from section data
+          ...sectionWithoutExercises,
+          workoutTemplateId: template.id
         });
         console.log(`Created section: ${section.name} with ID: ${section.id}`);
         
