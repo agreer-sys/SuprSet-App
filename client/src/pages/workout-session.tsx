@@ -401,80 +401,78 @@ export default function WorkoutSessionPage() {
             </Card>
           )}
 
-          {/* Current Exercise */}
-          <Card className={currentExercise === 'A' ? 'border-blue-200 bg-blue-50' : 'border-green-200 bg-green-50'}>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="flex items-center gap-2">
-                  {currentTemplateExercise ? (
-                    <Badge variant="default">Exercise {(currentWorkExerciseIndex % templateExercises.length) + 1}</Badge>
-                  ) : (
+          {/* Waiting to Start - For timed workouts that haven't begun */}
+          {isTemplateWorkout && !countdown && !isWorking && !isResting && (
+            <Card className="border-purple-200 bg-purple-50">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-4">
+                  <Dumbbell className="h-16 w-16 mx-auto mb-2 text-purple-600" />
+                  <h3 className="text-2xl font-semibold text-purple-800">Ready to Begin?</h3>
+                  <p className="text-purple-700 max-w-md mx-auto">
+                    When you're ready to start your timed workout, tell the AI Coach "I'm ready" and a 10-second countdown will begin!
+                  </p>
+                  <div className="bg-white rounded-lg p-4 max-w-md mx-auto">
+                    <h4 className="font-semibold text-sm mb-2 text-purple-900">Workout Overview:</h4>
+                    <div className="text-sm text-gray-700 space-y-1">
+                      <p><strong>{templateExercises.length}</strong> exercises</p>
+                      <p><strong>{session?.workoutTemplate?.totalRounds || 3}</strong> rounds</p>
+                      <p><strong>{templateExercises[0]?.workSeconds || 30}s</strong> work / <strong>{templateExercises[0]?.restSeconds || 30}s</strong> rest</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Current Exercise - Only show for non-timed workouts */}
+          {!isTemplateWorkout && (
+            <Card className={currentExercise === 'A' ? 'border-blue-200 bg-blue-50' : 'border-green-200 bg-green-50'}>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center gap-2">
                     <Badge variant={currentExercise === 'A' ? 'default' : 'secondary'}>
                       Exercise {currentExercise}
                     </Badge>
-                  )}
-                  Current Exercise
-                </CardTitle>
-                <Badge variant="outline">
-                  {currentTemplateExercise 
-                    ? `Round ${Math.floor(currentWorkExerciseIndex / templateExercises.length) + 1}`
-                    : `Set ${currentSet}`
-                  }
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  {currentTemplateExercise ? (
-                    <>
-                      <h4 className="font-semibold text-lg">
-                        {currentTemplateExercise.exercise?.name || 'Loading...'}
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        {currentTemplateExercise.primaryMuscleGroup || ''}
-                      </p>
-                      {currentTemplateExercise.notes && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {currentTemplateExercise.notes}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <h4 className="font-semibold text-lg">Exercise Name</h4>
-                      <p className="text-muted-foreground">Details from exercise database...</p>
-                    </>
-                  )}
+                    Current Exercise
+                  </CardTitle>
+                  <Badge variant="outline">Set {currentSet}</Badge>
                 </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-lg">Exercise Name</h4>
+                    <p className="text-muted-foreground">Details from exercise database...</p>
+                  </div>
 
-                {/* Set Logging */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-sm font-medium">Reps</label>
-                    <Input type="number" placeholder="12" min="1" max="50" />
+                  {/* Set Logging */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-sm font-medium">Reps</label>
+                      <Input type="number" placeholder="12" min="1" max="50" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Weight (lbs)</label>
+                      <Input type="number" placeholder="135" min="0" step="5" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">RPE (1-10)</label>
+                      <Input type="number" placeholder="8" min="1" max="10" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium">Weight (lbs)</label>
-                    <Input type="number" placeholder="135" min="0" step="5" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">RPE (1-10)</label>
-                    <Input type="number" placeholder="8" min="1" max="10" />
-                  </div>
+
+                  <Button 
+                    className="w-full" 
+                    onClick={() => handleLogSet(12, 135)} // Mock data for demo
+                    disabled={logSetMutation.isPending}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {logSetMutation.isPending ? 'Logging...' : 'Complete Set'}
+                  </Button>
                 </div>
-
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleLogSet(12, 135)} // Mock data for demo
-                  disabled={logSetMutation.isPending}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  {logSetMutation.isPending ? 'Logging...' : 'Complete Set'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Set History */}
           <Card>
