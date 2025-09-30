@@ -79,8 +79,8 @@ export default function PreBuiltWorkouts() {
     difficulty: '',
   });
   const [coachingOptions, setCoachingOptions] = useState({
-    enableCoaching: false,
-    voiceEnabled: false,
+    enableCoaching: true,
+    voiceEnabled: true,
     coachingStyle: 'motivational' as 'motivational' | 'technical' | 'casual'
   });
   const { toast } = useToast();
