@@ -1139,57 +1139,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Shared helper function for creating coaching sessions with initial introduction
+  // Shared helper function for creating coaching sessions - NO intro messages, focus on workout execution only
   async function createCoachingSessionIfRequested(
     sessionId: number, 
     coachingOptions: any, 
     workoutInfo?: { name: string; duration: number; exercises: Array<{ name: string; sets?: number; workSeconds?: number; restSeconds?: number }> }
   ) {
     if (coachingOptions?.enableCoaching) {
-      const initialMessages = [];
-      
-      // Generate workout introduction message if workout info provided
-      if (workoutInfo) {
-        const style = coachingOptions.coachingStyle || 'motivational';
-        let introMessage = '';
-        
-        if (style === 'motivational') {
-          introMessage = `Hey there! Ready to crush today's workout?\n\nToday we're doing **${workoutInfo.name}** - a ${workoutInfo.duration}-minute session.\n\n`;
-        } else if (style === 'technical') {
-          introMessage = `Welcome to your workout session. Today's program:\n\n**${workoutInfo.name}** (${workoutInfo.duration} minutes)\n\n`;
-        } else {
-          introMessage = `Hey! Let's get this workout started\n\n**${workoutInfo.name}** - ${workoutInfo.duration} minutes\n\n`;
-        }
-        
-        introMessage += "**Exercises:**\n";
-        workoutInfo.exercises.forEach((ex, idx) => {
-          if (ex.sets && ex.workSeconds) {
-            introMessage += `${idx + 1}. ${ex.name} - ${ex.sets} sets × ${ex.workSeconds}s work / ${ex.restSeconds || 30}s rest\n`;
-          } else {
-            introMessage += `${idx + 1}. ${ex.name}\n`;
-          }
-        });
-        
-        if (style === 'motivational') {
-          introMessage += `\n**Are you ready to get started?** Let me know when you're warmed up and ready to go!`;
-        } else if (style === 'technical') {
-          introMessage += `\nReply "ready" when you've completed your warm-up and are prepared to begin.`;
-        } else {
-          introMessage += `\n**Ready to roll?** Just say the word and we'll get going!`;
-        }
-        
-        initialMessages.push({
-          role: 'assistant' as const,
-          content: introMessage,
-          timestamp: new Date().toISOString()
-        });
-      }
-      
+      // No intro messages - start with empty messages array, coaching starts with timer cues only
       await storage.createCoachingSession({
         sessionId,
         voiceEnabled: coachingOptions.voiceEnabled || false,
         preferredStyle: coachingOptions.coachingStyle || 'motivational',
-        messages: initialMessages,
+        messages: [], // Empty - no intro, coaching is timer-based only
         currentSet: 1
       });
     }

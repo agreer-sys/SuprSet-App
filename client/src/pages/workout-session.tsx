@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -38,10 +38,12 @@ export default function WorkoutSessionPage() {
     queryKey: ['/api/workout-sessions/active'],
   });
 
-  // Flatten all exercises from all sections for template workouts
-  const templateExercises = session?.workoutTemplate?.sections?.flatMap((section: any) => 
-    section.exercises || []
-  ) || [];
+  // Memoize templateExercises to prevent infinite loop - only recreate when session data changes
+  const templateExercises = useMemo(() => {
+    return session?.workoutTemplate?.sections?.flatMap((section: any) => 
+      section.exercises || []
+    ) || [];
+  }, [session?.workoutTemplate?.sections]);
   
   const currentTemplateExercise = templateExercises.length > 0 
     ? templateExercises[currentWorkExerciseIndex % templateExercises.length]
@@ -55,25 +57,23 @@ export default function WorkoutSessionPage() {
     enabled: !!session?.id,
   });
 
-  // Load coaching messages from backend ONCE when coaching session first loads
-  useEffect(() => {
-    if (coaching?.messages && coaching.messages.length > 0 && !hasLoadedInitialMessages.current) {
-      // Only load once (first time coaching data arrives)
-      const userMessages = coaching.messages
-        .filter(msg => msg.role !== 'system')
-        .map(msg => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-          timestamp: msg.timestamp
-        }));
-      setChatMessages(userMessages);
-      // Auto-enable voice if coaching has voiceEnabled
-      if (coaching.voiceEnabled) {
-        setVoiceEnabled(true);
-      }
-      hasLoadedInitialMessages.current = true;
-    }
-  }, [coaching]);
+  // DISABLED: Not loading intro messages from backend - focusing only on workout execution
+  // useEffect(() => {
+  //   if (coaching?.messages && coaching.messages.length > 0 && !hasLoadedInitialMessages.current) {
+  //     const userMessages = coaching.messages
+  //       .filter(msg => msg.role !== 'system')
+  //       .map(msg => ({
+  //         role: msg.role as 'user' | 'assistant',
+  //         content: msg.content,
+  //         timestamp: msg.timestamp
+  //       }));
+  //     setChatMessages(userMessages);
+  //     if (coaching.voiceEnabled) {
+  //       setVoiceEnabled(true);
+  //     }
+  //     hasLoadedInitialMessages.current = true;
+  //   }
+  // }, [coaching]);
 
   // Auto-play voice for new assistant messages when voice is enabled
   useEffect(() => {
