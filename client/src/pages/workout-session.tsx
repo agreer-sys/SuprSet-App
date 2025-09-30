@@ -18,6 +18,7 @@ import type { WorkoutSessionNew, SetLog, CoachingSession } from "@shared/schema"
 export default function WorkoutSessionPage() {
   const [currentExercise, setCurrentExercise] = useState<'A' | 'B'>('A');
   const [currentSet, setCurrentSet] = useState(1);
+  const [templateExerciseIndex, setTemplateExerciseIndex] = useState(0);
   const [restTimer, setRestTimer] = useState(0);
   const [isResting, setIsResting] = useState(false);
   const [coachingMessage, setCoachingMessage] = useState('');
@@ -26,10 +27,21 @@ export default function WorkoutSessionPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const queryClient = useQueryClient();
 
-  // Fetch active workout session
-  const { data: session, isLoading } = useQuery<WorkoutSessionNew>({
+  // Fetch active workout session (may include workoutTemplate)
+  const { data: session, isLoading } = useQuery<any>({
     queryKey: ['/api/workout-sessions/active'],
   });
+
+  // Flatten all exercises from all sections for template workouts
+  const templateExercises = session?.workoutTemplate?.sections?.flatMap((section: any) => 
+    section.exercises || []
+  ) || [];
+  
+  const currentTemplateExercise = templateExercises.length > 0 
+    ? templateExercises[templateExerciseIndex % templateExercises.length]
+    : null;
+  
+  const isTemplateWorkout = !!session?.workoutTemplate;
 
   // Fetch coaching session
   const { data: coaching } = useQuery<CoachingSession>({
@@ -189,11 +201,15 @@ export default function WorkoutSessionPage() {
   const handleLogSet = (reps: number, weight?: number) => {
     if (!session) return;
     
+    const exerciseId = isTemplateWorkout 
+      ? currentTemplateExercise?.exerciseId 
+      : getCurrentExerciseId();
+    
     logSetMutation.mutate({
       sessionId: session.id,
       superSetId: 1, // Mock superset ID - get from actual workout data
-      exerciseId: getCurrentExerciseId()!,
-      setNumber: currentSet,
+      exerciseId: exerciseId!,
+      setNumber: isTemplateWorkout ? templateExerciseIndex + 1 : currentSet,
       reps,
       weight
     });
@@ -202,12 +218,17 @@ export default function WorkoutSessionPage() {
     setIsResting(true);
     setRestTimer(150); // Default rest time
 
-    // Move to next exercise in superset
-    if (currentExercise === 'A') {
-      setCurrentExercise('B');
+    if (isTemplateWorkout) {
+      // For template workouts, advance to next exercise
+      setTemplateExerciseIndex(prev => prev + 1);
     } else {
-      setCurrentExercise('A');
-      setCurrentSet(prev => prev + 1);
+      // For superset workouts, toggle between A/B
+      if (currentExercise === 'A') {
+        setCurrentExercise('B');
+      } else {
+        setCurrentExercise('A');
+        setCurrentSet(prev => prev + 1);
+      }
     }
   };
 
@@ -324,19 +345,46 @@ export default function WorkoutSessionPage() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle className="flex items-center gap-2">
-                  <Badge variant={currentExercise === 'A' ? 'default' : 'secondary'}>
-                    Exercise {currentExercise}
-                  </Badge>
+                  {currentTemplateExercise ? (
+                    <Badge variant="default">Exercise {(templateExerciseIndex % templateExercises.length) + 1}</Badge>
+                  ) : (
+                    <Badge variant={currentExercise === 'A' ? 'default' : 'secondary'}>
+                      Exercise {currentExercise}
+                    </Badge>
+                  )}
                   Current Exercise
                 </CardTitle>
-                <Badge variant="outline">Set {currentSet}</Badge>
+                <Badge variant="outline">
+                  {currentTemplateExercise 
+                    ? `Round ${Math.floor(templateExerciseIndex / templateExercises.length) + 1}`
+                    : `Set ${currentSet}`
+                  }
+                </Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-semibold text-lg">Exercise Name</h4>
-                  <p className="text-muted-foreground">Details from exercise database...</p>
+                  {currentTemplateExercise ? (
+                    <>
+                      <h4 className="font-semibold text-lg">
+                        {currentTemplateExercise.exercise?.name || 'Loading...'}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {currentTemplateExercise.primaryMuscleGroup || ''}
+                      </p>
+                      {currentTemplateExercise.notes && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {currentTemplateExercise.notes}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <h4 className="font-semibold text-lg">Exercise Name</h4>
+                      <p className="text-muted-foreground">Details from exercise database...</p>
+                    </>
+                  )}
                 </div>
 
                 {/* Set Logging */}

@@ -1533,6 +1533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workoutSession = await storage.startWorkoutSession({
         userId,
         workoutId: null, // Will be created separately
+        workoutTemplateId: templateId, // Link to the template
         startedAt: new Date(),
         status: 'active',
         notes: `Started from template: ${template.name}`,
