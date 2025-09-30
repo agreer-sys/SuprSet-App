@@ -1345,8 +1345,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isReadyConfirmation = userMessageCount === 0 && 
                                   readyKeywords.some(keyword => userMessage.includes(keyword));
       
-      console.log(`Coaching message: "${message}", User message count: ${userMessageCount}, Is ready confirmation: ${isReadyConfirmation}`);
-      
       let aiResponse: string;
       let startCountdown = false;
       let shouldPause = false;

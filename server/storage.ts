@@ -56,11 +56,6 @@ export interface IStorage {
   searchExercises(query: string): Promise<Exercise[]>;
   createExercise(exercise: InsertExercise): Promise<Exercise>;
 
-  // Workout session methods
-  getWorkoutSession(id: number): Promise<WorkoutSession | undefined>;
-  createWorkoutSession(session: InsertWorkoutSession): Promise<WorkoutSession>;
-  updateWorkoutSession(id: number, updates: Partial<WorkoutSession>): Promise<WorkoutSession | undefined>;
-
   // Exercise pairing methods
   getExercisePairings(exerciseAId: number): Promise<ExercisePairing[]>;
   createExercisePairing(pairing: InsertExercisePairing): Promise<ExercisePairing>;
@@ -293,25 +288,6 @@ export class DatabaseStorage implements IStorage {
     // For Airtable integration, this would need to create records in Airtable
     // For now, we'll throw an error since this is read-only
     throw new Error("Creating exercises not supported with Airtable integration");
-  }
-
-  async getWorkoutSession(id: number): Promise<WorkoutSession | undefined> {
-    const [session] = await db.select().from(workoutSessions).where(eq(workoutSessions.id, id));
-    return session;
-  }
-
-  async createWorkoutSession(insertSession: InsertWorkoutSession): Promise<WorkoutSession> {
-    const [session] = await db.insert(workoutSessions).values(insertSession).returning();
-    return session;
-  }
-
-  async updateWorkoutSession(id: number, updates: Partial<WorkoutSession>): Promise<WorkoutSession | undefined> {
-    const [updatedSession] = await db
-      .update(workoutSessions)
-      .set(updates)
-      .where(eq(workoutSessions.id, id))
-      .returning();
-    return updatedSession;
   }
 
   async getExercisePairings(exerciseAId: number): Promise<ExercisePairing[]> {
