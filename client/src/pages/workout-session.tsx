@@ -54,10 +54,10 @@ export default function WorkoutSessionPage() {
     enabled: !!session?.id,
   });
 
-  // Load coaching messages from backend when coaching session is available
+  // Load coaching messages from backend ONCE when coaching session first loads
   useEffect(() => {
-    if (coaching?.messages && coaching.messages.length > 0) {
-      // Filter out system messages and map to expected format
+    if (coaching?.messages && coaching.messages.length > 0 && chatMessages.length === 0) {
+      // Only load if chatMessages is empty (first load only)
       const userMessages = coaching.messages
         .filter(msg => msg.role !== 'system')
         .map(msg => ({
@@ -71,7 +71,7 @@ export default function WorkoutSessionPage() {
         setVoiceEnabled(true);
       }
     }
-  }, [coaching]);
+  }, [coaching, chatMessages.length]);
 
   // Auto-play voice for new assistant messages when voice is enabled
   useEffect(() => {
