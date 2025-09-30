@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ export default function WorkoutSessionPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(true); // Enable voice by default for coach dictation
   const [lastWorkAnnouncement, setLastWorkAnnouncement] = useState<number | null>(null);
   const [lastRestAnnouncement, setLastRestAnnouncement] = useState<number | null>(null);
+  const hasLoadedInitialMessages = useRef(false);
   const queryClient = useQueryClient();
 
   // Fetch active workout session (may include workoutTemplate)
@@ -56,8 +57,8 @@ export default function WorkoutSessionPage() {
 
   // Load coaching messages from backend ONCE when coaching session first loads
   useEffect(() => {
-    if (coaching?.messages && coaching.messages.length > 0 && chatMessages.length === 0) {
-      // Only load if chatMessages is empty (first load only)
+    if (coaching?.messages && coaching.messages.length > 0 && !hasLoadedInitialMessages.current) {
+      // Only load once (first time coaching data arrives)
       const userMessages = coaching.messages
         .filter(msg => msg.role !== 'system')
         .map(msg => ({
@@ -70,8 +71,9 @@ export default function WorkoutSessionPage() {
       if (coaching.voiceEnabled) {
         setVoiceEnabled(true);
       }
+      hasLoadedInitialMessages.current = true;
     }
-  }, [coaching, chatMessages.length]);
+  }, [coaching]);
 
   // Auto-play voice for new assistant messages when voice is enabled
   useEffect(() => {
