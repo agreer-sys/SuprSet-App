@@ -118,11 +118,14 @@ Transform the strength training experience through AI-powered exercise pairing, 
   - [ ] Visual indicators for listening states (idle/listening/processing)
   - [ ] Cooldown mechanism to prevent false triggers
 - [ ] **Voice-Based Workout Data Collection**: Coach asks for exercise performance metrics
-  - [ ] Post-exercise prompts: "How much weight did you use?"
-  - [ ] Rep counting: "How many reps did you complete?"
-  - [ ] Voice recognition for numeric answers and common responses
+  - [ ] Post-exercise prompts: "How much weight did you use?" (auto-listens for 5-10 seconds)
+  - [ ] Rep counting: "How many reps did you complete?" (auto-listens for 5-10 seconds)
+  - [ ] Coach-initiated listening: When coach asks a question, automatically activates listening window
+  - [ ] User responds directly without wake-word: Just say "135 pounds" or "12 reps"
+  - [ ] Voice recognition for numeric answers and common responses (numbers, units, "same as last time")
   - [ ] Store workout logs for progression tracking
   - [ ] Remember previous workout data for next session comparison
+  - [ ] Distinguish between user-initiated ("Hey Coach") vs coach-initiated (automatic listening) conversations
 - [ ] **Intelligent Coaching Context**: Use workout history for personalized guidance
   - [ ] Compare current vs. previous performance ("Last time you did 12 reps with 135lbs")
   - [ ] Suggest progressive overload based on history
