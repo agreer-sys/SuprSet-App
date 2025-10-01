@@ -602,9 +602,14 @@ export default function WorkoutSessionPage() {
         accessKey,
         [{ 
           publicPath: '/attached_assets/Hey-Coach_en_wasm_v3_0_0_1759344053191.ppn',
-          label: 'Hey Coach'
+          label: 'Hey Coach',
+          customWritePath: 'hey_coach_keyword_v1',
+          forceWrite: true
         }],
-        { publicPath: '/attached_assets/porcupine_params.pv', forceWrite: true }
+        { 
+          publicPath: '/attached_assets/porcupine_params.pv', 
+          forceWrite: true 
+        }
       );
     }
   }, [wakeWordEnabled, porcupineLoaded]);
