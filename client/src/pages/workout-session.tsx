@@ -11,8 +11,9 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Play, Pause, Square, MessageSquare, Send, Timer, 
-  CheckCircle, Circle, Dumbbell, Brain, Volume2, VolumeX 
+  CheckCircle, Circle, Dumbbell, Brain, Volume2, VolumeX, Mic, MicOff 
 } from "lucide-react";
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import type { WorkoutSessionNew, SetLog, CoachingSession } from "@shared/schema";
 
 export default function WorkoutSessionPage() {
@@ -33,6 +34,15 @@ export default function WorkoutSessionPage() {
   const lastWorkAnnouncement = useRef<number | null>(null);
   const lastRestAnnouncement = useRef<number | null>(null);
   const queryClient = useQueryClient();
+
+  // Speech recognition for microphone input
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition,
+    isMicrophoneAvailable
+  } = useSpeechRecognition();
 
   // Fetch active workout session (may include workoutTemplate)
   const { data: session, isLoading } = useQuery<any>({
@@ -89,6 +99,13 @@ export default function WorkoutSessionPage() {
       }
     }
   }, [chatMessages, voiceEnabled]);
+
+  // Sync speech recognition transcript with coaching message input
+  useEffect(() => {
+    if (transcript) {
+      setCoachingMessage(transcript);
+    }
+  }, [transcript]);
 
   // Function to play voice message using browser's speech synthesis
   const playVoiceMessage = (text: string) => {
@@ -248,12 +265,14 @@ export default function WorkoutSessionPage() {
         }
       });
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: any, sentMessage: string) => {
+      // Use the message passed to mutate (from closure) instead of state
       setChatMessages(prev => [...prev, 
-        { role: 'user', content: coachingMessage, timestamp: new Date().toISOString() },
+        { role: 'user', content: sentMessage, timestamp: new Date().toISOString() },
         { role: 'assistant', content: data.message, timestamp: new Date().toISOString() }
       ]);
       setCoachingMessage('');
+      resetTranscript(); // Clear speech recognition transcript
       
       // Handle countdown trigger
       if (data.startCountdown) {
@@ -507,6 +526,56 @@ export default function WorkoutSessionPage() {
     
     sendCoachingMessageMutation.mutate(coachingMessage);
   };
+
+  // Track previous listening state and auto-send scheduling
+  const prevListeningRef = useRef(listening);
+  const autoSendScheduledRef = useRef(false);
+
+  // Auto-send when listening stops and there's a message (with debounce for transcript completion)
+  useEffect(() => {
+    if (prevListeningRef.current && !listening && !autoSendScheduledRef.current) {
+      // Listening just stopped - capture message immediately and schedule send
+      autoSendScheduledRef.current = true;
+      const capturedMessage = coachingMessage.trim();
+      
+      const timer = setTimeout(() => {
+        if (capturedMessage) {
+          sendCoachingMessageMutation.mutate(capturedMessage);
+        }
+        autoSendScheduledRef.current = false;
+      }, 400); // 400ms debounce to allow final transcript to arrive
+      
+      return () => {
+        clearTimeout(timer);
+        autoSendScheduledRef.current = false;
+      };
+    }
+    prevListeningRef.current = listening;
+  }, [listening]); // Only depend on listening, not coachingMessage
+
+  // Toggle microphone listening
+  const toggleMicrophone = async () => {
+    // Guard against unsupported or unavailable microphone
+    if (!browserSupportsSpeechRecognition || !isMicrophoneAvailable) {
+      return;
+    }
+
+    if (listening) {
+      SpeechRecognition.stopListening();
+      // Auto-send handled by useEffect above
+    } else {
+      // Resume audio context when starting to listen
+      await resumeAudioContext();
+      SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
+    }
+  };
+
+  // Cleanup: stop listening on unmount
+  useEffect(() => {
+    return () => {
+      SpeechRecognition.stopListening();
+    };
+  }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -833,18 +902,64 @@ export default function WorkoutSessionPage() {
                 ))}
               </div>
 
+              {/* Browser Support Warning */}
+              {!browserSupportsSpeechRecognition && (
+                <div className="mb-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                  <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                    Voice input not supported in this browser. Try Chrome or Edge for best experience.
+                  </p>
+                </div>
+              )}
+
+              {/* Microphone Permission Warning */}
+              {browserSupportsSpeechRecognition && !isMicrophoneAvailable && (
+                <div className="mb-2 p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md">
+                  <p className="text-xs text-orange-800 dark:text-orange-200">
+                    Microphone access required for voice input. Please enable microphone permissions in your browser settings.
+                  </p>
+                </div>
+              )}
+
               {/* Message Input */}
               <div className="flex gap-2">
-                <Input
-                  placeholder="Ask about form, need motivation..."
-                  value={coachingMessage}
-                  onChange={(e) => setCoachingMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendCoachingMessage()}
-                />
+                <div className="flex-1 relative">
+                  <Input
+                    placeholder={listening ? "Listening..." : "Type or speak your message..."}
+                    value={coachingMessage}
+                    onChange={(e) => setCoachingMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendCoachingMessage()}
+                    className={listening ? "border-red-500 dark:border-red-400" : ""}
+                    data-testid="input-coach-message"
+                  />
+                  {listening && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="flex gap-1">
+                        <div className="w-1 h-3 bg-red-500 animate-pulse" style={{animationDelay: '0ms'}}></div>
+                        <div className="w-1 h-4 bg-red-500 animate-pulse" style={{animationDelay: '150ms'}}></div>
+                        <div className="w-1 h-3 bg-red-500 animate-pulse" style={{animationDelay: '300ms'}}></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {browserSupportsSpeechRecognition && (
+                  <Button 
+                    size="sm"
+                    variant={listening ? "destructive" : "outline"}
+                    onClick={toggleMicrophone}
+                    disabled={!isMicrophoneAvailable}
+                    title={!isMicrophoneAvailable ? "Microphone permission required" : listening ? "Stop listening" : "Start voice input"}
+                    data-testid="button-microphone"
+                  >
+                    {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </Button>
+                )}
+                
                 <Button 
                   size="sm" 
                   onClick={handleSendCoachingMessage}
                   disabled={sendCoachingMessageMutation.isPending || !coachingMessage.trim()}
+                  data-testid="button-send-message"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
