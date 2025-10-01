@@ -9,11 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { 
   Play, Pause, Square, MessageSquare, Send, Timer, 
-  CheckCircle, Circle, Dumbbell, Brain, Volume2, VolumeX, Mic, MicOff 
+  CheckCircle, Circle, Dumbbell, Brain, Volume2, VolumeX, Mic, MicOff, Radio 
 } from "lucide-react";
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+import { usePorcupine } from '@picovoice/porcupine-react';
 import type { WorkoutSessionNew, SetLog, CoachingSession } from "@shared/schema";
 
 export default function WorkoutSessionPage() {
@@ -30,9 +33,12 @@ export default function WorkoutSessionPage() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true); // Enable voice by default for coach dictation
   const [isPaused, setIsPaused] = useState(false);
+  const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
+  const [wakeWordListening, setWakeWordListening] = useState(false);
   const hasLoadedInitialMessages = useRef(false);
   const lastWorkAnnouncement = useRef<number | null>(null);
   const lastRestAnnouncement = useRef<number | null>(null);
+  const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
 
   // Speech recognition for microphone input
@@ -43,6 +49,18 @@ export default function WorkoutSessionPage() {
     browserSupportsSpeechRecognition,
     isMicrophoneAvailable
   } = useSpeechRecognition();
+
+  // Wake-word detection with Picovoice Porcupine
+  const {
+    keywordDetection,
+    isLoaded: porcupineLoaded,
+    isListening: porcupineListening,
+    error: porcupineError,
+    init: initPorcupine,
+    start: startPorcupine,
+    stop: stopPorcupine,
+    release: releasePorcupine
+  } = usePorcupine();
 
   // Fetch active workout session (may include workoutTemplate)
   const { data: session, isLoading } = useQuery<any>({
@@ -570,10 +588,101 @@ export default function WorkoutSessionPage() {
     }
   };
 
-  // Cleanup: stop listening on unmount
+  // Initialize Porcupine wake-word detection
+  useEffect(() => {
+    if (wakeWordEnabled && !porcupineLoaded) {
+      const accessKey = import.meta.env.VITE_PICOVOICE_ACCESS_KEY || (window as any).ENV?.PICOVOICE_ACCESS_KEY;
+      
+      if (!accessKey) {
+        console.error('Picovoice access key not found');
+        return;
+      }
+
+      initPorcupine(
+        accessKey,
+        [{ 
+          publicPath: '/attached_assets/Hey-Coach_en_wasm_v3_0_0_1759344053191.ppn',
+          label: 'Hey Coach'
+        }],
+        { publicPath: '/attached_assets/porcupine_params.pv', forceWrite: true }
+      );
+    }
+  }, [wakeWordEnabled, porcupineLoaded]);
+
+  // Start/stop Porcupine based on wake-word toggle and mic availability
+  useEffect(() => {
+    if (wakeWordEnabled && porcupineLoaded && !listening) {
+      // Start listening for wake-word only when not using manual mic
+      startPorcupine();
+      setWakeWordListening(true);
+    } else if (porcupineListening && listening) {
+      // Pause wake-word detection when manual mic is active (mic arbitration)
+      stopPorcupine();
+      setWakeWordListening(false);
+    }
+  }, [wakeWordEnabled, porcupineLoaded, listening, porcupineListening]);
+
+  // Handle wake-word detection
+  useEffect(() => {
+    if (keywordDetection) {
+      console.log('Wake word detected:', keywordDetection.label);
+      
+      // Check if not in cooldown period
+      if (cooldownTimerRef.current) {
+        console.log('Wake-word in cooldown, ignoring detection');
+        return;
+      }
+
+      // Pause Porcupine temporarily
+      if (porcupineListening) {
+        stopPorcupine();
+        setWakeWordListening(false);
+      }
+
+      // Start speech recognition for user query
+      resumeAudioContext().then(() => {
+        SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
+      });
+
+      // Set cooldown to prevent repeated triggers (5 seconds)
+      cooldownTimerRef.current = setTimeout(() => {
+        cooldownTimerRef.current = null;
+        // Resume Porcupine after cooldown if wake-word still enabled and not manually listening
+        if (wakeWordEnabled && !listening && porcupineLoaded) {
+          startPorcupine();
+          setWakeWordListening(true);
+        }
+      }, 5000);
+    }
+  }, [keywordDetection]);
+
+  // Resume Porcupine after manual mic session ends
+  useEffect(() => {
+    if (!listening && wakeWordEnabled && porcupineLoaded && !cooldownTimerRef.current) {
+      // Small delay to avoid race conditions
+      const timer = setTimeout(() => {
+        if (!listening && wakeWordEnabled) {
+          startPorcupine();
+          setWakeWordListening(true);
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [listening, wakeWordEnabled, porcupineLoaded]);
+
+  // Cleanup: stop listening and release Porcupine on unmount
   useEffect(() => {
     return () => {
       SpeechRecognition.stopListening();
+      if (porcupineListening) {
+        stopPorcupine();
+      }
+      if (porcupineLoaded) {
+        releasePorcupine();
+      }
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+      }
     };
   }, []);
 
@@ -919,6 +1028,37 @@ export default function WorkoutSessionPage() {
                   </p>
                 </div>
               )}
+
+              {/* Porcupine Error Warning */}
+              {porcupineError && (
+                <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                  <p className="text-xs text-red-800 dark:text-red-200">
+                    Wake-word error: {porcupineError.toString()}
+                  </p>
+                </div>
+              )}
+
+              {/* Wake-Word Toggle */}
+              <div className="mb-3 flex items-center justify-between p-2 bg-muted/50 rounded-md">
+                <div className="flex items-center gap-2">
+                  <Radio className={`h-4 w-4 ${wakeWordListening ? 'text-green-600 animate-pulse' : 'text-muted-foreground'}`} />
+                  <div>
+                    <Label htmlFor="wake-word-toggle" className="text-sm font-medium cursor-pointer">
+                      "Hey Coach" Activation
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {wakeWordListening ? 'Listening for wake word...' : wakeWordEnabled ? 'Initializing...' : 'Hands-free voice commands'}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="wake-word-toggle"
+                  checked={wakeWordEnabled}
+                  onCheckedChange={setWakeWordEnabled}
+                  disabled={!browserSupportsSpeechRecognition || !isMicrophoneAvailable}
+                  data-testid="switch-wake-word"
+                />
+              </div>
 
               {/* Message Input */}
               <div className="flex gap-2">
