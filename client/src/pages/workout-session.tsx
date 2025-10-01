@@ -611,7 +611,11 @@ export default function WorkoutSessionPage() {
 
   // Start/stop Porcupine based on wake-word toggle and mic availability
   useEffect(() => {
-    if (wakeWordEnabled && porcupineLoaded && !listening) {
+    if (!wakeWordEnabled && porcupineListening) {
+      // Explicitly stop Porcupine when wake-word is disabled
+      stopPorcupine();
+      setWakeWordListening(false);
+    } else if (wakeWordEnabled && porcupineLoaded && !listening && !porcupineListening) {
       // Start listening for wake-word only when not using manual mic
       startPorcupine();
       setWakeWordListening(true);
