@@ -111,9 +111,26 @@ Transform the strength training experience through AI-powered exercise pairing, 
 
 ## Medium Priority Features
 
-### 5. Advanced Workout Features
+### 5. AI Coach Voice Interaction & Workout Tracking
+- [ ] **Wake-Word Activation ("Hey Coach")**: Hands-free voice commands using Picovoice Porcupine
+  - [ ] Dual-mode operation: Manual mic button OR wake-word activation
+  - [ ] Toggle switch to enable/disable background listening
+  - [ ] Visual indicators for listening states (idle/listening/processing)
+  - [ ] Cooldown mechanism to prevent false triggers
+- [ ] **Voice-Based Workout Data Collection**: Coach asks for exercise performance metrics
+  - [ ] Post-exercise prompts: "How much weight did you use?"
+  - [ ] Rep counting: "How many reps did you complete?"
+  - [ ] Voice recognition for numeric answers and common responses
+  - [ ] Store workout logs for progression tracking
+  - [ ] Remember previous workout data for next session comparison
+- [ ] **Intelligent Coaching Context**: Use workout history for personalized guidance
+  - [ ] Compare current vs. previous performance ("Last time you did 12 reps with 135lbs")
+  - [ ] Suggest progressive overload based on history
+  - [ ] Adaptive rest period recommendations based on fatigue patterns
+
+### 6. Advanced Workout Features
 - [ ] **Custom Workout Builder**: Multi-superset session planning
-- [ ] **Progressive Overload Tracking**: Weight/rep progression over time
+- [ ] **Progressive Overload Tracking**: Weight/rep progression over time (backend for voice data collection)
 - [ ] **Workout Templates**: Pre-built routines (Upper/Lower, Push/Pull/Legs)
 - [ ] **Timer Customization**: Adjustable rest periods and work intervals
 - [ ] **Exercise Substitutions**: Alternative exercises for equipment unavailability
