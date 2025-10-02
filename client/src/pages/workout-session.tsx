@@ -599,11 +599,12 @@ export default function WorkoutSessionPage() {
         return;
       }
 
+      // Initialize with built-in keyword and default Porcupine model from CDN
       initPorcupine(
         accessKey,
         [BuiltInKeyword.Computer],
         { 
-          publicPath: '/attached_assets/porcupine_params.pv', 
+          publicPath: 'https://cdn.jsdelivr.net/gh/Picovoice/porcupine@master/lib/common/porcupine_params.pv',
           forceWrite: true 
         }
       );
