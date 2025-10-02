@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import { usePorcupine } from '@picovoice/porcupine-react';
+import { BuiltInKeyword } from '@picovoice/porcupine-web';
 import type { WorkoutSessionNew, SetLog, CoachingSession } from "@shared/schema";
 
 export default function WorkoutSessionPage() {
@@ -600,12 +601,7 @@ export default function WorkoutSessionPage() {
 
       initPorcupine(
         accessKey,
-        [{ 
-          publicPath: '/attached_assets/Hey-Coach_en_wasm_v3_0_0_1759344053191.ppn',
-          label: 'Hey Coach',
-          customWritePath: 'hey_coach_keyword_v1',
-          forceWrite: true
-        }],
+        [BuiltInKeyword.Computer],
         { 
           publicPath: '/attached_assets/porcupine_params.pv', 
           forceWrite: true 
@@ -1053,10 +1049,10 @@ export default function WorkoutSessionPage() {
                   <Radio className={`h-4 w-4 ${wakeWordListening ? 'text-green-600 animate-pulse' : 'text-muted-foreground'}`} />
                   <div>
                     <Label htmlFor="wake-word-toggle" className="text-sm font-medium cursor-pointer">
-                      "Hey Coach" Activation
+                      "Computer" Wake Word
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {wakeWordListening ? 'Listening for wake word...' : wakeWordEnabled ? 'Initializing...' : 'Hands-free voice commands'}
+                      {wakeWordListening ? 'Say "Computer" to activate...' : wakeWordEnabled ? 'Initializing...' : 'Hands-free voice commands (built-in)'}
                     </p>
                   </div>
                 </div>
