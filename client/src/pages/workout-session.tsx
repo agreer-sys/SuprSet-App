@@ -645,10 +645,17 @@ export default function WorkoutSessionPage() {
         setWakeWordListening(false);
       }
 
-      // Start speech recognition for user query
-      resumeAudioContext().then(() => {
-        SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
-      });
+      // Clear any existing transcript and reset the coaching message
+      resetTranscript();
+      setCoachingMessage('');
+
+      // Add a 500ms delay to avoid capturing the tail end of the wake-word
+      // Then start speech recognition for user query
+      setTimeout(() => {
+        resumeAudioContext().then(() => {
+          SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
+        });
+      }, 500);
 
       // Set cooldown to prevent repeated triggers (5 seconds)
       cooldownTimerRef.current = setTimeout(() => {
