@@ -33,6 +33,7 @@ export function useRealtimeVoice({
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const audioQueueRef = useRef<Float32Array[]>([]);
   const isPlayingRef = useRef(false);
+  const micPausedForPlaybackRef = useRef(false);
 
   const connect = useCallback(async () => {
     try {
@@ -134,6 +135,11 @@ export function useRealtimeVoice({
       processorRef.current = processor;
 
       processor.onaudioprocess = (e) => {
+        // Don't capture mic input while AI is speaking (prevents feedback loop)
+        if (micPausedForPlaybackRef.current) {
+          return;
+        }
+        
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           const inputData = e.inputBuffer.getChannelData(0);
           const pcm16 = float32ToPCM16(inputData);
@@ -224,6 +230,7 @@ export function useRealtimeVoice({
     }
 
     isPlayingRef.current = true;
+    micPausedForPlaybackRef.current = true; // Pause mic to prevent feedback
     setState(prev => ({ ...prev, isSpeaking: true }));
 
     const audioContext = new AudioContext({ sampleRate: 24000 });
@@ -247,6 +254,11 @@ export function useRealtimeVoice({
 
     await audioContext.close();
     isPlayingRef.current = false;
+    
+    // Add 500ms delay before resuming mic (allow for audio settling)
+    await new Promise(resolve => setTimeout(resolve, 500));
+    micPausedForPlaybackRef.current = false; // Resume mic after AI finishes
+    
     setState(prev => ({ ...prev, isSpeaking: false }));
   };
 

@@ -314,6 +314,16 @@ export default function WorkoutSessionPage() {
         setWorkTimer(prev => prev - 1);
       }, 1000);
       
+      // Update AI context with workout state
+      if (realtime.isConnected) {
+        realtime.updateContext({
+          workoutPhase: 'working',
+          timeRemaining: workTimer,
+          currentExercise: currentTemplateExercise?.name || 'Exercise',
+          isPaused: false
+        });
+      }
+      
       // Coach announcements during work period - only announce once per timer value
       if (workTimer === 10 && lastWorkAnnouncement.current !== 10) {
         sendAutomaticCoachMessage("10 seconds left.");
@@ -332,12 +342,22 @@ export default function WorkoutSessionPage() {
           setRestTimer(restTime);
           setIsResting(true);
           sendAutomaticCoachMessage(`${restTime} seconds recovery..`);
+          
+          // Update AI context
+          if (realtime.isConnected) {
+            realtime.updateContext({
+              workoutPhase: 'resting',
+              timeRemaining: restTime,
+              completedExercise: completedExercise.name,
+              nextExercise: templateExercises[(currentWorkExerciseIndex + 1) % templateExercises.length]?.name
+            });
+          }
           // DO NOT increment index here - wait until rest ends
         }
       }
     }
     return () => clearInterval(interval);
-  }, [isWorking, workTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, isPaused]);
+  }, [isWorking, workTimer, isTemplateWorkout, templateExercises, currentWorkExerciseIndex, isPaused, realtime, currentTemplateExercise]);
 
   // Timer effect for rest periods
   useEffect(() => {
@@ -346,6 +366,15 @@ export default function WorkoutSessionPage() {
       interval = setInterval(() => {
         setRestTimer(prev => prev - 1);
       }, 1000);
+      
+      // Update AI context with rest state
+      if (realtime.isConnected && restTimer % 5 === 0) { // Update every 5 seconds to avoid spam
+        realtime.updateContext({
+          workoutPhase: 'resting',
+          timeRemaining: restTimer,
+          nextExercise: templateExercises[(currentWorkExerciseIndex + 1) % templateExercises.length]?.name
+        });
+      }
       
       // Play countdown beeps before next set starts (3, 2, 1)
       if (restTimer === 3 || restTimer === 2 || restTimer === 1) {
@@ -554,6 +583,11 @@ export default function WorkoutSessionPage() {
     // Guard against unsupported or unavailable microphone
     if (!browserSupportsSpeechRecognition || !isMicrophoneAvailable) {
       return;
+    }
+
+    // Resume AudioContext for beeps on first user interaction
+    if (!audioContextReady.current) {
+      await resumeAudioContext();
     }
 
     if (listening) {
