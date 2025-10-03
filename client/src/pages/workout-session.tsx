@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,9 @@ import {
   Play, Pause, Square, MessageSquare, Send, Timer, 
   CheckCircle, Circle, Dumbbell, Brain, Volume2, VolumeX, Mic, MicOff, Radio 
 } from "lucide-react";
-import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import { usePorcupine } from '@picovoice/porcupine-react';
 import { BuiltInKeyword } from '@picovoice/porcupine-web';
+import { useRealtimeVoice } from '@/hooks/useRealtimeVoice';
 import type { WorkoutSessionNew, SetLog, CoachingSession } from "@shared/schema";
 
 export default function WorkoutSessionPage() {
@@ -42,15 +42,6 @@ export default function WorkoutSessionPage() {
   const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
 
-  // Speech recognition for microphone input
-  const {
-    transcript,
-    listening,
-    resetTranscript,
-    browserSupportsSpeechRecognition,
-    isMicrophoneAvailable
-  } = useSpeechRecognition();
-
   // Wake-word detection with Picovoice Porcupine
   const {
     keywordDetection,
@@ -63,7 +54,7 @@ export default function WorkoutSessionPage() {
     release: releasePorcupine
   } = usePorcupine();
 
-  // Fetch active workout session (may include workoutTemplate)
+  // Fetch active workout session (may include workoutTemplate) - MUST be before useRealtimeVoice
   const { data: session, isLoading } = useQuery<any>({
     queryKey: ['/api/workout-sessions/active'],
   });
@@ -87,6 +78,62 @@ export default function WorkoutSessionPage() {
     enabled: !!session?.id,
   });
 
+  // OpenAI Realtime API for voice interaction - replaces react-speech-recognition
+  const handleFunctionCall = useCallback((functionName: string, args: any) => {
+    console.log('🔧 AI Coach function call:', functionName, args);
+    
+    switch (functionName) {
+      case 'pause_workout':
+        setIsPaused(true);
+        setIsWorking(false);
+        setIsResting(false);
+        break;
+      case 'resume_workout':
+        setIsPaused(false);
+        break;
+      case 'start_countdown':
+        setCountdown(10);
+        break;
+      case 'start_rest_timer':
+        setRestTimer(args.duration || 30);
+        setIsResting(true);
+        setIsWorking(false);
+        break;
+      case 'next_exercise':
+        setCurrentSet(prev => prev + 1);
+        break;
+    }
+  }, []);
+
+  const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
+    setCoachingMessage(transcript);
+    if (isFinal && transcript.trim()) {
+      setChatMessages(prev => [...prev, {
+        role: 'user',
+        content: transcript,
+        timestamp: new Date().toISOString()
+      }]);
+    }
+  }, []);
+
+  const handleRealtimeError = useCallback((error: string) => {
+    console.error('Realtime API error:', error);
+  }, []);
+
+  const realtime = useRealtimeVoice({
+    sessionId: session?.id || 0,
+    onFunctionCall: handleFunctionCall,
+    onTranscript: handleTranscript,
+    onError: handleRealtimeError,
+  });
+
+  // Adapter layer - maps old speech recognition variables to Realtime API
+  const listening = realtime.isListening;
+  const transcript = coachingMessage;
+  const resetTranscript = () => setCoachingMessage('');
+  const browserSupportsSpeechRecognition = 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices;
+  const isMicrophoneAvailable = browserSupportsSpeechRecognition;
+
   // DISABLED: Not loading intro messages from backend - focusing only on workout execution
   // useEffect(() => {
   //   if (coaching?.messages && coaching.messages.length > 0 && !hasLoadedInitialMessages.current) {
@@ -108,38 +155,8 @@ export default function WorkoutSessionPage() {
   // Track last spoken message to prevent duplicates
   const lastSpokenMessageRef = useRef<string>('');
 
-  // Auto-play voice for new assistant messages when voice is enabled
-  useEffect(() => {
-    if (voiceEnabled && chatMessages.length > 0) {
-      const lastMessage = chatMessages[chatMessages.length - 1];
-      if (lastMessage.role === 'assistant' && lastMessage.content !== lastSpokenMessageRef.current) {
-        playVoiceMessage(lastMessage.content);
-        lastSpokenMessageRef.current = lastMessage.content;
-      }
-    }
-  }, [chatMessages, voiceEnabled]);
-
-  // Sync speech recognition transcript with coaching message input
-  useEffect(() => {
-    if (transcript) {
-      setCoachingMessage(transcript);
-    }
-  }, [transcript]);
-
-  // Function to play voice message using browser's speech synthesis
-  const playVoiceMessage = (text: string) => {
-    if ('speechSynthesis' in window) {
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-      
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      
-      window.speechSynthesis.speak(utterance);
-    }
-  };
+  // Voice output now handled by Realtime API directly - no need for browser TTS
+  // Legacy playVoiceMessage function removed (Realtime API handles audio streaming)
 
   // Create persistent audio context (only once)
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -580,12 +597,12 @@ export default function WorkoutSessionPage() {
     }
 
     if (listening) {
-      SpeechRecognition.stopListening();
-      // Auto-send handled by useEffect above
+      realtime.stopListening();
     } else {
-      // Resume audio context when starting to listen
-      await resumeAudioContext();
-      SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
+      if (!realtime.isConnected) {
+        await realtime.connect();
+      }
+      await realtime.startListening();
     }
   };
 
@@ -650,11 +667,12 @@ export default function WorkoutSessionPage() {
       setCoachingMessage('');
 
       // Add a 500ms delay to avoid capturing the tail end of the wake-word
-      // Then start speech recognition for user query
-      setTimeout(() => {
-        resumeAudioContext().then(() => {
-          SpeechRecognition.startListening({ continuous: true, language: 'en-US' });
-        });
+      // Then start Realtime voice for user query
+      setTimeout(async () => {
+        if (!realtime.isConnected) {
+          await realtime.connect();
+        }
+        await realtime.startListening();
       }, 500);
 
       // Set cooldown to prevent repeated triggers (5 seconds)
@@ -686,7 +704,7 @@ export default function WorkoutSessionPage() {
   // Cleanup: stop listening and release Porcupine on unmount
   useEffect(() => {
     return () => {
-      SpeechRecognition.stopListening();
+      realtime.disconnect();
       if (porcupineListening) {
         stopPorcupine();
       }
@@ -697,7 +715,7 @@ export default function WorkoutSessionPage() {
         clearTimeout(cooldownTimerRef.current);
       }
     };
-  }, []);
+  }, [realtime]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
