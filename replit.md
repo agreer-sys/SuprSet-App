@@ -10,8 +10,11 @@ SuprSet is a React-based web application designed to provide intelligent exercis
 - **Strategic Vision**: Build community-driven AI model rather than relying on generic solutions - create competitive moat through proprietary datasets
 
 ## Recent Changes (October 2025)
-- **OpenAI Realtime API Integration**: Replaced text-based LangChain coach with OpenAI Realtime API for true conversational voice interaction. Bidirectional audio streaming via WebSocket provides ~500ms latency (vs 2-3s previously), natural interruptions, and native function calling for workout controls (pause/resume/countdown/next). Server-side relay injects RAG knowledge base context into session instructions. Push-to-talk interface via manual microphone button.
-- **Removed Picovoice/Porcupine**: Eliminated wake-word detection in favor of simpler push-to-talk system. Future wake-word solution to be explored post-testing.
+- **OpenAI Realtime API Integration**: Replaced text-based LangChain coach with OpenAI Realtime API for true conversational voice interaction. Bidirectional audio streaming via WebSocket provides ~500ms latency (vs 2-3s previously), natural interruptions, and native function calling for workout controls (pause/resume/countdown/next). Server-side relay injects RAG knowledge base context into session instructions.
+- **Removed Picovoice/Porcupine**: Eliminated wake-word detection in favor of simpler push-to-talk system with continuous conversation mode.
+- **Continuous Conversation Mode**: Microphone automatically stays open after AI responds, allowing natural back-and-forth dialogue without button presses. Feedback loop prevention via mic pause during AI playback.
+- **Real-time Workout Context Sync**: AI receives live updates about workout state (work/rest timers, current exercise, phase transitions) via WebSocket context updates for contextual coaching.
+- **Fixed Audio System**: Separated workout timer beeps from Realtime API audio to prevent conflicts. Beeps now work reliably during voice conversations.
 
 ## Previous Changes (September 2025)
 - **Pre-Built Workout System with Coach Context Snapshotting**: Implemented intelligent workout template system that snapshots exercise data from Airtable at creation time. Each workout exercise stores AI Coach context (primaryMuscleGroup, movementPattern, equipmentPrimary, equipmentSecondary, coachingBulletPoints) eliminating runtime Airtable calls and guaranteeing reliable coach guidance. Added "9-Minute Power Block" as first timed circuit workout (3 rounds × 3 exercises: Dumbbell Clean and Press, Tricep Pushdown Rope, Squat Jump with 30s work/30s rest intervals)

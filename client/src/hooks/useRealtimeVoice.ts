@@ -34,6 +34,7 @@ export function useRealtimeVoice({
   const audioQueueRef = useRef<Float32Array[]>([]);
   const isPlayingRef = useRef(false);
   const micPausedForPlaybackRef = useRef(false);
+  const autoStopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = useCallback(async () => {
     try {
@@ -85,6 +86,12 @@ export function useRealtimeVoice({
 
         if (message.type === 'input_audio_buffer.speech_started') {
           setState(prev => ({ ...prev, isListening: true }));
+          
+          // Clear auto-stop timeout when user starts speaking
+          if (autoStopTimeoutRef.current) {
+            clearTimeout(autoStopTimeoutRef.current);
+            autoStopTimeoutRef.current = null;
+          }
         }
 
         if (message.type === 'input_audio_buffer.speech_stopped') {
@@ -260,12 +267,37 @@ export function useRealtimeVoice({
     micPausedForPlaybackRef.current = false; // Resume mic after AI finishes
     
     setState(prev => ({ ...prev, isSpeaking: false }));
+    
+    // Continuous conversation: Keep mic open for 8 seconds after AI speaks
+    // This allows natural follow-up without pressing the button again
+    if (processorRef.current) {
+      console.log('🎤 Auto-resuming mic for follow-up conversation (8s window)...');
+      
+      // Clear any existing timeout
+      if (autoStopTimeoutRef.current) {
+        clearTimeout(autoStopTimeoutRef.current);
+      }
+      
+      // Auto-stop mic after 8 seconds of continuous conversation window
+      autoStopTimeoutRef.current = setTimeout(() => {
+        if (processorRef.current && !isPlayingRef.current) {
+          console.log('⏱️ Auto-stopping mic after conversation timeout');
+          stopListening();
+        }
+      }, 8000);
+    }
   };
 
   const cleanup = () => {
     stopListening();
     audioQueueRef.current = [];
     isPlayingRef.current = false;
+    
+    // Clear auto-stop timeout on cleanup
+    if (autoStopTimeoutRef.current) {
+      clearTimeout(autoStopTimeoutRef.current);
+      autoStopTimeoutRef.current = null;
+    }
   };
 
   useEffect(() => {
