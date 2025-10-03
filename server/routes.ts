@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { 
@@ -14,6 +15,7 @@ import {
 import { z } from "zod";
 import { isTrainerApprovedPair } from "./trainer-pairs";
 import { langchainCoach } from "./langchain-coach";
+import { setupRealtimeRelay } from "./realtime-relay";
 
 // LangChain LLM Coaching Integration
 async function generateCoachingResponse(
@@ -1548,6 +1550,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  const wss = new WebSocketServer({ 
+    server: httpServer,
+    path: '/realtime'
+  });
+  
+  setupRealtimeRelay(wss);
+  console.log('🎙️ OpenAI Realtime API relay configured on /realtime');
+  
   return httpServer;
 }
 
