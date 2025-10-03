@@ -546,31 +546,8 @@ export default function WorkoutSessionPage() {
     sendCoachingMessageMutation.mutate(coachingMessage);
   };
 
-  // Track previous listening state and auto-send scheduling
-  const prevListeningRef = useRef(listening);
-  const autoSendScheduledRef = useRef(false);
-
-  // Auto-send when listening stops and there's a message (with debounce for transcript completion)
-  useEffect(() => {
-    if (prevListeningRef.current && !listening && !autoSendScheduledRef.current) {
-      // Listening just stopped - capture message immediately and schedule send
-      autoSendScheduledRef.current = true;
-      const capturedMessage = coachingMessage.trim();
-      
-      const timer = setTimeout(() => {
-        if (capturedMessage) {
-          sendCoachingMessageMutation.mutate(capturedMessage);
-        }
-        autoSendScheduledRef.current = false;
-      }, 400); // 400ms debounce to allow final transcript to arrive
-      
-      return () => {
-        clearTimeout(timer);
-        autoSendScheduledRef.current = false;
-      };
-    }
-    prevListeningRef.current = listening;
-  }, [listening]); // Only depend on listening, not coachingMessage
+  // Realtime API handles audio directly - no auto-send needed
+  // Transcripts appear in chat automatically via handleTranscript callback
 
   // Toggle microphone listening (Push-to-talk with Realtime API)
   const toggleMicrophone = async () => {
@@ -596,7 +573,8 @@ export default function WorkoutSessionPage() {
     return () => {
       realtime.disconnect();
     };
-  }, [realtime]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only disconnect on unmount
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
