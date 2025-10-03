@@ -630,36 +630,54 @@ export default function WorkoutSessionPage() {
 
   // Start/stop Porcupine based on wake-word toggle and mic availability
   useEffect(() => {
+    if (!porcupineLoaded) return; // Guard: Don't try to use Porcupine if not loaded
+    
     if (!wakeWordEnabled && porcupineListening) {
       // Explicitly stop Porcupine when wake-word is disabled
-      stopPorcupine();
-      setWakeWordListening(false);
-    } else if (wakeWordEnabled && porcupineLoaded && !listening && !porcupineListening) {
+      try {
+        stopPorcupine();
+        setWakeWordListening(false);
+      } catch (error) {
+        console.error('Error stopping Porcupine:', error);
+      }
+    } else if (wakeWordEnabled && !listening && !porcupineListening) {
       // Start listening for wake-word only when not using manual mic
-      startPorcupine();
-      setWakeWordListening(true);
+      try {
+        startPorcupine();
+        setWakeWordListening(true);
+      } catch (error) {
+        console.error('Error starting Porcupine:', error);
+      }
     } else if (porcupineListening && listening) {
       // Pause wake-word detection when manual mic is active (mic arbitration)
-      stopPorcupine();
-      setWakeWordListening(false);
+      try {
+        stopPorcupine();
+        setWakeWordListening(false);
+      } catch (error) {
+        console.error('Error pausing Porcupine:', error);
+      }
     }
   }, [wakeWordEnabled, porcupineLoaded, listening, porcupineListening]);
 
   // Handle wake-word detection
   useEffect(() => {
     if (keywordDetection) {
-      console.log('Wake word detected:', keywordDetection.label);
+      console.log('✅ Wake word detected:', keywordDetection.label);
       
       // Check if not in cooldown period
       if (cooldownTimerRef.current) {
-        console.log('Wake-word in cooldown, ignoring detection');
+        console.log('⏳ Wake-word in cooldown, ignoring detection');
         return;
       }
 
       // Pause Porcupine temporarily
-      if (porcupineListening) {
-        stopPorcupine();
-        setWakeWordListening(false);
+      if (porcupineListening && porcupineLoaded) {
+        try {
+          stopPorcupine();
+          setWakeWordListening(false);
+        } catch (error) {
+          console.error('Error stopping Porcupine after detection:', error);
+        }
       }
 
       // Clear any existing transcript and reset the coaching message
@@ -669,10 +687,16 @@ export default function WorkoutSessionPage() {
       // Add a 500ms delay to avoid capturing the tail end of the wake-word
       // Then start Realtime voice for user query
       setTimeout(async () => {
-        if (!realtime.isConnected) {
-          await realtime.connect();
+        console.log('🎙️ Connecting to Realtime API...');
+        try {
+          if (!realtime.isConnected) {
+            await realtime.connect();
+          }
+          await realtime.startListening();
+          console.log('🎤 Listening started');
+        } catch (error) {
+          console.error('Failed to start Realtime session:', error);
         }
-        await realtime.startListening();
       }, 500);
 
       // Set cooldown to prevent repeated triggers (5 seconds)
@@ -680,21 +704,30 @@ export default function WorkoutSessionPage() {
         cooldownTimerRef.current = null;
         // Resume Porcupine after cooldown if wake-word still enabled and not manually listening
         if (wakeWordEnabled && !listening && porcupineLoaded) {
-          startPorcupine();
-          setWakeWordListening(true);
+          try {
+            startPorcupine();
+            setWakeWordListening(true);
+            console.log('🔄 Porcupine resumed after cooldown');
+          } catch (error) {
+            console.error('Error resuming Porcupine after cooldown:', error);
+          }
         }
       }, 5000);
     }
-  }, [keywordDetection]);
+  }, [keywordDetection, wakeWordEnabled, listening, porcupineLoaded, porcupineListening, realtime]);
 
   // Resume Porcupine after manual mic session ends
   useEffect(() => {
     if (!listening && wakeWordEnabled && porcupineLoaded && !cooldownTimerRef.current) {
       // Small delay to avoid race conditions
       const timer = setTimeout(() => {
-        if (!listening && wakeWordEnabled) {
-          startPorcupine();
-          setWakeWordListening(true);
+        if (!listening && wakeWordEnabled && porcupineLoaded) {
+          try {
+            startPorcupine();
+            setWakeWordListening(true);
+          } catch (error) {
+            console.error('Error resuming Porcupine after mic ends:', error);
+          }
         }
       }, 1000);
       return () => clearTimeout(timer);
@@ -705,17 +738,25 @@ export default function WorkoutSessionPage() {
   useEffect(() => {
     return () => {
       realtime.disconnect();
-      if (porcupineListening) {
-        stopPorcupine();
+      if (porcupineListening && porcupineLoaded) {
+        try {
+          stopPorcupine();
+        } catch (error) {
+          console.error('Error stopping Porcupine on cleanup:', error);
+        }
       }
       if (porcupineLoaded) {
-        releasePorcupine();
+        try {
+          releasePorcupine();
+        } catch (error) {
+          console.error('Error releasing Porcupine on cleanup:', error);
+        }
       }
       if (cooldownTimerRef.current) {
         clearTimeout(cooldownTimerRef.current);
       }
     };
-  }, [realtime]);
+  }, [realtime, porcupineLoaded, porcupineListening]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
