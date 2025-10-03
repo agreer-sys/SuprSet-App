@@ -35,6 +35,7 @@ export function useRealtimeVoice({
   const isPlayingRef = useRef(false);
   const micPausedForPlaybackRef = useRef(false);
   const autoStopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const needsRestartRef = useRef(false);
 
   const connect = useCallback(async () => {
     try {
@@ -268,15 +269,12 @@ export function useRealtimeVoice({
     
     setState(prev => ({ ...prev, isSpeaking: false }));
     
-    // Continuous conversation: Restart mic if stopped, or keep it open
-    // This allows natural follow-up without pressing the button again
+    // Continuous conversation: Check if mic needs restart or if it's already open
     if (!processorRef.current) {
-      // Mic was stopped (e.g., during pause) - restart it
-      console.log('🎤 Restarting mic after AI response...');
-      await startListening();
-    }
-    
-    if (processorRef.current) {
+      // Mic was stopped (e.g., during pause) - signal that we need to restart it
+      console.log('🎤 Mic needs restart after AI response...');
+      needsRestartRef.current = true;
+    } else {
       console.log('🎤 Auto-resuming mic for follow-up conversation (8s window)...');
       
       // Clear any existing timeout
@@ -305,6 +303,15 @@ export function useRealtimeVoice({
       autoStopTimeoutRef.current = null;
     }
   };
+
+  // Effect to restart microphone after AI finishes speaking (if it was stopped)
+  useEffect(() => {
+    if (needsRestartRef.current && state.isConnected && !state.isListening && !state.isSpeaking) {
+      console.log('🎤 Auto-restarting microphone after AI response...');
+      needsRestartRef.current = false;
+      startListening();
+    }
+  }, [state.isConnected, state.isListening, state.isSpeaking, startListening]);
 
   useEffect(() => {
     return () => {

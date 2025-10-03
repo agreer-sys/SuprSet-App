@@ -326,6 +326,30 @@ export default function WorkoutSessionPage() {
     }
   });
 
+  // Send workout template to AI as soon as websocket connects
+  useEffect(() => {
+    if (realtime.isConnected && !hasSentWorkoutTemplate.current && session?.workoutTemplate && templateExercises.length > 0) {
+      console.log('📤 Sending workout template to AI coach...');
+      realtime.updateContext({
+        workoutTemplate: {
+          name: session.workoutTemplate.name,
+          totalRounds: session.workoutTemplate.totalRounds,
+          exercises: templateExercises.map((ex: any) => ({
+            name: ex.exercise?.name,
+            primaryMuscleGroup: ex.exercise?.primaryMuscleGroup,
+            equipment: ex.exercise?.equipmentPrimary,
+            coachingTips: ex.exercise?.coachingBulletPoints,
+            workSeconds: ex.workSeconds,
+            restSeconds: ex.restSeconds
+          }))
+        },
+        workoutPhase: 'ready',
+        currentExerciseIndex: 0
+      });
+      hasSentWorkoutTemplate.current = true;
+    }
+  }, [realtime.isConnected, session?.workoutTemplate, templateExercises]);
+
   // Timer effect for work periods
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -334,34 +358,15 @@ export default function WorkoutSessionPage() {
         setWorkTimer(prev => prev - 1);
       }, 1000);
       
-      // Update AI context with workout state (throttled - send full template once, then lightweight updates)
+      // Update AI context with workout state (lightweight updates only, template already sent)
       if (realtime.isConnected) {
-        const contextUpdate: any = {
+        realtime.updateContext({
           workoutPhase: 'working',
           timeRemaining: workTimer,
           currentExercise: currentTemplateExercise?.exercise?.name || 'Exercise',
           currentExerciseIndex: currentWorkExerciseIndex,
           isPaused: false,
-        };
-        
-        // Only send full workout template once at the start
-        if (!hasSentWorkoutTemplate.current && session?.workoutTemplate) {
-          contextUpdate.workoutTemplate = {
-            name: session.workoutTemplate.name,
-            totalRounds: session.workoutTemplate.totalRounds,
-            exercises: templateExercises.map((ex: any) => ({
-              name: ex.exercise?.name,
-              primaryMuscleGroup: ex.exercise?.primaryMuscleGroup,
-              equipment: ex.exercise?.equipmentPrimary,
-              coachingTips: ex.exercise?.coachingBulletPoints,
-              workSeconds: ex.workSeconds,
-              restSeconds: ex.restSeconds
-            }))
-          };
-          hasSentWorkoutTemplate.current = true;
-        }
-        
-        realtime.updateContext(contextUpdate);
+        });
       }
       
       // Coach announcements during work period - only announce once per timer value
