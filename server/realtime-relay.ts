@@ -10,11 +10,7 @@ interface RealtimeSession {
   clientWs: WebSocket;
   openaiWs: WebSocket | null;
   sessionId: number;
-  coachingContext?: {
-    session: CoachingSession;
-    exercise?: Exercise;
-    workoutState: any;
-  };
+  coachingContext?: any; // Dynamic context from client (workout state, template, exercises, etc.)
 }
 
 const activeSessions = new Map<string, RealtimeSession>();
@@ -173,12 +169,19 @@ async function buildSessionInstructions(session: RealtimeSession): Promise<strin
     ? `\n\nCOACHING KNOWLEDGE BASE:\n${knowledgeContext.map(k => k.content).join('\n\n')}`
     : '';
 
-  const exerciseContext = session.coachingContext?.exercise
-    ? `\n\nCURRENT EXERCISE:\n- Name: ${session.coachingContext.exercise.name}\n- Primary Muscle: ${session.coachingContext.exercise.primaryMuscleGroup}\n- Equipment: ${session.coachingContext.exercise.equipment}\n- Form Tips: ${session.coachingContext.exercise.coachingBulletPoints || 'Focus on proper form'}`
+  const workoutTemplate = session.coachingContext?.workoutTemplate;
+  const workoutTemplateContext = workoutTemplate
+    ? `\n\nWORKOUT TEMPLATE:\n- Name: ${workoutTemplate.name}\n- Total Rounds: ${workoutTemplate.totalRounds}\n- Exercises:\n${workoutTemplate.exercises.map((ex: any, i: number) => 
+        `  ${i + 1}. ${ex.name} (${ex.primaryMuscleGroup})\n     - Equipment: ${ex.equipment}\n     - ${ex.workSeconds}s work / ${ex.restSeconds}s rest\n     - Tips: ${ex.coachingTips || 'Focus on form'}`
+      ).join('\n')}`
     : '';
 
-  const workoutContext = session.coachingContext?.workoutState
-    ? `\n\nWORKOUT STATE:\n- Current Set: ${session.coachingContext.workoutState.currentSet}/${session.coachingContext.workoutState.totalSets}\n- Phase: ${session.coachingContext.workoutState.workoutPhase}`
+  const currentState = session.coachingContext?.workoutPhase
+    ? `\n\nCURRENT STATE:\n- Phase: ${session.coachingContext.workoutPhase}\n- Time Remaining: ${session.coachingContext.timeRemaining}s\n- Current Exercise: ${session.coachingContext.currentExercise || 'Not started'}\n- Exercise Index: ${(session.coachingContext.currentExerciseIndex || 0) + 1}/${workoutTemplate?.exercises?.length || '?'}`
+    : '';
+
+  const exerciseContext = session.coachingContext?.exercise
+    ? `\n\nCURRENT EXERCISE:\n- Name: ${session.coachingContext.exercise.name}\n- Primary Muscle: ${session.coachingContext.exercise.primaryMuscleGroup}\n- Equipment: ${session.coachingContext.exercise.equipment}\n- Form Tips: ${session.coachingContext.exercise.coachingBulletPoints || 'Focus on proper form'}`
     : '';
 
   return `You are SuprSet AI Coach, a professional strength training coach specializing in superset workouts. You have a natural, conversational tone like a real personal trainer working with someone in the gym.
@@ -197,7 +200,7 @@ CAPABILITIES:
 - Control workout flow (start/pause/resume timers)
 - Track progress and suggest adjustments
 
-${knowledgeBase}${exerciseContext}${workoutContext}
+${knowledgeBase}${workoutTemplateContext}${currentState}${exerciseContext}
 
 IMPORTANT:
 - This is voice-only conversation, so be conversational and brief
@@ -206,8 +209,27 @@ IMPORTANT:
 - Don't repeat information unnecessarily - they can hear you clearly`;
 }
 
-function updateSessionContext(session: RealtimeSession, context: any) {
-  session.coachingContext = context;
+async function updateSessionContext(session: RealtimeSession, context: any) {
+  // Deep merge new context with existing context to preserve workoutTemplate
+  session.coachingContext = {
+    ...session.coachingContext,
+    ...context,
+    // Preserve nested objects like workoutTemplate if not explicitly updated
+    workoutTemplate: context.workoutTemplate || session.coachingContext?.workoutTemplate
+  };
+  
+  // Rebuild instructions with new context and push to OpenAI
+  if (session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
+    const updatedInstructions = await buildSessionInstructions(session);
+    
+    session.openaiWs.send(JSON.stringify({
+      type: 'session.update',
+      session: {
+        instructions: updatedInstructions,
+      },
+    }));
+  }
+  
   console.log('📝 Updated session context for session:', session.sessionId);
 }
 

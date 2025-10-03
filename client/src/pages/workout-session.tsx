@@ -32,7 +32,9 @@ export default function WorkoutSessionPage() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true); // Enable voice by default for coach dictation
   const [isPaused, setIsPaused] = useState(false);
+  const pausedState = useRef<{phase: 'work' | 'rest' | 'countdown' | null, timeRemaining: number}>({ phase: null, timeRemaining: 0 });
   const hasLoadedInitialMessages = useRef(false);
+  const hasSentWorkoutTemplate = useRef(false);
   const lastWorkAnnouncement = useRef<number | null>(null);
   const lastRestAnnouncement = useRef<number | null>(null);
   const queryClient = useQueryClient();
@@ -67,12 +69,31 @@ export default function WorkoutSessionPage() {
     
     switch (functionName) {
       case 'pause_workout':
+        // Save current state before pausing
+        if (isWorking) {
+          pausedState.current = { phase: 'work', timeRemaining: workTimer };
+        } else if (isResting) {
+          pausedState.current = { phase: 'rest', timeRemaining: restTimer };
+        } else if (countdown !== null) {
+          pausedState.current = { phase: 'countdown', timeRemaining: countdown };
+        }
         setIsPaused(true);
         setIsWorking(false);
         setIsResting(false);
         break;
       case 'resume_workout':
+        // Restore previous state
         setIsPaused(false);
+        if (pausedState.current.phase === 'work') {
+          setWorkTimer(pausedState.current.timeRemaining);
+          setIsWorking(true);
+        } else if (pausedState.current.phase === 'rest') {
+          setRestTimer(pausedState.current.timeRemaining);
+          setIsResting(true);
+        } else if (pausedState.current.phase === 'countdown') {
+          setCountdown(pausedState.current.timeRemaining);
+        }
+        pausedState.current = { phase: null, timeRemaining: 0 };
         break;
       case 'start_countdown':
         setCountdown(10);
@@ -86,7 +107,7 @@ export default function WorkoutSessionPage() {
         setCurrentSet(prev => prev + 1);
         break;
     }
-  }, []);
+  }, [isWorking, isResting, countdown, workTimer, restTimer]);
 
   const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
     setCoachingMessage(transcript);
@@ -314,14 +335,34 @@ export default function WorkoutSessionPage() {
         setWorkTimer(prev => prev - 1);
       }, 1000);
       
-      // Update AI context with workout state
+      // Update AI context with workout state (throttled - send full template once, then lightweight updates)
       if (realtime.isConnected) {
-        realtime.updateContext({
+        const contextUpdate: any = {
           workoutPhase: 'working',
           timeRemaining: workTimer,
-          currentExercise: currentTemplateExercise?.name || 'Exercise',
-          isPaused: false
-        });
+          currentExercise: currentTemplateExercise?.exercise?.name || 'Exercise',
+          currentExerciseIndex: currentWorkExerciseIndex,
+          isPaused: false,
+        };
+        
+        // Only send full workout template once at the start
+        if (!hasSentWorkoutTemplate.current && session?.workoutTemplate) {
+          contextUpdate.workoutTemplate = {
+            name: session.workoutTemplate.name,
+            totalRounds: session.workoutTemplate.totalRounds,
+            exercises: templateExercises.map((ex: any) => ({
+              name: ex.exercise?.name,
+              primaryMuscleGroup: ex.exercise?.primaryMuscleGroup,
+              equipment: ex.exercise?.equipmentPrimary,
+              coachingTips: ex.exercise?.coachingBulletPoints,
+              workSeconds: ex.workSeconds,
+              restSeconds: ex.restSeconds
+            }))
+          };
+          hasSentWorkoutTemplate.current = true;
+        }
+        
+        realtime.updateContext(contextUpdate);
       }
       
       // Coach announcements during work period - only announce once per timer value
@@ -751,54 +792,65 @@ export default function WorkoutSessionPage() {
 
           {/* Waiting to Start - For timed workouts that haven't begun */}
           {isTemplateWorkout && !countdown && !isWorking && !isResting && (
-            <>
-              <Card className="border-purple-200 bg-purple-50">
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-4">
-                    <Dumbbell className="h-16 w-16 mx-auto mb-2 text-purple-600" />
-                    <h3 className="text-2xl font-semibold text-purple-800">Ready to Begin?</h3>
-                    <p className="text-purple-700 max-w-md mx-auto">
-                      When you're ready to start your timed workout, tell the AI Coach "I'm ready" and a 10-second countdown will begin!
-                    </p>
-                    <div className="bg-white rounded-lg p-4 max-w-md mx-auto">
-                      <h4 className="font-semibold text-sm mb-2 text-purple-900">Workout Overview:</h4>
-                      <div className="text-sm text-gray-700 space-y-1">
-                        <p><strong>{templateExercises.length}</strong> exercises</p>
-                        <p><strong>{session?.workoutTemplate?.totalRounds || 3}</strong> rounds</p>
-                        <p><strong>{templateExercises[0]?.workSeconds || 30}s</strong> work / <strong>{templateExercises[0]?.restSeconds || 30}s</strong> rest</p>
-                      </div>
+            <Card className="border-purple-200 bg-purple-50">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-4">
+                  <Dumbbell className="h-16 w-16 mx-auto mb-2 text-purple-600" />
+                  <h3 className="text-2xl font-semibold text-purple-800">Ready to Begin?</h3>
+                  <p className="text-purple-700 max-w-md mx-auto">
+                    When you're ready to start your timed workout, tell the AI Coach "I'm ready" and a 10-second countdown will begin!
+                  </p>
+                  <div className="bg-white rounded-lg p-4 max-w-md mx-auto">
+                    <h4 className="font-semibold text-sm mb-2 text-purple-900">Workout Overview:</h4>
+                    <div className="text-sm text-gray-700 space-y-1">
+                      <p><strong>{templateExercises.length}</strong> exercises</p>
+                      <p><strong>{session?.workoutTemplate?.totalRounds || 3}</strong> rounds</p>
+                      <p><strong>{templateExercises[0]?.workSeconds || 30}s</strong> work / <strong>{templateExercises[0]?.restSeconds || 30}s</strong> rest</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-              {/* Exercise List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Exercises in This Workout</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {templateExercises.map((exercise: any, index: number) => (
-                      <div key={index} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
-                        <Badge variant="outline" className="mt-1">{index + 1}</Badge>
-                        <div className="flex-1">
-                          <h4 className="font-semibold">{exercise.exercise?.name || 'Exercise'}</h4>
-                          <p className="text-sm text-muted-foreground">{exercise.primaryMuscleGroup || 'Muscle group'}</p>
-                          {exercise.equipment && (
-                            <p className="text-xs text-muted-foreground mt-1">Equipment: {exercise.equipment}</p>
-                          )}
-                        </div>
-                        <div className="text-right text-sm">
-                          <p className="font-medium">{exercise.workSeconds || 30}s work</p>
-                          <p className="text-muted-foreground">{exercise.restSeconds || 30}s rest</p>
-                        </div>
+          {/* Exercise List - Always show for template workouts */}
+          {isTemplateWorkout && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Exercises in This Workout</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {templateExercises.map((exercise: any, index: number) => (
+                    <div 
+                      key={index} 
+                      className={`flex items-start gap-3 p-2 rounded-lg transition-colors ${
+                        index === currentWorkExerciseIndex 
+                          ? 'bg-blue-100 border-2 border-blue-400' 
+                          : 'bg-muted'
+                      }`}
+                    >
+                      <Badge variant={index === currentWorkExerciseIndex ? "default" : "outline"} className="mt-1">
+                        {index + 1}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <h4 className={`font-semibold text-sm truncate ${
+                          index === currentWorkExerciseIndex ? 'text-blue-900' : ''
+                        }`}>
+                          {exercise.exercise?.name || 'Exercise'}
+                        </h4>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {exercise.primaryMuscleGroup || 'Muscle group'}
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </>
+                      <div className="text-right text-xs whitespace-nowrap">
+                        <p className="font-medium">{exercise.workSeconds || 30}s</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Current Exercise - Only show for non-timed workouts */}
