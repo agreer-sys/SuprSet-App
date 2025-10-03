@@ -268,8 +268,14 @@ export function useRealtimeVoice({
     
     setState(prev => ({ ...prev, isSpeaking: false }));
     
-    // Continuous conversation: Keep mic open for 8 seconds after AI speaks
+    // Continuous conversation: Restart mic if stopped, or keep it open
     // This allows natural follow-up without pressing the button again
+    if (!processorRef.current) {
+      // Mic was stopped (e.g., during pause) - restart it
+      console.log('🎤 Restarting mic after AI response...');
+      await startListening();
+    }
+    
     if (processorRef.current) {
       console.log('🎤 Auto-resuming mic for follow-up conversation (8s window)...');
       

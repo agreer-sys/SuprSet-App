@@ -78,8 +78,7 @@ export default function WorkoutSessionPage() {
           pausedState.current = { phase: 'countdown', timeRemaining: countdown };
         }
         setIsPaused(true);
-        setIsWorking(false);
-        setIsResting(false);
+        // DON'T set isWorking/isResting to false - keep timer visible during pause
         break;
       case 'resume_workout':
         // Restore previous state
@@ -761,8 +760,10 @@ export default function WorkoutSessionPage() {
             <Card className="border-blue-200 bg-blue-50">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <Timer className="h-12 w-12 mx-auto mb-2 text-blue-600 animate-pulse" />
-                  <h3 className="text-2xl font-semibold text-blue-800 mb-2">WORK!</h3>
+                  <Timer className={`h-12 w-12 mx-auto mb-2 text-blue-600 ${!isPaused ? 'animate-pulse' : ''}`} />
+                  <h3 className="text-2xl font-semibold text-blue-800 mb-2">
+                    {isPaused ? 'PAUSED' : 'WORK!'}
+                  </h3>
                   <div className="text-6xl font-bold text-blue-600 mb-2">
                     {workTimer}
                   </div>
@@ -779,8 +780,10 @@ export default function WorkoutSessionPage() {
             <Card className="border-orange-200 bg-orange-50">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <Timer className="h-12 w-12 mx-auto mb-2 text-orange-600 animate-pulse" />
-                  <h3 className="text-2xl font-semibold text-orange-800 mb-2">Rest</h3>
+                  <Timer className={`h-12 w-12 mx-auto mb-2 text-orange-600 ${!isPaused ? 'animate-pulse' : ''}`} />
+                  <h3 className="text-2xl font-semibold text-orange-800 mb-2">
+                    {isPaused ? 'PAUSED' : 'Rest'}
+                  </h3>
                   <div className="text-6xl font-bold text-orange-600 mb-2">
                     {restTimer}
                   </div>
