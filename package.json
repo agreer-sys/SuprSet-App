@@ -20,8 +20,6 @@
     "@langchain/langgraph-sdk": "^0.1.6",
     "@langchain/openai": "^0.6.13",
     "@neondatabase/serverless": "^0.10.4",
-    "@picovoice/porcupine-react": "^3.0.3",
-    "@picovoice/web-voice-processor": "^4.0.9",
     "@radix-ui/react-accordion": "^1.2.4",
     "@radix-ui/react-alert-dialog": "^1.1.7",
     "@radix-ui/react-aspect-ratio": "^1.1.3",

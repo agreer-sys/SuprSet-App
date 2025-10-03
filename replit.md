@@ -9,7 +9,11 @@ SuprSet is a React-based web application designed to provide intelligent exercis
 - **Testing Requirements**: Always confirm all adjustments work properly on mobile browser before reporting completion - mobile-first validation mandatory
 - **Strategic Vision**: Build community-driven AI model rather than relying on generic solutions - create competitive moat through proprietary datasets
 
-## Recent Changes (September 2025)
+## Recent Changes (October 2025)
+- **OpenAI Realtime API Integration**: Replaced text-based LangChain coach with OpenAI Realtime API for true conversational voice interaction. Bidirectional audio streaming via WebSocket provides ~500ms latency (vs 2-3s previously), natural interruptions, and native function calling for workout controls (pause/resume/countdown/next). Server-side relay injects RAG knowledge base context into session instructions. Push-to-talk interface via manual microphone button.
+- **Removed Picovoice/Porcupine**: Eliminated wake-word detection in favor of simpler push-to-talk system. Future wake-word solution to be explored post-testing.
+
+## Previous Changes (September 2025)
 - **Pre-Built Workout System with Coach Context Snapshotting**: Implemented intelligent workout template system that snapshots exercise data from Airtable at creation time. Each workout exercise stores AI Coach context (primaryMuscleGroup, movementPattern, equipmentPrimary, equipmentSecondary, coachingBulletPoints) eliminating runtime Airtable calls and guaranteeing reliable coach guidance. Added "9-Minute Power Block" as first timed circuit workout (3 rounds × 3 exercises: Dumbbell Clean and Press, Tricep Pushdown Rope, Squat Jump with 30s work/30s rest intervals)
 - **AI Workout Coach with Voice Interaction**: Integrated LangChain + OpenAI GPT-3.5-turbo powered real-time coaching system (cost-optimized from GPT-4) for pre-built template workouts. Features: personalized introduction messages, 10-second countdown trigger on user readiness confirmation, browser-based text-to-speech voice output, three coaching styles (motivational/technical/casual) with enhanced human-like conversational prompts, and workout control command detection (STOP/PAUSE/RESUME/READY) for natural voice-based interaction
   - **Speech-to-Text Input (October 2025)**: Implemented browser-native speech recognition with manual microphone button activation, auto-send on completion, visual listening indicators, and permission handling. Uses react-speech-recognition library with idempotent message sending and transcript snapshot pattern
