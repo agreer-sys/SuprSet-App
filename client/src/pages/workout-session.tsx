@@ -971,7 +971,7 @@ export default function WorkoutSessionPage() {
                     </Avatar>
                     <div className="flex-1 p-2 bg-muted rounded-lg">
                       <p className="text-sm">
-                        AI Coach is ready! Send a message to get started.
+                        🎙️ Voice coach active! Just start talking - I can hear you.
                       </p>
                     </div>
                   </div>
