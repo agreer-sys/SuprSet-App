@@ -149,6 +149,7 @@ export function useRealtimeVoice({
       source.connect(processor);
       processor.connect(audioContext.destination);
 
+      setState(prev => ({ ...prev, isListening: true }));
       console.log('🎤 Started listening');
     } catch (error) {
       console.error('Failed to start listening:', error);
@@ -173,6 +174,7 @@ export function useRealtimeVoice({
       audioContextRef.current = null;
     }
 
+    setState(prev => ({ ...prev, isListening: false }));
     console.log('🔇 Stopped listening');
   }, []);
 
