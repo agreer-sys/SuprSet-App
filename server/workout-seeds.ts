@@ -161,30 +161,69 @@ export async function seedWorkouts() {
         console.log(`Created section: ${section.name} with ID: ${section.id}`);
         
         // Create exercises for this section
-        for (const exerciseData of sectionData.exercises) {
-          // Fetch exercise details from Airtable to snapshot coach context
-          const airtableExercise = await storage.getExercise(exerciseData.exerciseId);
-          
-          if (!airtableExercise) {
-            throw new Error(
-              `❌ CRITICAL: Exercise ID ${exerciseData.exerciseId} not found in database! ` +
-              `Cannot create workout "${workoutSeed.template.name}" without complete exercise data. ` +
-              `Please verify the exercise exists in Airtable.`
-            );
+        // For circuit workouts with rounds, we need to expand the exercises
+        const rounds = sectionData.rounds || 1;
+        const isCircuit = workoutSeed.template.timingStructure === 'circuit' && rounds > 1;
+        
+        if (isCircuit) {
+          // Circuit workout: repeat all exercises for each round
+          for (let round = 0; round < rounds; round++) {
+            for (const exerciseData of sectionData.exercises) {
+              // Fetch exercise details from Airtable to snapshot coach context
+              const airtableExercise = await storage.getExercise(exerciseData.exerciseId);
+              
+              if (!airtableExercise) {
+                throw new Error(
+                  `❌ CRITICAL: Exercise ID ${exerciseData.exerciseId} not found in database! ` +
+                  `Cannot create workout "${workoutSeed.template.name}" without complete exercise data. ` +
+                  `Please verify the exercise exists in Airtable.`
+                );
+              }
+              
+              // Create workout exercise with snapshot of Airtable data
+              // Update orderIndex to maintain sequence across rounds
+              const globalOrderIndex = round * sectionData.exercises.length + exerciseData.orderIndex;
+              const exercise = await storage.createWorkoutExercise({
+                ...exerciseData,
+                orderIndex: globalOrderIndex,
+                workoutSectionId: section.id,
+                // Snapshot AI Coach context from Airtable
+                primaryMuscleGroup: airtableExercise.primaryMuscleGroup,
+                movementPattern: airtableExercise.movementPattern,
+                equipmentPrimary: airtableExercise.equipmentPrimary,
+                equipmentSecondary: airtableExercise.equipmentSecondary,
+                coachingBulletPoints: airtableExercise.coachingBulletPoints
+              });
+              console.log(`✓ Created exercise (Round ${round + 1}): ${airtableExercise.name} (ID: ${exercise.id})`);
+            }
           }
-          
-          // Create workout exercise with snapshot of Airtable data
-          const exercise = await storage.createWorkoutExercise({
-            ...exerciseData,
-            workoutSectionId: section.id,
-            // Snapshot AI Coach context from Airtable
-            primaryMuscleGroup: airtableExercise.primaryMuscleGroup,
-            movementPattern: airtableExercise.movementPattern,
-            equipmentPrimary: airtableExercise.equipmentPrimary,
-            equipmentSecondary: airtableExercise.equipmentSecondary,
-            coachingBulletPoints: airtableExercise.coachingBulletPoints
-          });
-          console.log(`✓ Created exercise: ${airtableExercise.name} (ID: ${exercise.id})`);
+        } else {
+          // Traditional workout: create exercises as-is
+          for (const exerciseData of sectionData.exercises) {
+            // Fetch exercise details from Airtable to snapshot coach context
+            const airtableExercise = await storage.getExercise(exerciseData.exerciseId);
+            
+            if (!airtableExercise) {
+              throw new Error(
+                `❌ CRITICAL: Exercise ID ${exerciseData.exerciseId} not found in database! ` +
+                `Cannot create workout "${workoutSeed.template.name}" without complete exercise data. ` +
+                `Please verify the exercise exists in Airtable.`
+              );
+            }
+            
+            // Create workout exercise with snapshot of Airtable data
+            const exercise = await storage.createWorkoutExercise({
+              ...exerciseData,
+              workoutSectionId: section.id,
+              // Snapshot AI Coach context from Airtable
+              primaryMuscleGroup: airtableExercise.primaryMuscleGroup,
+              movementPattern: airtableExercise.movementPattern,
+              equipmentPrimary: airtableExercise.equipmentPrimary,
+              equipmentSecondary: airtableExercise.equipmentSecondary,
+              coachingBulletPoints: airtableExercise.coachingBulletPoints
+            });
+            console.log(`✓ Created exercise: ${airtableExercise.name} (ID: ${exercise.id})`);
+          }
         }
       }
     }
