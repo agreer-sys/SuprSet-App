@@ -184,6 +184,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public: List available block workouts
+  app.get('/api/block-workouts', async (req, res) => {
+    try {
+      const workouts = await storage.getBlockWorkouts();
+      res.json(workouts);
+    } catch (error) {
+      console.error("Error fetching block workouts:", error);
+      res.status(500).json({ message: "Failed to fetch workouts" });
+    }
+  });
+
+  // Public: Get specific block workout with timeline
+  app.get('/api/block-workouts/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid workout ID" });
+      }
+      
+      const workout = await storage.getBlockWorkout(id);
+      if (!workout) {
+        return res.status(404).json({ message: "Workout not found" });
+      }
+      
+      res.json(workout);
+    } catch (error) {
+      console.error("Error fetching block workout:", error);
+      res.status(500).json({ message: "Failed to fetch workout" });
+    }
+  });
+
+  // Protected: Start block workout session
+  app.post('/api/block-workout-sessions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { workoutId } = req.body;
+      
+      if (!workoutId) {
+        return res.status(400).json({ message: "Workout ID required" });
+      }
+      
+      const session = await storage.startBlockWorkoutSession(userId, workoutId);
+      res.status(201).json(session);
+    } catch (error) {
+      console.error("Error starting block workout session:", error);
+      res.status(500).json({ 
+        message: "Failed to start session",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Protected: Get active block workout session
+  app.get('/api/block-workout-sessions/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const session = await storage.getActiveBlockWorkoutSession(userId);
+      
+      if (!session) {
+        return res.status(404).json({ message: "No active session found" });
+      }
+      
+      res.json(session);
+    } catch (error) {
+      console.error("Error fetching active block workout session:", error);
+      res.status(500).json({ message: "Failed to fetch active session" });
+    }
+  });
+
   // Contribution routes
   app.post('/api/contributions', isAuthenticated, async (req: any, res) => {
     try {

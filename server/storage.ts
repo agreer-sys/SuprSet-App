@@ -16,6 +16,7 @@ import {
   blocks,
   blockExercises,
   blockWorkouts,
+  blockWorkoutSessions,
   type Exercise, 
   type InsertExercise,
   type WorkoutSession,
@@ -144,6 +145,12 @@ export interface IStorage {
     }>;
     createdBy: string;
   }): Promise<BlockWorkout>;
+  getBlockWorkouts(): Promise<BlockWorkout[]>;
+  getBlockWorkout(id: number): Promise<BlockWorkout | undefined>;
+  
+  // Block Workout Session methods
+  startBlockWorkoutSession(userId: string, workoutId: number): Promise<any>;
+  getActiveBlockWorkoutSession(userId: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1192,6 +1199,67 @@ export class DatabaseStorage implements IStorage {
       .where(eq(blockWorkouts.id, workout.id));
     
     return completeWorkout;
+  }
+
+  async getBlockWorkouts(): Promise<BlockWorkout[]> {
+    const workouts = await db.select().from(blockWorkouts)
+      .where(eq(blockWorkouts.isPublished, true))
+      .orderBy(desc(blockWorkouts.createdAt));
+    return workouts;
+  }
+
+  async getBlockWorkout(id: number): Promise<BlockWorkout | undefined> {
+    const [workout] = await db.select().from(blockWorkouts)
+      .where(eq(blockWorkouts.id, id));
+    return workout;
+  }
+
+  async startBlockWorkoutSession(userId: string, workoutId: number): Promise<any> {
+    // Get the workout with its timeline
+    const workout = await this.getBlockWorkout(workoutId);
+    if (!workout) {
+      throw new Error(`Workout ${workoutId} not found`);
+    }
+    if (!workout.executionTimeline) {
+      throw new Error(`Workout ${workoutId} has no compiled timeline`);
+    }
+
+    // Create session with snapshot of timeline
+    const [session] = await db.insert(blockWorkoutSessions).values({
+      userId,
+      blockWorkoutId: workoutId,
+      status: 'active',
+      snapshotTimeline: workout.executionTimeline,
+      currentStepIndex: 0,
+      startedAt: new Date()
+    }).returning();
+
+    return {
+      ...session,
+      blockWorkout: workout
+    };
+  }
+
+  async getActiveBlockWorkoutSession(userId: string): Promise<any> {
+    const [session] = await db.select().from(blockWorkoutSessions)
+      .where(and(
+        eq(blockWorkoutSessions.userId, userId),
+        eq(blockWorkoutSessions.status, 'active')
+      ))
+      .orderBy(desc(blockWorkoutSessions.startedAt))
+      .limit(1);
+
+    if (!session) {
+      return null;
+    }
+
+    // Get the workout data
+    const workout = await this.getBlockWorkout(session.blockWorkoutId);
+
+    return {
+      ...session,
+      blockWorkout: workout
+    };
   }
 }
 

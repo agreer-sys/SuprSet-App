@@ -39,10 +39,40 @@ export default function WorkoutSessionPage() {
   const lastRestAnnouncement = useRef<number | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch active workout session (may include workoutTemplate) - MUST be before useRealtimeVoice
-  const { data: session, isLoading } = useQuery<any>({
-    queryKey: ['/api/workout-sessions/active'],
+  // Fetch active workout session - try block workout first, then fall back to template
+  const { data: blockSession } = useQuery<any>({
+    queryKey: ['/api/block-workout-sessions/active'],
+    retry: false, // Don't retry on 404
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/block-workout-sessions/active', {
+          credentials: 'include'
+        });
+        if (response.status === 404) {
+          return null; // No active block session
+        }
+        if (!response.ok) {
+          throw new Error('Failed to fetch block workout session');
+        }
+        return response.json();
+      } catch (error) {
+        console.log('No active block workout session');
+        return null;
+      }
+    }
   });
+
+  // Fallback to template-based workout if no block workout session
+  const { data: templateSession, isLoading } = useQuery<any>({
+    queryKey: ['/api/workout-sessions/active'],
+    enabled: blockSession === null || blockSession === undefined, // Only fetch if no block session
+  });
+
+  // Use block session if available, otherwise template session
+  const session = blockSession || templateSession;
+  const isBlockWorkout = !!blockSession;
+  const executionTimeline = blockSession?.snapshotTimeline;
+
 
   // Memoize templateExercises to prevent infinite loop - only recreate when session data changes
   const templateExercises = useMemo(() => {
@@ -695,6 +725,73 @@ export default function WorkoutSessionPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+      {/* Timeline-Based Workout (Block Workouts) */}
+      {isBlockWorkout && executionTimeline && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h1 className="text-2xl font-bold">{executionTimeline.workoutHeader.name}</h1>
+              <p className="text-muted-foreground">
+                Duration: {Math.floor(executionTimeline.workoutHeader.totalDurationSec / 60)} min
+              </p>
+            </div>
+            <Button 
+              variant="destructive" 
+              onClick={() => completeWorkoutMutation.mutate(undefined)}
+              disabled={completeWorkoutMutation.isPending}
+            >
+              {completeWorkoutMutation.isPending ? 'Ending...' : 'End Workout'}
+            </Button>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Timeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {executionTimeline.executionTimeline.slice(0, 10).map((step: any, idx: number) => (
+                  <div key={idx} className="flex gap-3 p-3 border rounded-lg">
+                    <div className="flex-shrink-0 w-16 text-sm font-mono text-muted-foreground">
+                      {Math.floor(step.atMs / 1000 / 60)}:{(Math.floor(step.atMs / 1000) % 60).toString().padStart(2, '0')}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">{step.action}</div>
+                      {step.exerciseName && (
+                        <div className="text-sm text-muted-foreground">{step.exerciseName}</div>
+                      )}
+                      {step.formCue && (
+                        <div className="text-xs text-muted-foreground italic">{step.formCue}</div>
+                      )}
+                    </div>
+                    <div className="flex-shrink-0 text-sm text-muted-foreground">
+                      {Math.floor((step.endMs - step.atMs) / 1000)}s
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                AI Coach
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Timeline-based coaching will be active during workout execution
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Legacy Template-Based Workout */}
+      {!isBlockWorkout && (
+        <>
       {/* Session Header */}
       <div className="mb-6">
         <div className="flex justify-between items-start mb-4">
@@ -1084,6 +1181,8 @@ export default function WorkoutSessionPage() {
           </Card>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
