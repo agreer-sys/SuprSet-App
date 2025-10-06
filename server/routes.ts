@@ -150,6 +150,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Admin: Create block workout (PROTECTED)
+  app.post('/api/admin/block-workouts', isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name, description, blocks: blocksData } = req.body;
+
+      if (!name || !blocksData || !Array.isArray(blocksData) || blocksData.length === 0) {
+        return res.status(400).json({ 
+          message: "Workout name and blocks array required" 
+        });
+      }
+
+      // Save workout with blocks
+      const workout = await storage.createBlockWorkout({
+        name,
+        description,
+        blocks: blocksData,
+        createdBy: userId
+      });
+
+      res.status(201).json({
+        id: workout.id,
+        name: workout.name,
+        message: "Workout created successfully"
+      });
+    } catch (error) {
+      console.error("Error creating block workout:", error);
+      res.status(500).json({ 
+        message: "Failed to create workout",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Contribution routes
   app.post('/api/contributions', isAuthenticated, async (req: any, res) => {
     try {

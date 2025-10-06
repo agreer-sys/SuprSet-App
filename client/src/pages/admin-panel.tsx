@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +58,8 @@ export default function AdminPanel() {
   const [showTimelinePreview, setShowTimelinePreview] = useState(false);
   const [compiledTimeline, setCompiledTimeline] = useState<ExecutionStep[]>([]);
   const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
+  const [workoutName, setWorkoutName] = useState("");
+  const [workoutDescription, setWorkoutDescription] = useState("");
 
   // Check if user is admin
   const { data: adminStatus, isLoading: checkingAdmin } = useQuery<{ isAdmin: boolean }>({
@@ -66,6 +69,41 @@ export default function AdminPanel() {
   // Fetch exercises from Airtable
   const { data: exercises, isLoading: loadingExercises } = useQuery<Exercise[]>({
     queryKey: ['/api/exercises'],
+  });
+
+  // Save workout mutation
+  const saveWorkoutMutation = useMutation({
+    mutationFn: async () => {
+      if (!workoutName) {
+        throw new Error("Workout name is required");
+      }
+      if (blocks.length === 0) {
+        throw new Error("Add at least one block");
+      }
+
+      return await apiRequest("POST", "/api/admin/block-workouts", {
+        name: workoutName,
+        description: workoutDescription,
+        blocks: blocks
+      });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Workout saved!",
+        description: `${data.name} has been created successfully`
+      });
+      // Reset form
+      setBlocks([]);
+      setWorkoutName("");
+      setWorkoutDescription("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to save workout",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   if (checkingAdmin) {
@@ -459,7 +497,33 @@ export default function AdminPanel() {
                 Preview and manage your workout sequence
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {blocks.length > 0 && (
+                <div className="space-y-3 border-b pb-4">
+                  <div>
+                    <Label htmlFor="workout-name">Workout Name *</Label>
+                    <Input
+                      id="workout-name"
+                      data-testid="input-workout-name"
+                      value={workoutName}
+                      onChange={(e) => setWorkoutName(e.target.value)}
+                      placeholder="e.g., Upper Body Power"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="workout-description">Description</Label>
+                    <Textarea
+                      id="workout-description"
+                      data-testid="input-workout-description"
+                      value={workoutDescription}
+                      onChange={(e) => setWorkoutDescription(e.target.value)}
+                      placeholder="Brief description of this workout"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              )}
+              
               {blocks.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <p>No blocks added yet</p>
@@ -558,9 +622,14 @@ export default function AdminPanel() {
 
               {blocks.length > 0 && (
                 <div className="mt-4 flex gap-2">
-                  <Button className="flex-1" data-testid="button-save-workout">
+                  <Button 
+                    className="flex-1" 
+                    data-testid="button-save-workout"
+                    onClick={() => saveWorkoutMutation.mutate()}
+                    disabled={saveWorkoutMutation.isPending || !workoutName}
+                  >
                     <Save className="mr-2 h-4 w-4" />
-                    Save Workout
+                    {saveWorkoutMutation.isPending ? "Saving..." : "Save Workout"}
                   </Button>
                   <Button 
                     variant="outline" 

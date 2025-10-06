@@ -13,6 +13,9 @@ import {
   workoutTemplates,
   workoutSections,
   workoutExercises,
+  blocks,
+  blockExercises,
+  blockWorkouts,
   type Exercise, 
   type InsertExercise,
   type WorkoutSession,
@@ -40,11 +43,17 @@ import {
   type WorkoutSection,
   type InsertWorkoutSection,
   type WorkoutExercise,
-  type InsertWorkoutExercise
+  type InsertWorkoutExercise,
+  type Block,
+  type InsertBlock,
+  type BlockExercise,
+  type InsertBlockExercise,
+  type BlockWorkout
 } from "@shared/schema";
 import { airtableService } from "./airtable";
 import { db } from "./db";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
+import { compileBlockToTimeline, type ExecutionTimeline, type TimelineStep } from "./timeline-compiler";
 
 export interface IStorage {
   // Exercise methods
@@ -121,6 +130,20 @@ export interface IStorage {
     byEquipment: Record<string, number>;
     byDataset: Record<string, number>;
   }>;
+  
+  // Block Workout methods
+  createBlockWorkout(data: {
+    name: string;
+    description?: string;
+    blocks: Array<{
+      id: string;
+      name: string;
+      description: string;
+      params: any;
+      exercises: number[];
+    }>;
+    createdBy: string;
+  }): Promise<BlockWorkout>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -987,6 +1010,188 @@ export class DatabaseStorage implements IStorage {
       ...we,
       exercise: this.exerciseCache.get(we.exerciseId)!
     })).filter(we => we.exercise); // Filter out exercises that don't exist in cache
+  }
+
+  async createBlockWorkout(data: {
+    name: string;
+    description?: string;
+    blocks: Array<{
+      id: string;
+      name: string;
+      description: string;
+      params: any;
+      exercises: number[];
+    }>;
+    createdBy: string;
+  }): Promise<BlockWorkout> {
+    // Refresh cache to ensure we have latest exercise data
+    await this.refreshCache();
+    
+    // Collect all unique exercise IDs
+    const allExerciseIds = new Set<number>();
+    data.blocks.forEach(block => {
+      block.exercises.forEach(exId => allExerciseIds.add(exId));
+    });
+
+    // Validate all exercises exist
+    const missingExercises = Array.from(allExerciseIds).filter(id => !this.exerciseCache.has(id));
+    if (missingExercises.length > 0) {
+      throw new Error(`Exercise IDs not found in Airtable: ${missingExercises.join(', ')}`);
+    }
+
+    // Create workout first
+    const [workout] = await db.insert(blockWorkouts).values({
+      name: data.name,
+      description: data.description,
+      createdBy: data.createdBy,
+      blockSequence: [],
+      estimatedDurationMin: 0
+    }).returning();
+
+    // Create blocks and exercises
+    for (let i = 0; i < data.blocks.length; i++) {
+      const blockData = data.blocks[i];
+      
+      // Create block
+      const [block] = await db.insert(blocks).values({
+        name: blockData.name,
+        description: blockData.description,
+        type: blockData.params.type || 'custom_sequence',
+        params: blockData.params,
+        createdBy: data.createdBy
+      }).returning();
+
+      // Create block exercises with snapshot data
+      for (let j = 0; j < blockData.exercises.length; j++) {
+        const exerciseId = blockData.exercises[j];
+        const exercise = this.exerciseCache.get(exerciseId)!;
+        
+        await db.insert(blockExercises).values({
+          blockId: block.id,
+          exerciseId: exercise.id,
+          orderIndex: j,
+          exerciseName: exercise.name,
+          primaryMuscleGroup: exercise.primaryMuscleGroup || undefined,
+          movementPattern: exercise.movementPattern || undefined,
+          equipmentPrimary: exercise.equipmentPrimary || exercise.equipment,
+          equipmentSecondary: exercise.equipmentSecondary || [],
+          coachingBulletPoints: exercise.coachingBulletPoints || undefined,
+          videoUrl: exercise.videoUrl || undefined,
+          imageUrl: exercise.imageUrl || undefined
+        });
+      }
+
+      // Update workout's block sequence
+      const updatedSequence = [
+        ...(workout.blockSequence || []),
+        { blockId: block.id, orderIndex: i }
+      ];
+      
+      await db.update(blockWorkouts)
+        .set({ blockSequence: updatedSequence })
+        .where(eq(blockWorkouts.id, workout.id));
+    }
+
+    // Now compile the timeline from all blocks
+    const allBlocks = await db.select().from(blocks)
+      .where(inArray(blocks.id, workout.blockSequence.map(b => b.blockId)));
+    
+    // Fetch exercises for each block
+    const blocksWithExercises = await Promise.all(
+      allBlocks.map(async (block) => {
+        const exercises = await db.select().from(blockExercises)
+          .where(eq(blockExercises.blockId, block.id))
+          .orderBy(blockExercises.orderIndex);
+        return { ...block, exercises };
+      })
+    );
+
+    // Sort blocks by workout sequence
+    const sortedBlocks = workout.blockSequence
+      .map(seq => blocksWithExercises.find(b => b.id === seq.blockId)!)
+      .filter(Boolean);
+
+    // Compile each block and combine into one timeline
+    const allSteps: TimelineStep[] = [];
+    let currentTimeMs = 0;
+    let stepCounter = 1;
+
+    for (let i = 0; i < sortedBlocks.length; i++) {
+      const block = sortedBlocks[i];
+      const isFirstBlock = i === 0;
+      
+      // Compile this block
+      const blockTimeline = await compileBlockToTimeline(
+        block,
+        {
+          workoutName: data.name,
+          workoutStructure: "block_sequence",
+          includeIntro: isFirstBlock
+        }
+      );
+
+      // Add all steps from this block, adjusting timestamps
+      for (const step of blockTimeline.executionTimeline) {
+        allSteps.push({
+          ...step,
+          step: stepCounter++,
+          atMs: currentTimeMs + step.atMs,
+          endMs: currentTimeMs + step.endMs
+        });
+      }
+
+      // Advance time to end of this block
+      if (blockTimeline.executionTimeline.length > 0) {
+        const lastStep = blockTimeline.executionTimeline[blockTimeline.executionTimeline.length - 1];
+        currentTimeMs += lastStep.endMs;
+      }
+    }
+
+    const totalDurationSec = Math.floor(currentTimeMs / 1000);
+
+    // Validate compiled timeline
+    if (allSteps.length === 0) {
+      throw new Error("Failed to compile workout: no steps generated");
+    }
+
+    // Validate chronological order
+    for (let i = 1; i < allSteps.length; i++) {
+      if (allSteps[i].atMs < allSteps[i-1].endMs) {
+        throw new Error(`Timeline validation failed: step ${i} overlaps with previous step`);
+      }
+    }
+
+    // Create the complete execution timeline
+    const executionTimeline: ExecutionTimeline = {
+      workoutHeader: {
+        name: data.name,
+        totalDurationSec,
+        structure: "block_sequence"
+      },
+      executionTimeline: allSteps,
+      sync: {
+        workoutStartEpochMs: 0, // Will be set when session starts
+        resyncEveryMs: 15000,
+        allowedDriftMs: 250
+      }
+    };
+
+    // Update workout with compiled timeline and increment version
+    await db.update(blockWorkouts)
+      .set({ 
+        executionTimeline,
+        estimatedDurationMin: Math.ceil(totalDurationSec / 60),
+        isPublished: true,
+        publishedAt: new Date(),
+        version: (workout.version || 0) + 1
+      })
+      .where(eq(blockWorkouts.id, workout.id));
+
+    // Fetch the complete workout with timeline
+    const [completeWorkout] = await db.select().from(blockWorkouts)
+      .where(eq(blockWorkouts.id, workout.id));
+    
+    return completeWorkout;
   }
 }
 
