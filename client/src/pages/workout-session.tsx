@@ -110,7 +110,7 @@ export default function WorkoutSessionPage() {
     
     switch (functionName) {
       case 'pause_workout':
-        // Save current state before pausing
+        // Save current state before pausing (template workouts)
         if (isWorking) {
           pausedState.current = { phase: 'work', timeRemaining: workTimer };
         } else if (isResting) {
@@ -119,10 +119,9 @@ export default function WorkoutSessionPage() {
           pausedState.current = { phase: 'countdown', timeRemaining: countdown };
         }
         setIsPaused(true);
-        // DON'T set isWorking/isResting to false - keep timer visible during pause
         break;
       case 'resume_workout':
-        // Restore previous state
+        // Restore previous state (template workouts)
         setIsPaused(false);
         if (pausedState.current.phase === 'work') {
           setWorkTimer(pausedState.current.timeRemaining);
@@ -134,6 +133,12 @@ export default function WorkoutSessionPage() {
           setCountdown(pausedState.current.timeRemaining);
         }
         pausedState.current = { phase: null, timeRemaining: 0 };
+        break;
+      case 'confirm_ready':
+        // For await_ready steps in block workouts - trigger ready confirmation
+        if (isAwaitingReady) {
+          handleReadyConfirmed();
+        }
         break;
       case 'start_countdown':
         setCountdown(10);
@@ -147,7 +152,7 @@ export default function WorkoutSessionPage() {
         setCurrentSet(prev => prev + 1);
         break;
     }
-  }, [isWorking, isResting, countdown, workTimer, restTimer]);
+  }, [isWorking, isResting, countdown, workTimer, restTimer, isAwaitingReady]);
 
   const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
     setCoachingMessage(transcript);
@@ -821,6 +826,30 @@ export default function WorkoutSessionPage() {
       setCurrentStepIndex(currentStepIndex + 1);
     }
   };
+
+  // Send executionTimeline context to Realtime API (only on meaningful changes)
+  useEffect(() => {
+    if (!realtime.isConnected || !isBlockWorkout || !executionTimeline) return;
+
+    const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
+      ? executionTimeline.executionTimeline[currentStepIndex]
+      : null;
+
+    const context = {
+      executionTimeline,
+      currentStepIndex,
+      currentStep,
+      isAwaitingReady,
+      workoutPhase: isPaused ? 'paused' : (currentStep?.type || 'unknown'),
+      timeRemaining: currentStep ? Math.max(0, Math.ceil((currentStep.endMs - currentStep.atMs) / 1000)) : 0,
+      // Populate exercise info for coach context
+      currentExercise: currentStep?.exerciseName || null,
+      currentExerciseIndex: currentStepIndex + 1,
+    };
+
+    console.log('📡 Sending timeline context to Realtime API:', { currentStepIndex, isAwaitingReady, isPaused });
+    realtime.updateContext(context);
+  }, [realtime.isConnected, isBlockWorkout, executionTimeline, currentStepIndex, isAwaitingReady, isPaused]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
