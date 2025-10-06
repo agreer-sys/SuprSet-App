@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
 import { 
   insertContributionSchema, 
   insertSuperSetSchema, 
@@ -128,6 +128,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
+  });
+
+  // Admin check endpoint
+  app.get('/api/auth/is-admin', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json({ isAdmin: user?.isAdmin || false });
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      res.status(500).json({ message: "Failed to check admin status" });
+    }
+  });
+
+  // Test admin endpoint (protected by isAdmin middleware)
+  app.get('/api/admin/test', isAdmin, async (req: any, res) => {
+    res.json({ 
+      message: "Admin access confirmed", 
+      userId: req.user.claims.sub 
+    });
   });
 
   // Contribution routes
