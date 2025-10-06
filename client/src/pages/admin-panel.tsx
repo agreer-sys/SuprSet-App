@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, Save, Eye } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Eye, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import type { Exercise } from "@shared/schema";
 import { TimelinePreview } from "@/components/TimelinePreview";
 
@@ -56,6 +56,7 @@ export default function AdminPanel() {
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [showTimelinePreview, setShowTimelinePreview] = useState(false);
   const [compiledTimeline, setCompiledTimeline] = useState<ExecutionStep[]>([]);
+  const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
 
   // Check if user is admin
   const { data: adminStatus, isLoading: checkingAdmin } = useQuery<{ isAdmin: boolean }>({
@@ -161,6 +162,49 @@ export default function AdminPanel() {
 
   const getExerciseName = (exerciseId: number) => {
     return exercises?.find(ex => ex.id === exerciseId)?.name || "Unknown";
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedBlockIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedBlockIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (dropIndex: number) => {
+    if (draggedBlockIndex === null) return;
+    
+    const newBlocks = [...blocks];
+    const draggedBlock = newBlocks[draggedBlockIndex];
+    newBlocks.splice(draggedBlockIndex, 1);
+    newBlocks.splice(dropIndex, 0, draggedBlock);
+    
+    setBlocks(newBlocks);
+    setDraggedBlockIndex(null);
+    
+    toast({
+      title: "Block reordered",
+      description: "Workout sequence updated"
+    });
+  };
+
+  const moveBlockUp = (index: number) => {
+    if (index === 0) return;
+    const newBlocks = [...blocks];
+    [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
+    setBlocks(newBlocks);
+  };
+
+  const moveBlockDown = (index: number) => {
+    if (index === blocks.length - 1) return;
+    const newBlocks = [...blocks];
+    [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
+    setBlocks(newBlocks);
   };
 
   const compileTimeline = () => {
@@ -426,31 +470,67 @@ export default function AdminPanel() {
                   {blocks.map((block, index) => (
                     <div
                       key={block.id}
-                      className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop(index)}
+                      className={`p-4 border rounded-lg transition-colors ${
+                        draggedBlockIndex === index 
+                          ? 'opacity-50 bg-muted' 
+                          : 'hover:bg-muted/50 cursor-move'
+                      }`}
                       data-testid={`block-item-${index}`}
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="font-semibold">{index + 1}. {block.name}</h3>
-                          <p className="text-sm text-muted-foreground">{block.params.type}</p>
+                      <div className="flex items-start gap-2 mb-2">
+                        <div className="flex flex-col gap-1 mt-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => moveBlockUp(index)}
+                            disabled={index === 0}
+                            data-testid={`button-move-up-${index}`}
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </Button>
+                          <GripVertical className="h-4 w-4 text-muted-foreground" />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => moveBlockDown(index)}
+                            disabled={index === blocks.length - 1}
+                            data-testid={`button-move-down-${index}`}
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </Button>
                         </div>
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => duplicateBlock(block)}
-                            data-testid={`button-duplicate-${index}`}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removeBlock(block.id)}
-                            data-testid={`button-remove-${index}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="font-semibold">{index + 1}. {block.name}</h3>
+                              <p className="text-sm text-muted-foreground">{block.params.type}</p>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => duplicateBlock(block)}
+                                data-testid={`button-duplicate-${index}`}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => removeBlock(block.id)}
+                                data-testid={`button-remove-${index}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       {block.description && (
