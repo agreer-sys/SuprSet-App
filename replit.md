@@ -1,7 +1,7 @@
 # SuprSet - Strength Training Superset Recommendation App
 
 ## Overview
-SuprSet is a React-based web application designed to provide intelligent exercise superset recommendations for strength training. It leverages an extensive Airtable database of 194 exercises with detailed metadata and employs sophisticated pairing logic to suggest optimal exercise combinations. The project's vision is to build a community-driven AI system for real-time computer vision-based exercise analysis, enabling intelligent recommendations and user contributions for a proprietary dataset. Key capabilities include dual-mode recommendations (Trainer/Standard), real-time computer vision with pose and object detection, a community contribution system with quality controls, user authentication, and an AI training pipeline with intelligent image optimization.
+SuprSet is a React-based web application providing intelligent exercise superset recommendations for strength training. It utilizes an extensive Airtable database of 194 exercises and sophisticated pairing logic. The project aims to build a community-driven AI system for real-time computer vision-based exercise analysis, enabling intelligent recommendations and user contributions for a proprietary dataset. Key capabilities include dual-mode recommendations (Trainer/Standard), real-time computer vision with pose and object detection, a community contribution system with quality controls, user authentication, and an AI training pipeline with intelligent image optimization. The vision is to create a community-driven AI system for real-time computer vision-based exercise analysis, enabling intelligent recommendations and user contributions for a proprietary dataset.
 
 ## User Preferences
 - **Development Process**: Maintain master TODO.md list - add all discussed/suggested features to this central roadmap
@@ -9,76 +9,49 @@ SuprSet is a React-based web application designed to provide intelligent exercis
 - **Testing Requirements**: Always confirm all adjustments work properly on mobile browser before reporting completion - mobile-first validation mandatory
 - **Strategic Vision**: Build community-driven AI model rather than relying on generic solutions - create competitive moat through proprietary datasets
 
-## Recent Changes (October 2025)
-- **Block-Based Workout Architecture (NEW)**: Transitioning to flexible Block system where workouts are built from parameter-driven Blocks that compile into ExecutionTimelines with absolute timestamps. Replaces hardcoded AMRAP/EMOM/Tabata formats with universal Block params. Compiler transforms Block params → flat timeline → Realtime API coach. Admin panel in development for backend-only workout creation.
-- **Drift-Free Timeline Execution (NEW)**: Implemented absolute timestamp system (atMs/endMs) with drift detection monitoring setInterval timing accuracy (±250ms tolerance). 15-second resync validation ensures correct step progression. Pause/resume properly freezes elapsed time by tracking pause duration separately. System is inherently drift-free by recalculating from wall clock each tick.
-- **await_ready Step Type Handler (NEW)**: Timeline pauses at await_ready steps, waiting for user confirmation before continuing. Auto-pauses workout, displays special UI with confirmation button, and re-anchors timeline upon confirmation. Re-anchoring adjusts workoutStartEpochMs (newStartMs = Date.now() - totalPausedMs - step.atMs) so next step starts immediately while maintaining timeline position. Properly finalizes active pause before re-anchoring to prevent desynchronization.
-- **Admin Authentication System (NEW)**: Added isAdmin boolean field to users table with dedicated isAdmin middleware. Admin-protected endpoints (/api/admin/*) restrict workout creation tools to authorized users only. Endpoints: /api/auth/is-admin for status checks, /api/admin/test for middleware verification. **Admin Creation**: Must be done via direct database access (execute SQL: `UPDATE users SET is_admin = true WHERE id = 'user_id_here'`) for security. The upsertUser function preserves admin status across logins.
-- **Exercise Catalog with Media Support (NEW)**: Airtable service now includes videoUrl and imageUrl fields for future Phase 2 video/illustration integration. Database schema supports media storage, ready for visual exercise guidance.
-- **OpenAI Realtime API Integration**: Replaced text-based LangChain coach with OpenAI Realtime API for true conversational voice interaction. Bidirectional audio streaming via WebSocket provides ~500ms latency (vs 2-3s previously), natural interruptions, and native function calling for workout controls (pause/resume/countdown/next). Server-side relay injects RAG knowledge base context into session instructions.
-- **Removed Picovoice/Porcupine**: Eliminated wake-word detection in favor of simpler push-to-talk system with continuous conversation mode.
-- **Continuous Conversation Mode**: Microphone automatically stays open after AI responds, allowing natural back-and-forth dialogue without button presses. Feedback loop prevention via mic pause during AI playback.
-- **Real-time Workout Context Sync**: AI receives live updates about workout state (work/rest timers, current exercise, phase transitions) via WebSocket context updates for contextual coaching.
-- **Fixed Audio System**: Separated workout timer beeps from Realtime API audio to prevent conflicts. Beeps now work reliably during voice conversations.
-
-## Previous Changes (September 2025)
-- **Pre-Built Workout System with Coach Context Snapshotting**: Implemented intelligent workout template system that snapshots exercise data from Airtable at creation time. Each workout exercise stores AI Coach context (primaryMuscleGroup, movementPattern, equipmentPrimary, equipmentSecondary, coachingBulletPoints) eliminating runtime Airtable calls and guaranteeing reliable coach guidance. Added "9-Minute Power Block" as first timed circuit workout (3 rounds × 3 exercises: Dumbbell Clean and Press, Tricep Pushdown Rope, Squat Jump with 30s work/30s rest intervals)
-- **AI Workout Coach with Voice Interaction**: Integrated LangChain + OpenAI GPT-3.5-turbo powered real-time coaching system (cost-optimized from GPT-4) for pre-built template workouts. Features: personalized introduction messages, 10-second countdown trigger on user readiness confirmation, browser-based text-to-speech voice output, three coaching styles (motivational/technical/casual) with enhanced human-like conversational prompts, and workout control command detection (STOP/PAUSE/RESUME/READY) for natural voice-based interaction
-  - **Speech-to-Text Input (October 2025)**: Implemented browser-native speech recognition with manual microphone button activation, auto-send on completion, visual listening indicators, and permission handling. Uses react-speech-recognition library with idempotent message sending and transcript snapshot pattern
-  - **Wake-Word Activation (In Progress)**: Picovoice Porcupine integration for hands-free "Hey Coach" voice commands. Dual-mode system allows both manual mic button AND wake-word activation with toggle control
-  - **Future: Voice-Based Workout Tracking**: Coach will ask for weight and reps data post-exercise, storing performance metrics for progressive overload tracking and personalized recommendations
-- **Enhanced Trainer Pairs Interface**: Added advanced exercise filtering system with category, equipment, and muscle group filters matching main "Select Exercise" functionality
-- **Improved Navigation**: Integrated header navigation in trainer pairs page with Home and Super Sets links for seamless app navigation
-- **User Experience Enhancements**: Added individual clear buttons for filter sections, increased exercise search results to 12 items, mobile-responsive design
-- **Database Expansion**: Added 12 new tricep exercises, expanding from 194 to 206 total exercises with real-time Airtable sync
-- **Database Consolidation Plan**: Simplified muscle group structure from 38 to 10 primary categories (Back, Chest, Shoulders, Biceps, Triceps, Legs, Glutes, Core, Posterior Chain, Accessory) with detailed secondary targeting
-- **Unified Equipment Classification**: Implemented revolutionary "Adjustable Bench" system transforming 35+ exercises across flat/incline/decline positions into one versatile equipment type with position indicators
-- **Enhanced Pairing Algorithm**: Advanced three-field equipment scoring system (Primary 35pts + Secondary 25pts + Type 15pts) for superior exercise recommendations
-- **Interactive Training Data**: Added relabeling functionality to image viewer with edit buttons and dropdowns for correcting AI training labels in real-time
-- **Authentication Status**: Authentication working on mobile but web preview shows 401 errors - temporarily deferred to focus on core functionality development
-
 ## System Architecture
-The application follows a client-server architecture with a React frontend and an Express.js backend.
+The application uses a client-server architecture with a React frontend and an Express.js backend.
 
 **Frontend (React + TypeScript)**
-- **Framework**: React with TypeScript, Vite build system
-- **Routing**: Wouter for client-side navigation
-- **UI Components**: Shadcn/ui with Tailwind CSS styling
-- **State Management**: React Query for server state, local useState for UI state
-- **Key Components**: Exercise Selection, Recommendation Engine (dual-mode logic), Workout Timer, Exercise Modal.
-- **UI/UX Decisions**: Focus on responsive design with Shadcn/ui and Tailwind CSS for a modern, clean interface. Mobile-first validation is critical.
-- **Computer Vision Integration**: Utilizes MediaPipe BlazePose for human pose detection and COCO-SSD for object detection. Includes spatial mapping with equipment zones and a Roboflow API integration framework for custom dataset training. Configured for back-facing camera optimization and includes WebGL/WebGPU fallback.
-- **Contribution System**: Comprehensive image contribution system with quality control, crowdsourced labeling, and gamification framework. Integrated with gym mapping interface, allowing for equipment tagging and privacy controls. Features an enhanced user tagging system with custom descriptive tags and batch upload capabilities with duplicate image detection.
+- **Framework**: React with TypeScript, Vite.
+- **Routing**: Wouter.
+- **UI Components**: Shadcn/ui with Tailwind CSS for a responsive, modern interface. Mobile-first validation is crucial.
+- **State Management**: React Query for server state, local `useState` for UI state.
+- **Computer Vision**: Integrates MediaPipe BlazePose for human pose detection and COCO-SSD for object detection, with spatial mapping and Roboflow API for custom dataset training. Configured for back-facing camera optimization and WebGL/WebGPU fallback.
+- **Contribution System**: Comprehensive image contribution system with quality control, crowdsourced labeling, gamification, and equipment tagging.
 
 **Backend (Express + Node.js)**
-- **Server**: Express.js with TypeScript
-- **Data Source**: Airtable API integration for exercise database
-- **Storage**: PostgreSQL database for persistent data, replacing prior in-memory storage.
-- **API Endpoints**: RESTful design for exercises, recommendations, search, and handling user contributions.
-- **Authentication**: Full Replit Auth system with OpenID Connect integration, using a PostgreSQL database for session and user management.
-- **AI Training Pipeline**: Supports image compression (640x640 pixels, 70% JPEG quality) for efficient training data handling. Includes a PostgreSQL schema for AI training optimization with automatic training dataset management (70% train, 15% validation, 15% test split), quality control (moderation status, duplicate detection), and a training data export API.
-- **AI Workout Coach**: Real-time LangChain + OpenAI GPT-3.5-turbo powered coaching system (cost-optimized) with context-aware responses, enhanced human-like conversational prompts, workout-specific introductions, readiness detection for countdown triggers, workout control command detection (STOP/PAUSE/RESUME/READY), and browser-based speech synthesis for voice output. Supports three coaching styles (motivational, technical, casual) and maintains conversation history for personalized guidance.
-- **Workout Template System**: Pre-built workouts store snapshotted exercise data (primaryMuscleGroup, movementPattern, equipment, coachingBulletPoints) at creation time, eliminating Airtable dependencies during workouts. Seeding function validates all exercise IDs exist before creating templates, guaranteeing complete coach context for every exercise. Supports multiple timing structures: traditional strength training, timed circuits (AMRAP/EMOM/Tabata), and hybrid formats.
+- **Server**: Express.js with TypeScript.
+- **Data Source**: Airtable API for exercise database.
+- **Storage**: PostgreSQL database for persistent data, user management, and AI training data.
+- **API Endpoints**: RESTful design for exercises, recommendations, search, and user contributions.
+- **Authentication**: Full Replit Auth with OpenID Connect.
+- **AI Training Pipeline**: Supports image compression and a PostgreSQL schema for AI training optimization with automatic dataset management and quality control.
+- **AI Workout Coach**: Real-time OpenAI Realtime API (GPT-3.5-turbo optimized) for conversational voice interaction with ~500ms latency, natural interruptions, and native function calling for workout controls. Server-side relay injects RAG knowledge base context. The coach receives full `executionTimeline` context for block workouts with throttled updates.
+- **Block-Based Workout Architecture**: Workouts are built from parameter-driven Blocks that compile into ExecutionTimelines with absolute timestamps. This replaces hardcoded workout formats with universal Block parameters. An admin panel for backend-only workout creation is in development.
+- **Drift-Free Timeline Execution**: Utilizes an absolute timestamp system with drift detection and 15-second resync validation. Pause/resume functionality properly freezes elapsed time.
+- **`await_ready` Step Type Handler**: The timeline pauses at `await_ready` steps, awaiting user confirmation via a special UI button, and re-anchors the timeline upon confirmation.
+- **Admin Authentication System**: `isAdmin` boolean field in the users table with dedicated middleware restricts access to `/api/admin/*` endpoints. Admin status is preserved across logins via the `upsertUser` function. Admin creation requires direct database access.
 
 **Data Integration**
-- **Airtable Service**: Handles API calls and data transformation for the exercise database.
-- **Exercise Schema**: Standardized interface from Airtable to application with 213 exercises across simplified muscle group structure.
-- **Caching Strategy**: 5-minute cache expiry for Airtable data with real-time sync for database updates.
-- **Muscle Group Consolidation**: Simplified from 38 specific targets to 10 primary categories (Back, Chest, Shoulders, Biceps, Triceps, Legs, Glutes, Core, Posterior Chain, Accessory) with secondary muscle group detail for precise targeting.
+- **Airtable Service**: Handles API calls and data transformation.
+- **Exercise Schema**: Standardized interface from Airtable to application.
+- **Caching**: 5-minute cache expiry for Airtable data with real-time sync.
+- **Muscle Group Consolidation**: Simplified from 38 to 10 primary categories (Back, Chest, Shoulders, Biceps, Triceps, Legs, Glutes, Core, Posterior Chain, Accessory) with secondary targeting.
 
 **Recommendation System**
-- **Standard Mode**: 0-100 scoring algorithm for broad recommendations.
-- **Trainer Mode**: Binary pass/fail filtering based on strict professional criteria.
-- **Pairing Logic**: Two-tier system combining curated exact exercise-to-exercise mappings with exercise type antagonist pairing (Push↔Pull, Squat↔Hinge, Lunge↔Hinge) for reliability.
-- **Trainer Pairs Management**: Professional interface with advanced filtering (category, equipment, muscle group), analytics dashboard, and approval workflow for managing curated exercise pairings.
+- **Standard Mode**: 0-100 scoring algorithm.
+- **Trainer Mode**: Binary pass/fail filtering based on strict criteria.
+- **Pairing Logic**: Two-tier system combining curated exact exercise-to-exercise mappings with exercise type antagonist pairing.
+- **Trainer Pairs Management**: Professional interface with advanced filtering, analytics, and approval workflow.
 
 ## External Dependencies
 - **Airtable**: Primary database for exercise data.
-- **MediaPipe BlazePose**: Used for human pose detection in computer vision.
-- **COCO-SSD**: Used for baseline gym equipment object detection.
-- **Roboflow**: API integration for custom dataset training and management for the AI model.
-- **TensorFlow.js**: Underlying library for machine learning models, with CPU backend fallback for development environments.
-- **PostgreSQL**: Database for user authentication, session management, and storing community contributions for AI training.
-- **Replit Auth (OpenID Connect)**: For user authentication and session management.
-- **OpenAI GPT-3.5-turbo**: Powers the AI Workout Coach (cost-optimized from GPT-4) with intelligent, context-aware coaching responses, enhanced conversational prompts, and workout command detection.
-- **LangChain**: Framework for orchestrating AI coach conversations, managing conversation history, and integrating with OpenAI GPT-4.
+- **MediaPipe BlazePose**: Human pose detection.
+- **COCO-SSD**: Baseline gym equipment object detection.
+- **Roboflow**: API for custom dataset training and management.
+- **TensorFlow.js**: Machine learning models library.
+- **PostgreSQL**: Database for user authentication, session management, and AI training data.
+- **Replit Auth (OpenID Connect)**: User authentication and session management.
+- **OpenAI Realtime API (GPT-3.5-turbo)**: Powers the AI Workout Coach.
+- **LangChain**: Orchestrates AI coach conversations (used for context management).
