@@ -43,6 +43,7 @@ export default function WorkoutSessionPage() {
   const [workoutStartEpochMs, setWorkoutStartEpochMs] = useState<number | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [isAwaitingReady, setIsAwaitingReady] = useState(false);
   const lastResyncMs = useRef(0);
   const timerRef = useRef<number | null>(null);
   const pauseStartMs = useRef<number | null>(null);
@@ -744,6 +745,14 @@ export default function WorkoutSessionPage() {
         }
       }
 
+      // Check if we've reached an await_ready step
+      const currentStep = newStepIndex < steps.length ? steps[newStepIndex] : null;
+      if (currentStep && currentStep.type === 'await_ready' && !isAwaitingReady) {
+        console.log(`⏸️ Reached await_ready step at ${Math.floor(elapsed / 1000)}s - waiting for user confirmation`);
+        setIsAwaitingReady(true);
+        setIsPaused(true); // Auto-pause on await_ready
+      }
+
       if (newStepIndex !== currentStepIndex) {
         console.log(`📍 Step transition: ${currentStepIndex} → ${newStepIndex} at ${Math.floor(elapsed / 1000)}s`);
         setCurrentStepIndex(newStepIndex);
@@ -781,7 +790,37 @@ export default function WorkoutSessionPage() {
         clearInterval(timerRef.current);
       }
     };
-  }, [isBlockWorkout, executionTimeline, workoutStartEpochMs, isPaused, currentStepIndex, elapsedMs]);
+  }, [isBlockWorkout, executionTimeline, workoutStartEpochMs, isPaused, currentStepIndex, elapsedMs, isAwaitingReady]);
+
+  // Handler for confirming readiness - re-anchors timeline
+  const handleReadyConfirmed = () => {
+    if (!isAwaitingReady || !executionTimeline || currentStepIndex >= executionTimeline.executionTimeline.length) return;
+    
+    const currentStep = executionTimeline.executionTimeline[currentStepIndex];
+    
+    // Finalize the active pause first (await_ready auto-paused)
+    if (pauseStartMs.current) {
+      const pauseDuration = Date.now() - pauseStartMs.current;
+      totalPausedMs.current += pauseDuration;
+      console.log(`⏸️ Finalizing await_ready pause: ${Math.floor(pauseDuration / 1000)}s (total paused: ${Math.floor(totalPausedMs.current / 1000)}s)`);
+      pauseStartMs.current = null;
+    }
+    
+    // Re-anchor: adjust workoutStartEpochMs so that current elapsed time stays at step.atMs
+    // but the wall clock is "now" - this makes the next step start immediately
+    const newWorkoutStartEpochMs = Date.now() - totalPausedMs.current - currentStep.atMs;
+    
+    console.log(`✅ Ready confirmed! Re-anchoring timeline from ${workoutStartEpochMs} to ${newWorkoutStartEpochMs}`);
+    
+    setWorkoutStartEpochMs(newWorkoutStartEpochMs);
+    setIsAwaitingReady(false);
+    setIsPaused(false); // Resume workout
+    
+    // Move to next step
+    if (currentStepIndex + 1 < executionTimeline.executionTimeline.length) {
+      setCurrentStepIndex(currentStepIndex + 1);
+    }
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -890,6 +929,31 @@ export default function WorkoutSessionPage() {
               <CardContent>
                 {(() => {
                   const step = executionTimeline.executionTimeline[currentStepIndex];
+                  
+                  // Special UI for await_ready step
+                  if (step.type === 'await_ready') {
+                    return (
+                      <div className="space-y-4 text-center py-6">
+                        <div>
+                          <div className="text-2xl font-bold mb-2">{step.label || "Ready to start?"}</div>
+                          <div className="text-muted-foreground mb-4">
+                            {step.coachPrompt || "Take a moment to prepare. When you're ready, click the button below."}
+                          </div>
+                        </div>
+                        <Button 
+                          size="lg"
+                          onClick={handleReadyConfirmed}
+                          className="w-full"
+                          data-testid="button-ready-confirm"
+                        >
+                          <CheckCircle className="h-5 w-5 mr-2" />
+                          I'm Ready
+                        </Button>
+                      </div>
+                    );
+                  }
+                  
+                  // Normal step UI
                   const stepElapsed = elapsedMs - step.atMs;
                   const stepDuration = step.endMs - step.atMs;
                   const stepRemaining = Math.max(0, Math.ceil((stepDuration - stepElapsed) / 1000));
