@@ -44,6 +44,12 @@ The application uses a client-server architecture with a React frontend and an E
 - **Trainer Mode**: Binary pass/fail filtering based on strict criteria.
 - **Pairing Logic**: Two-tier system combining curated exact exercise-to-exercise mappings with exercise type antagonist pairing.
 - **Trainer Pairs Management**: Professional interface with advanced filtering, analytics, and approval workflow.
+- **Block Format Conversion (NEW)**: Two API endpoints convert superset recommendations to Block format compatible with the compiler pipeline:
+  - `/api/recommendations/preview-block` (public) - Read-only preview of Block structure
+  - `/api/recommendations/create-block` (admin) - Converts pairs to Blocks for admin panel
+  - Proper numeric validation/coercion prevents string concatenation bugs
+  - Full Airtable exercise snapshots included for coach context
+  - Default params: 3 sets, 45s work, 60s rest, 10s transition
 
 ## External Dependencies
 - **Airtable**: Primary database for exercise data.
