@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Trash2, Save, Eye } from "lucide-react";
 import type { Exercise } from "@shared/schema";
+import { TimelinePreview } from "@/components/TimelinePreview";
 
 interface BlockParams {
   type: "work" | "rest" | "await_ready" | "form_cue" | "transition";
@@ -27,6 +29,23 @@ interface Block {
   exercises: number[];
 }
 
+interface ExecutionStep {
+  atMs: number;
+  endMs: number;
+  type: 'work' | 'rest' | 'await_ready' | 'form_cue' | 'transition';
+  blockId: string;
+  exerciseId?: number;
+  exerciseName?: string;
+  durationSec?: number;
+  message?: string;
+  coachContext?: {
+    primaryMuscleGroup?: string;
+    movementPattern?: string;
+    equipmentPrimary?: string;
+    coachingBulletPoints?: string[];
+  };
+}
+
 export default function AdminPanel() {
   const { toast } = useToast();
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -35,6 +54,8 @@ export default function AdminPanel() {
   });
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState("");
+  const [showTimelinePreview, setShowTimelinePreview] = useState(false);
+  const [compiledTimeline, setCompiledTimeline] = useState<ExecutionStep[]>([]);
 
   // Check if user is admin
   const { data: adminStatus, isLoading: checkingAdmin } = useQuery<{ isAdmin: boolean }>({
@@ -140,6 +161,60 @@ export default function AdminPanel() {
 
   const getExerciseName = (exerciseId: number) => {
     return exercises?.find(ex => ex.id === exerciseId)?.name || "Unknown";
+  };
+
+  const compileTimeline = () => {
+    if (blocks.length === 0) {
+      toast({
+        title: "No blocks to compile",
+        description: "Add some blocks first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const steps: ExecutionStep[] = [];
+    let currentTimeMs = 0;
+
+    blocks.forEach((block) => {
+      const durationMs = block.params.durationMs || 0;
+      const exercise = block.exercises[0] ? exercises?.find(ex => ex.id === block.exercises[0]) : undefined;
+
+      const step: ExecutionStep = {
+        atMs: currentTimeMs,
+        endMs: currentTimeMs + durationMs,
+        type: block.params.type,
+        blockId: block.id,
+        durationSec: Math.floor(durationMs / 1000),
+      };
+
+      if (exercise) {
+        step.exerciseId = exercise.id;
+        step.exerciseName = exercise.name;
+        step.coachContext = {
+          primaryMuscleGroup: exercise.primaryMuscleGroup || undefined,
+          movementPattern: exercise.movementPattern || undefined,
+          equipmentPrimary: exercise.equipmentPrimary || exercise.equipment,
+          coachingBulletPoints: exercise.coachingBulletPoints
+            ? exercise.coachingBulletPoints.split(/[\n;]/).map(c => c.trim()).filter(c => c.length > 0)
+            : undefined
+        };
+      }
+
+      if (block.params.cueText) {
+        step.message = block.params.cueText;
+      }
+
+      if (block.params.type === "await_ready") {
+        step.message = "Waiting for ready signal...";
+      }
+
+      steps.push(step);
+      currentTimeMs += durationMs;
+    });
+
+    setCompiledTimeline(steps);
+    setShowTimelinePreview(true);
   };
 
   return (
@@ -407,7 +482,11 @@ export default function AdminPanel() {
                     <Save className="mr-2 h-4 w-4" />
                     Save Workout
                   </Button>
-                  <Button variant="outline" data-testid="button-preview-timeline">
+                  <Button 
+                    variant="outline" 
+                    data-testid="button-preview-timeline"
+                    onClick={compileTimeline}
+                  >
                     <Eye className="mr-2 h-4 w-4" />
                     Preview Timeline
                   </Button>
@@ -471,6 +550,19 @@ export default function AdminPanel() {
           </Card>
         </div>
       )}
+
+      {/* Timeline Preview Dialog */}
+      <Dialog open={showTimelinePreview} onOpenChange={setShowTimelinePreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Compiled Workout Timeline</DialogTitle>
+          </DialogHeader>
+          <TimelinePreview 
+            steps={compiledTimeline} 
+            title="Block Sequence Preview"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
