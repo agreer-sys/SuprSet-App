@@ -39,6 +39,16 @@ export default function WorkoutSessionPage() {
   const lastRestAnnouncement = useRef<number | null>(null);
   const queryClient = useQueryClient();
 
+  // Timeline execution state for block workouts
+  const [workoutStartEpochMs, setWorkoutStartEpochMs] = useState<number | null>(null);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const lastResyncMs = useRef(0);
+  const timerRef = useRef<number | null>(null);
+  const pauseStartMs = useRef<number | null>(null);
+  const totalPausedMs = useRef(0);
+  const lastUpdateWallClockMs = useRef<number>(0);
+
   // Fetch active workout session - try block workout first, then fall back to template
   const { data: blockSession } = useQuery<any>({
     queryKey: ['/api/block-workout-sessions/active'],
@@ -685,6 +695,94 @@ export default function WorkoutSessionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps - only disconnect on unmount
 
+  // Timeline execution timer for block workouts
+  useEffect(() => {
+    if (!isBlockWorkout || !executionTimeline || !workoutStartEpochMs) {
+      return;
+    }
+
+    // Handle pause
+    if (isPaused) {
+      if (!pauseStartMs.current) {
+        pauseStartMs.current = Date.now();
+        console.log('⏸️ Workout paused at', Math.floor(elapsedMs / 1000), 'seconds');
+      }
+      return;
+    }
+
+    // Handle resume
+    if (pauseStartMs.current) {
+      const pauseDuration = Date.now() - pauseStartMs.current;
+      totalPausedMs.current += pauseDuration;
+      console.log(`▶️ Workout resumed after ${Math.floor(pauseDuration / 1000)}s pause (total paused: ${Math.floor(totalPausedMs.current / 1000)}s)`);
+      pauseStartMs.current = null;
+    }
+
+    const RESYNC_INTERVAL_MS = 15000; // 15 seconds
+    const DRIFT_TOLERANCE_MS = 250; // ±250ms
+
+    const updateTimer = () => {
+      const now = Date.now();
+      // Calculate elapsed time excluding paused periods
+      const elapsed = now - workoutStartEpochMs - totalPausedMs.current;
+      
+      setElapsedMs(elapsed);
+
+      // Find current step based on elapsed time
+      const steps = executionTimeline.executionTimeline;
+      let newStepIndex = currentStepIndex;
+
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+        if (elapsed >= step.atMs && elapsed < step.endMs) {
+          newStepIndex = i;
+          break;
+        } else if (elapsed >= step.endMs && i === steps.length - 1) {
+          // Past last step - workout complete
+          newStepIndex = steps.length;
+          break;
+        }
+      }
+
+      if (newStepIndex !== currentStepIndex) {
+        console.log(`📍 Step transition: ${currentStepIndex} → ${newStepIndex} at ${Math.floor(elapsed / 1000)}s`);
+        setCurrentStepIndex(newStepIndex);
+      }
+
+      // Drift detection: Check if setInterval is firing on time
+      if (lastUpdateWallClockMs.current > 0) {
+        const intervalDrift = now - lastUpdateWallClockMs.current - 100; // Expected 100ms interval
+        if (Math.abs(intervalDrift) > DRIFT_TOLERANCE_MS) {
+          console.warn(`⚠️ Interval drift detected: ${intervalDrift.toFixed(0)}ms (tolerance: ±${DRIFT_TOLERANCE_MS}ms)`);
+        }
+      }
+      lastUpdateWallClockMs.current = now;
+
+      // Resync validation every 15 seconds
+      const timeSinceLastResync = elapsed - lastResyncMs.current;
+      if (timeSinceLastResync >= RESYNC_INTERVAL_MS) {
+        // Verify we're on the correct step
+        const expectedStep = steps.find((s: any) => elapsed >= s.atMs && elapsed < s.endMs);
+        if (expectedStep && newStepIndex < steps.length && steps[newStepIndex] !== expectedStep) {
+          console.warn(`⚠️ Resync correction: expected step ${steps.indexOf(expectedStep)}, got ${newStepIndex}`);
+          setCurrentStepIndex(steps.indexOf(expectedStep));
+        } else {
+          console.log(`⏰ Resync validated at ${Math.floor(elapsed / 1000)}s - step ${newStepIndex} correct`);
+        }
+        lastResyncMs.current = elapsed;
+      }
+    };
+
+    // Update every 100ms for smooth UI
+    timerRef.current = window.setInterval(updateTimer, 100);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isBlockWorkout, executionTimeline, workoutStartEpochMs, isPaused, currentStepIndex, elapsedMs]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -732,17 +830,110 @@ export default function WorkoutSessionPage() {
             <div>
               <h1 className="text-2xl font-bold">{executionTimeline.workoutHeader.name}</h1>
               <p className="text-muted-foreground">
-                Duration: {Math.floor(executionTimeline.workoutHeader.totalDurationSec / 60)} min
+                {workoutStartEpochMs ? `Elapsed: ${formatTime(Math.floor(elapsedMs / 1000))}` : `Duration: ${Math.floor(executionTimeline.workoutHeader.totalDurationSec / 60)} min`}
               </p>
             </div>
-            <Button 
-              variant="destructive" 
-              onClick={() => completeWorkoutMutation.mutate(undefined)}
-              disabled={completeWorkoutMutation.isPending}
-            >
-              {completeWorkoutMutation.isPending ? 'Ending...' : 'End Workout'}
-            </Button>
+            <div className="flex gap-2">
+              {!workoutStartEpochMs && (
+                <Button 
+                  onClick={() => {
+                    const now = Date.now();
+                    setWorkoutStartEpochMs(now);
+                    lastResyncMs.current = 0;
+                    console.log('🚀 Workout started at', new Date(now).toISOString());
+                  }}
+                  data-testid="button-start-workout"
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Start Workout
+                </Button>
+              )}
+              {workoutStartEpochMs && (
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsPaused(!isPaused)}
+                  data-testid="button-pause-resume"
+                >
+                  {isPaused ? (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Resume
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="h-4 w-4 mr-2" />
+                      Pause
+                    </>
+                  )}
+                </Button>
+              )}
+              <Button 
+                variant="destructive" 
+                onClick={() => completeWorkoutMutation.mutate(undefined)}
+                disabled={completeWorkoutMutation.isPending}
+              >
+                {completeWorkoutMutation.isPending ? 'Ending...' : 'End Workout'}
+              </Button>
+            </div>
           </div>
+
+          {workoutStartEpochMs && currentStepIndex < executionTimeline.executionTimeline.length && (
+            <Card className="border-primary">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Current Step</span>
+                  <Badge variant="default">
+                    Step {currentStepIndex + 1} of {executionTimeline.executionTimeline.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const step = executionTimeline.executionTimeline[currentStepIndex];
+                  const stepElapsed = elapsedMs - step.atMs;
+                  const stepDuration = step.endMs - step.atMs;
+                  const stepRemaining = Math.max(0, Math.ceil((stepDuration - stepElapsed) / 1000));
+                  const stepProgress = Math.min(100, (stepElapsed / stepDuration) * 100);
+
+                  return (
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-2xl font-bold">{step.action}</div>
+                        {step.exerciseName && (
+                          <div className="text-lg text-muted-foreground mt-1">{step.exerciseName}</div>
+                        )}
+                        {step.formCue && (
+                          <div className="text-sm text-muted-foreground italic mt-2">{step.formCue}</div>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span>Time Remaining</span>
+                          <span className="font-mono font-bold text-lg">{stepRemaining}s</span>
+                        </div>
+                        <Progress value={stepProgress} className="h-3" />
+                      </div>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          )}
+
+          {workoutStartEpochMs && currentStepIndex >= executionTimeline.executionTimeline.length && (
+            <Card className="border-green-500">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-2xl font-bold mb-2">Workout Complete!</h3>
+                  <p className="text-muted-foreground">
+                    Total time: {formatTime(Math.floor(elapsedMs / 1000))}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
@@ -751,7 +942,10 @@ export default function WorkoutSessionPage() {
             <CardContent>
               <div className="space-y-3">
                 {executionTimeline.executionTimeline.slice(0, 10).map((step: any, idx: number) => (
-                  <div key={idx} className="flex gap-3 p-3 border rounded-lg">
+                  <div 
+                    key={idx} 
+                    className={`flex gap-3 p-3 border rounded-lg ${idx === currentStepIndex && workoutStartEpochMs ? 'border-primary bg-primary/5' : ''}`}
+                  >
                     <div className="flex-shrink-0 w-16 text-sm font-mono text-muted-foreground">
                       {Math.floor(step.atMs / 1000 / 60)}:{(Math.floor(step.atMs / 1000) % 60).toString().padStart(2, '0')}
                     </div>
