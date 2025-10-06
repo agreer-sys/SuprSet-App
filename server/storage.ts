@@ -315,12 +315,23 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          ...userData,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
           updatedAt: new Date(),
+          // NOTE: isAdmin is intentionally excluded to preserve admin status
         },
       })
       .returning();
     return user;
+  }
+
+  async setUserAdminStatus(userId: string, isAdmin: boolean): Promise<void> {
+    await db
+      .update(users)
+      .set({ isAdmin, updatedAt: new Date() })
+      .where(eq(users.id, userId));
   }
 
   // Contribution methods
