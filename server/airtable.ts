@@ -29,6 +29,9 @@ interface AirtableRecord {
     "Best Paired With"?: string | string[];
     "Equipment Zone"?: string;
     "Setup Time"?: string;
+    // Future media fields (empty for now, ready for Phase 2)
+    "Video URL"?: string;
+    "Image URL"?: string;
   };
 }
 
@@ -203,6 +206,10 @@ export class AirtableService {
       setupTime: fields["Setup Time"] ? String(fields["Setup Time"]) : null,
       equipmentZone: fields["Equipment Zone"] ? String(fields["Equipment Zone"]) : null,
       bestPairedWith: this.parseArrayField(fields["Best Paired With"]),
+      
+      // Media fields (will be populated in Phase 2)
+      videoUrl: fields["Video URL"] || null,
+      imageUrl: fields["Image URL"] || null,
       
       // Legacy fields for compatibility with existing frontend
       category: this.parseArrayField(fields["Exercise Category"])[0] || "general",

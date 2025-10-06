@@ -32,6 +32,10 @@ export const exercises = pgTable("exercises", {
   equipmentZone: text("equipment_zone"),
   setupTime: text("setup_time"), // Low, Medium, High
   
+  // Media fields (for future video/image integration)
+  videoUrl: text("video_url"),
+  imageUrl: text("image_url"),
+  
   // Legacy fields for backward compatibility
   category: text("category").notNull().default("general"),
   primaryMuscles: text("primary_muscles").array().notNull().default([]),
