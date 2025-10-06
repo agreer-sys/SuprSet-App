@@ -393,3 +393,219 @@ export type InsertWorkoutSection = z.infer<typeof insertWorkoutSectionSchema>;
 export type WorkoutSection = typeof workoutSections.$inferSelect;
 export type InsertWorkoutExercise = z.infer<typeof insertWorkoutExerciseSchema>;
 export type WorkoutExercise = typeof workoutExercises.$inferSelect;
+
+// ============================================================================
+// BLOCK-BASED WORKOUT SYSTEM (New Architecture)
+// ============================================================================
+
+// Blocks - Core building units with flexible parameter-based configuration
+export const blocks = pgTable("blocks", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(), // "9-Min Strength Block", "Tabata Cardio", etc.
+  description: text("description"),
+  type: text("type").notNull(), // "custom_sequence", "transition", "amrap_loop", "emom_window", etc.
+  
+  // Flexible parameters (JSON) - defines the timing/structure
+  params: jsonb("params").$type<{
+    // Timing params
+    setsPerExercise?: number;
+    workSec?: number;
+    restSec?: number;
+    transitionSec?: number;
+    durationSec?: number;
+    
+    // Advanced params
+    awaitReadyBeforeStart?: boolean;
+    postCardio?: {
+      exercise: string;
+      durationSec: number;
+    };
+    
+    // EMOM/AMRAP specific
+    minuteMarks?: number[];
+    maxDuration?: number;
+    
+    // Any other custom params
+    [key: string]: any;
+  }>().notNull().default({}),
+  
+  // Block metadata
+  category: text("category"), // "strength", "cardio", "mobility", "transition"
+  difficulty: integer("difficulty").default(3), // 1-5 scale
+  estimatedDurationSec: integer("estimated_duration_sec"),
+  equipmentNeeded: text("equipment_needed").array().notNull().default([]),
+  muscleGroups: text("muscle_groups").array().notNull().default([]),
+  
+  // Admin & versioning
+  createdBy: varchar("created_by").references(() => users.id),
+  isTemplate: boolean("is_template").notNull().default(false), // Reusable template vs one-off
+  isPublic: boolean("is_public").notNull().default(false),
+  version: integer("version").notNull().default(1),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Block Exercises - Exercises within a block
+export const blockExercises = pgTable("block_exercises", {
+  id: serial("id").primaryKey(),
+  blockId: integer("block_id").references(() => blocks.id).notNull(),
+  exerciseId: integer("exercise_id").notNull(), // References Airtable exercise ID
+  orderIndex: integer("order_index").notNull(),
+  
+  // Exercise-specific overrides (optional)
+  workSec: integer("work_sec"), // Override block-level timing
+  restSec: integer("rest_sec"),
+  targetReps: integer("target_reps"),
+  notes: text("notes"),
+  
+  // Snapshot of exercise data from Airtable (for coach context)
+  exerciseName: text("exercise_name").notNull(),
+  primaryMuscleGroup: text("primary_muscle_group"),
+  movementPattern: text("movement_pattern"),
+  equipmentPrimary: text("equipment_primary"),
+  equipmentSecondary: text("equipment_secondary").array().notNull().default([]),
+  coachingBulletPoints: text("coaching_bullet_points"),
+  videoUrl: text("video_url"), // For future video integration
+  imageUrl: text("image_url"), // For future image integration
+});
+
+// Block Workouts - Collections of blocks in sequence
+export const blockWorkouts = pgTable("block_workouts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  
+  // Workout metadata
+  category: text("category"), // "strength", "hiit", "hybrid", "mobility"
+  difficulty: integer("difficulty").notNull().default(3),
+  estimatedDurationMin: integer("estimated_duration_min"),
+  muscleGroups: text("muscle_groups").array().notNull().default([]),
+  equipmentNeeded: text("equipment_needed").array().notNull().default([]),
+  tags: text("tags").array().notNull().default([]),
+  
+  // Block sequence (array of block IDs in order)
+  blockSequence: jsonb("block_sequence").$type<Array<{
+    blockId: number;
+    orderIndex: number;
+  }>>().notNull().default([]),
+  
+  // Compiled execution timeline (snapshot at publish time)
+  executionTimeline: jsonb("execution_timeline").$type<{
+    workoutHeader: {
+      name: string;
+      totalDurationSec: number;
+      structure: string;
+    };
+    executionTimeline: Array<{
+      step: number;
+      type: "instruction" | "work" | "rest" | "transition" | "await_ready" | "hold" | "amrap_loop" | "emom_window";
+      text?: string;
+      exercise?: {
+        id: number;
+        name: string;
+        cues: string[];
+        equipment: string[];
+        muscleGroup: string;
+        videoUrl?: string;
+        imageUrl?: string;
+      };
+      atMs: number;
+      endMs: number;
+      durationSec?: number;
+      set?: number;
+      round?: number;
+      label?: string;
+      nextStepId?: string;
+      coachPrompt?: string;
+    }>;
+    sync: {
+      workoutStartEpochMs: number;
+      resyncEveryMs: number;
+      allowedDriftMs: number;
+    };
+  }>(),
+  
+  // Publishing & versioning
+  isPublished: boolean("is_published").notNull().default(false),
+  publishedAt: timestamp("published_at"),
+  createdBy: varchar("created_by").references(() => users.id),
+  isPublic: boolean("is_public").notNull().default(false),
+  version: integer("version").notNull().default(1),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Block Workout Sessions - Tracks user sessions using block workouts
+export const blockWorkoutSessions = pgTable("block_workout_sessions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  blockWorkoutId: integer("block_workout_id").references(() => blockWorkouts.id).notNull(),
+  
+  // Session state
+  status: text("status").notNull().default("active"), // "active", "paused", "completed", "abandoned"
+  currentStep: integer("current_step").notNull().default(0),
+  
+  // Timing & sync
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  totalPauseDurationMs: integer("total_pause_duration_ms").notNull().default(0),
+  lastSyncAt: timestamp("last_sync_at"),
+  
+  // Snapshot of execution timeline (immune to workout edits)
+  executionTimelineSnapshot: jsonb("execution_timeline_snapshot").$type<{
+    workoutHeader: {
+      name: string;
+      totalDurationSec: number;
+      structure: string;
+    };
+    executionTimeline: Array<{
+      step: number;
+      type: string;
+      text?: string;
+      exercise?: any;
+      atMs: number;
+      endMs: number;
+      [key: string]: any;
+    }>;
+    sync: {
+      workoutStartEpochMs: number;
+      resyncEveryMs: number;
+      allowedDriftMs: number;
+    };
+  }>(),
+  
+  notes: text("notes"),
+});
+
+// Insert schemas for Block system
+export const insertBlockSchema = createInsertSchema(blocks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBlockExerciseSchema = createInsertSchema(blockExercises).omit({
+  id: true,
+});
+
+export const insertBlockWorkoutSchema = createInsertSchema(blockWorkouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBlockWorkoutSessionSchema = createInsertSchema(blockWorkoutSessions).omit({
+  id: true,
+});
+
+// Types for Block system
+export type InsertBlock = z.infer<typeof insertBlockSchema>;
+export type Block = typeof blocks.$inferSelect;
+export type InsertBlockExercise = z.infer<typeof insertBlockExerciseSchema>;
+export type BlockExercise = typeof blockExercises.$inferSelect;
+export type InsertBlockWorkout = z.infer<typeof insertBlockWorkoutSchema>;
+export type BlockWorkout = typeof blockWorkouts.$inferSelect;
+export type InsertBlockWorkoutSession = z.infer<typeof insertBlockWorkoutSessionSchema>;
+export type BlockWorkoutSession = typeof blockWorkoutSessions.$inferSelect;
