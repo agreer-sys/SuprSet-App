@@ -1019,6 +1019,194 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Preview superset pair as Block format (non-admin, read-only)
+  app.post("/api/recommendations/preview-block", async (req, res) => {
+    try {
+      const { exerciseAId, exerciseBId, params } = req.body;
+      
+      if (!exerciseAId || !exerciseBId) {
+        return res.status(400).json({ message: "Both exerciseAId and exerciseBId are required" });
+      }
+
+      // Validate and coerce params to numbers
+      const setsPerExercise = Number(params?.setsPerExercise) || 3;
+      const workSec = Number(params?.workSec) || 45;
+      const restSec = Number(params?.restSec) || 60;
+      const transitionSec = Number(params?.transitionSec) || 10;
+      const awaitReadyBeforeStart = params?.awaitReadyBeforeStart === true || params?.awaitReadyBeforeStart === 'true';
+
+      // Validate numbers are valid
+      if (isNaN(setsPerExercise) || isNaN(workSec) || isNaN(restSec) || isNaN(transitionSec)) {
+        return res.status(400).json({ message: "Invalid numeric parameters" });
+      }
+
+      // Fetch exercises from Airtable
+      const [exerciseA, exerciseB] = await Promise.all([
+        storage.getExercise(exerciseAId),
+        storage.getExercise(exerciseBId)
+      ]);
+
+      if (!exerciseA || !exerciseB) {
+        return res.status(404).json({ message: "One or both exercises not found" });
+      }
+
+      // Calculate duration with guaranteed numeric types
+      const estimatedDurationSec = (workSec * 2 + restSec + transitionSec) * setsPerExercise;
+
+      // Create Block structure compatible with compiler
+      const block = {
+        name: `${exerciseA.name} + ${exerciseB.name} Superset`,
+        description: `Superset pairing: ${exerciseA.name} (${exerciseA.exerciseType || 'general'}) with ${exerciseB.name} (${exerciseB.exerciseType || 'general'})`,
+        type: "superset",
+        params: {
+          setsPerExercise,
+          workSec,
+          restSec,
+          transitionSec,
+          awaitReadyBeforeStart,
+        },
+        category: "strength",
+        difficulty: Math.round((exerciseA.difficulty + exerciseB.difficulty) / 2),
+        estimatedDurationSec,
+        equipmentNeeded: Array.from(new Set([
+          exerciseA.equipmentPrimary || exerciseA.equipment,
+          exerciseB.equipmentPrimary || exerciseB.equipment,
+          ...(exerciseA.equipmentSecondary || []),
+          ...(exerciseB.equipmentSecondary || [])
+        ].filter(Boolean))),
+        muscleGroups: Array.from(new Set([
+          exerciseA.primaryMuscleGroup,
+          exerciseB.primaryMuscleGroup
+        ].filter(Boolean))),
+        exercises: [
+          {
+            exerciseId: exerciseA.id,
+            orderIndex: 0,
+            exerciseName: exerciseA.name,
+            primaryMuscleGroup: exerciseA.primaryMuscleGroup,
+            movementPattern: exerciseA.exerciseType || exerciseA.movementPattern,
+            equipmentPrimary: exerciseA.equipmentPrimary || exerciseA.equipment,
+            equipmentSecondary: exerciseA.equipmentSecondary || [],
+            coachingBulletPoints: exerciseA.coachingBulletPoints,
+            videoUrl: exerciseA.videoUrl,
+            imageUrl: exerciseA.imageUrl,
+          },
+          {
+            exerciseId: exerciseB.id,
+            orderIndex: 1,
+            exerciseName: exerciseB.name,
+            primaryMuscleGroup: exerciseB.primaryMuscleGroup,
+            movementPattern: exerciseB.exerciseType || exerciseB.movementPattern,
+            equipmentPrimary: exerciseB.equipmentPrimary || exerciseB.equipment,
+            equipmentSecondary: exerciseB.equipmentSecondary || [],
+            coachingBulletPoints: exerciseB.coachingBulletPoints,
+            videoUrl: exerciseB.videoUrl,
+            imageUrl: exerciseB.imageUrl,
+          }
+        ]
+      };
+
+      res.json({ block });
+    } catch (error) {
+      console.error("Failed to preview block:", error);
+      res.status(500).json({ message: "Failed to preview block" });
+    }
+  });
+
+  // Convert superset pair to Block format (for admin panel)
+  app.post("/api/recommendations/create-block", isAdmin, async (req, res) => {
+    try {
+      const { exerciseAId, exerciseBId, params } = req.body;
+      
+      if (!exerciseAId || !exerciseBId) {
+        return res.status(400).json({ message: "Both exerciseAId and exerciseBId are required" });
+      }
+
+      // Validate and coerce params to numbers
+      const setsPerExercise = Number(params?.setsPerExercise) || 3;
+      const workSec = Number(params?.workSec) || 45;
+      const restSec = Number(params?.restSec) || 60;
+      const transitionSec = Number(params?.transitionSec) || 10;
+      const awaitReadyBeforeStart = params?.awaitReadyBeforeStart === true || params?.awaitReadyBeforeStart === 'true';
+
+      // Validate numbers are valid
+      if (isNaN(setsPerExercise) || isNaN(workSec) || isNaN(restSec) || isNaN(transitionSec)) {
+        return res.status(400).json({ message: "Invalid numeric parameters" });
+      }
+
+      // Fetch exercises from Airtable
+      const [exerciseA, exerciseB] = await Promise.all([
+        storage.getExercise(exerciseAId),
+        storage.getExercise(exerciseBId)
+      ]);
+
+      if (!exerciseA || !exerciseB) {
+        return res.status(404).json({ message: "One or both exercises not found" });
+      }
+
+      // Calculate duration with guaranteed numeric types
+      const estimatedDurationSec = (workSec * 2 + restSec + transitionSec) * setsPerExercise;
+
+      // Create Block structure compatible with compiler
+      const block = {
+        name: `${exerciseA.name} + ${exerciseB.name} Superset`,
+        description: `Superset pairing: ${exerciseA.name} (${exerciseA.exerciseType || 'general'}) with ${exerciseB.name} (${exerciseB.exerciseType || 'general'})`,
+        type: "superset",
+        params: {
+          setsPerExercise,
+          workSec,
+          restSec,
+          transitionSec,
+          awaitReadyBeforeStart,
+        },
+        category: "strength",
+        difficulty: Math.round((exerciseA.difficulty + exerciseB.difficulty) / 2),
+        estimatedDurationSec,
+        equipmentNeeded: Array.from(new Set([
+          exerciseA.equipmentPrimary || exerciseA.equipment,
+          exerciseB.equipmentPrimary || exerciseB.equipment,
+          ...(exerciseA.equipmentSecondary || []),
+          ...(exerciseB.equipmentSecondary || [])
+        ].filter(Boolean))),
+        muscleGroups: Array.from(new Set([
+          exerciseA.primaryMuscleGroup,
+          exerciseB.primaryMuscleGroup
+        ].filter(Boolean))),
+        exercises: [
+          {
+            exerciseId: exerciseA.id,
+            orderIndex: 0,
+            exerciseName: exerciseA.name,
+            primaryMuscleGroup: exerciseA.primaryMuscleGroup,
+            movementPattern: exerciseA.exerciseType || exerciseA.movementPattern,
+            equipmentPrimary: exerciseA.equipmentPrimary || exerciseA.equipment,
+            equipmentSecondary: exerciseA.equipmentSecondary || [],
+            coachingBulletPoints: exerciseA.coachingBulletPoints,
+            videoUrl: exerciseA.videoUrl,
+            imageUrl: exerciseA.imageUrl,
+          },
+          {
+            exerciseId: exerciseB.id,
+            orderIndex: 1,
+            exerciseName: exerciseB.name,
+            primaryMuscleGroup: exerciseB.primaryMuscleGroup,
+            movementPattern: exerciseB.exerciseType || exerciseB.movementPattern,
+            equipmentPrimary: exerciseB.equipmentPrimary || exerciseB.equipment,
+            equipmentSecondary: exerciseB.equipmentSecondary || [],
+            coachingBulletPoints: exerciseB.coachingBulletPoints,
+            videoUrl: exerciseB.videoUrl,
+            imageUrl: exerciseB.imageUrl,
+          }
+        ]
+      };
+
+      res.json({ block });
+    } catch (error) {
+      console.error("Failed to create block from recommendation:", error);
+      res.status(500).json({ message: "Failed to create block" });
+    }
+  });
+
   // Create workout session
   app.post("/api/workout-sessions", async (req, res) => {
     try {
