@@ -102,7 +102,7 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
     }
   };
 
-  const totalDuration = steps.length > 0 ? steps[steps.length - 1].endMs - preWorkoutDurationMs : 0;
+  const totalDuration = steps.length > 0 ? steps[steps.length - 1].endMs : 0;
   
   // Track block changes for visual separators
   let lastBlockId: string | undefined = undefined;
