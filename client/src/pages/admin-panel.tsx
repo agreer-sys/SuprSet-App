@@ -41,7 +41,7 @@ interface Block {
   exercises: BlockExercise[];
 }
 
-type WorkoutPattern = "superset" | "straight_sets" | "circuit" | "custom";
+type WorkoutPattern = "superset" | "straight_sets" | "circuit" | "transition" | "custom";
 
 interface ExecutionStep {
   atMs: number;
@@ -171,6 +171,16 @@ export default function AdminPanel() {
       return;
     }
 
+    // Transition blocks don't require exercises
+    if (currentBlock.type !== "transition" && (!currentBlock.exercises || currentBlock.exercises.length === 0)) {
+      toast({
+        title: "Missing exercises",
+        description: "Please add at least one exercise to the block",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const newBlock: Block = {
       id: Math.random().toString(36).substr(2, 9),
       name: currentBlock.name || "",
@@ -286,6 +296,16 @@ export default function AdminPanel() {
           }
         });
         break;
+      case "transition":
+        setCurrentBlock({
+          ...currentBlock,
+          type: "transition",
+          params: {
+            durationSec: 60 // Default 60 seconds rest/transition
+          },
+          exercises: [] // Transition blocks don't have exercises
+        });
+        break;
       case "custom":
         // Keep current params
         break;
@@ -300,6 +320,8 @@ export default function AdminPanel() {
         return "Same exercise repeated for multiple sets with full rest";
       case "circuit":
         return "Multiple exercises for 1 set each, then repeat the circuit";
+      case "transition":
+        return "Rest or transition period between workout blocks";
       case "custom":
         return "Fully customizable parameters";
     }
@@ -499,6 +521,16 @@ export default function AdminPanel() {
                   </Button>
                   <Button
                     type="button"
+                    variant={selectedPattern === "transition" ? "default" : "outline"}
+                    onClick={() => applyPattern("transition")}
+                    className="h-auto py-3 flex-col items-start"
+                    data-testid="button-pattern-transition"
+                  >
+                    <span className="font-semibold">⏸️ Rest/Transition</span>
+                    <span className="text-xs text-left opacity-80">Break between blocks</span>
+                  </Button>
+                  <Button
+                    type="button"
                     variant={selectedPattern === "custom" ? "default" : "outline"}
                     onClick={() => applyPattern("custom")}
                     className="h-auto py-3 flex-col items-start"
@@ -511,67 +543,91 @@ export default function AdminPanel() {
                 <p className="text-xs text-muted-foreground">{getPatternDescription(selectedPattern)}</p>
               </div>
 
-              {/* 3. Add Exercises */}
-              <div>
-                <Label>Exercises</Label>
-                <div className="space-y-2">
-                  {currentBlock.exercises?.map((ex, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{getExerciseName(ex.exerciseId)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {currentBlock.params?.targetReps ? (
-                            <>
-                              <strong>{currentBlock.params.targetReps}</strong> reps · {ex.restSec || currentBlock.params?.restSec}s rest
-                            </>
-                          ) : (
-                            <>
-                              {ex.workSec || currentBlock.params?.workSec}s work · {ex.restSec || currentBlock.params?.restSec}s rest
-                            </>
-                          )}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeExerciseFromBlock(idx)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    data-testid="button-add-exercise"
-                    onClick={() => setShowExercisePicker(true)}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Exercise
-                  </Button>
+              {/* 3. Add Exercises OR Duration for Transition */}
+              {selectedPattern === "transition" ? (
+                <div>
+                  <Label htmlFor="transition-duration">Rest/Transition Duration (seconds)</Label>
+                  <Input
+                    id="transition-duration"
+                    data-testid="input-transition-duration"
+                    type="number"
+                    min="10"
+                    value={currentBlock.params?.durationSec || ""}
+                    onChange={(e) => setCurrentBlock({
+                      ...currentBlock,
+                      params: { ...currentBlock.params, durationSec: Number(e.target.value) }
+                    })}
+                    placeholder="60"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Time for rest, water break, or transition between workout blocks
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <Label>Exercises</Label>
+                  <div className="space-y-2">
+                    {currentBlock.exercises?.map((ex, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{getExerciseName(ex.exerciseId)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {currentBlock.params?.targetReps ? (
+                              <>
+                                <strong>{currentBlock.params.targetReps}</strong> reps · {ex.restSec || currentBlock.params?.restSec}s rest
+                              </>
+                            ) : (
+                              <>
+                                {ex.workSec || currentBlock.params?.workSec}s work · {ex.restSec || currentBlock.params?.restSec}s rest
+                              </>
+                            )}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeExerciseFromBlock(idx)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      data-testid="button-add-exercise"
+                      onClick={() => setShowExercisePicker(true)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Exercise
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-              {/* 4. Sets/Rounds */}
-              <div>
-                <Label htmlFor="sets">
-                  {selectedPattern === "circuit" ? "Rounds" : "Sets"} per Exercise
-                </Label>
-                <Input
-                  id="sets"
-                  data-testid="input-sets"
-                  type="number"
-                  min="1"
-                  value={currentBlock.params?.setsPerExercise || ""}
-                  onChange={(e) => setCurrentBlock({
-                    ...currentBlock,
-                    params: { ...currentBlock.params, setsPerExercise: Number(e.target.value) }
-                  })}
-                  placeholder="3"
-                />
-              </div>
+              {/* Parameters for workout blocks (not transitions) */}
+              {selectedPattern !== "transition" && (
+                <>
+                  {/* 4. Sets/Rounds */}
+                  <div>
+                    <Label htmlFor="sets">
+                      {selectedPattern === "circuit" ? "Rounds" : "Sets"} per Exercise
+                    </Label>
+                    <Input
+                      id="sets"
+                      data-testid="input-sets"
+                      type="number"
+                      min="1"
+                      value={currentBlock.params?.setsPerExercise || ""}
+                      onChange={(e) => setCurrentBlock({
+                        ...currentBlock,
+                        params: { ...currentBlock.params, setsPerExercise: Number(e.target.value) }
+                      })}
+                      placeholder="3"
+                    />
+                  </div>
 
-              {/* 5. Work: Time or Reps */}
+                  {/* 5. Work: Time or Reps */}
               <div className="space-y-3">
                 <div>
                   <Label>Work Type</Label>
@@ -681,6 +737,8 @@ export default function AdminPanel() {
                   )}
                 </div>
               </div>
+                </>
+              )}
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-2">
@@ -688,7 +746,7 @@ export default function AdminPanel() {
                   onClick={addBlock}
                   className="flex-1"
                   data-testid="button-add-block"
-                  disabled={!currentBlock.name || !currentBlock.exercises?.length}
+                  disabled={!currentBlock.name && selectedPattern !== "transition"}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Block to Workout
