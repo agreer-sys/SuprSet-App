@@ -220,6 +220,12 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 export const isAdmin: RequestHandler = async (req, res, next) => {
   // TEMPORARY: Bypass auth in development for testing
   if (process.env.NODE_ENV === 'development') {
+    // Set up mock user for development
+    (req as any).user = {
+      claims: {
+        sub: 'dev-admin-user'
+      }
+    };
     return next();
   }
 
