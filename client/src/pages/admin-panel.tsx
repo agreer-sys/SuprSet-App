@@ -15,20 +15,33 @@ import type { Exercise } from "@shared/schema";
 import { TimelinePreview } from "@/components/TimelinePreview";
 
 interface BlockParams {
-  type: "work" | "rest" | "await_ready" | "form_cue" | "transition";
-  durationMs?: number;
-  exerciseId?: number;
-  cueText?: string;
-  cueAudioText?: string;
+  setsPerExercise?: number;
+  workSec?: number;
+  restSec?: number;
+  roundRestSec?: number;
+  transitionSec?: number;
+  awaitReadyBeforeStart?: boolean;
+  [key: string]: any;
+}
+
+interface BlockExercise {
+  exerciseId: number;
+  orderIndex: number;
+  workSec?: number;
+  restSec?: number;
+  targetReps?: number;
 }
 
 interface Block {
   id: string;
   name: string;
   description: string;
+  type: string;
   params: BlockParams;
-  exercises: number[];
+  exercises: BlockExercise[];
 }
+
+type WorkoutPattern = "superset" | "straight_sets" | "circuit" | "custom";
 
 interface ExecutionStep {
   atMs: number;
@@ -51,11 +64,15 @@ export default function AdminPanel() {
   const { toast } = useToast();
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [currentBlock, setCurrentBlock] = useState<Partial<Block>>({
-    params: { type: "work" }
+    type: "custom_sequence",
+    params: { setsPerExercise: 3, workSec: 45, restSec: 10, roundRestSec: 0 },
+    exercises: []
   });
+  const [selectedPattern, setSelectedPattern] = useState<WorkoutPattern>("superset");
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [showTimelinePreview, setShowTimelinePreview] = useState(false);
+  const [showBlockPreview, setShowBlockPreview] = useState(false);
   const [compiledTimeline, setCompiledTimeline] = useState<ExecutionStep[]>([]);
   const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
   const [workoutName, setWorkoutName] = useState("");
@@ -144,10 +161,10 @@ export default function AdminPanel() {
   );
 
   const addBlock = () => {
-    if (!currentBlock.name || !currentBlock.params?.type) {
+    if (!currentBlock.name) {
       toast({
         title: "Missing information",
-        description: "Please provide block name and type",
+        description: "Please provide block name",
         variant: "destructive"
       });
       return;
@@ -157,12 +174,18 @@ export default function AdminPanel() {
       id: Math.random().toString(36).substr(2, 9),
       name: currentBlock.name || "",
       description: currentBlock.description || "",
-      params: currentBlock.params as BlockParams,
+      type: currentBlock.type || "custom_sequence",
+      params: currentBlock.params || {},
       exercises: currentBlock.exercises || []
     };
 
     setBlocks([...blocks, newBlock]);
-    setCurrentBlock({ params: { type: "work" } });
+    setCurrentBlock({ 
+      type: "custom_sequence",
+      params: { setsPerExercise: 3, workSec: 45, restSec: 10, roundRestSec: 0 },
+      exercises: []
+    });
+    setSelectedPattern("superset");
     toast({
       title: "Block added",
       description: `${newBlock.name} has been added to the workout`
@@ -187,9 +210,15 @@ export default function AdminPanel() {
   };
 
   const addExerciseToBlock = (exerciseId: number) => {
+    const newExercise: BlockExercise = {
+      exerciseId,
+      orderIndex: (currentBlock.exercises || []).length,
+      workSec: currentBlock.params?.workSec,
+      restSec: currentBlock.params?.restSec
+    };
     setCurrentBlock({
       ...currentBlock,
-      exercises: [...(currentBlock.exercises || []), exerciseId]
+      exercises: [...(currentBlock.exercises || []), newExercise]
     });
     setShowExercisePicker(false);
     toast({
@@ -200,6 +229,76 @@ export default function AdminPanel() {
 
   const getExerciseName = (exerciseId: number) => {
     return exercises?.find(ex => ex.id === exerciseId)?.name || "Unknown";
+  };
+
+  const removeExerciseFromBlock = (orderIndex: number) => {
+    setCurrentBlock({
+      ...currentBlock,
+      exercises: currentBlock.exercises?.filter((_, idx) => idx !== orderIndex)
+    });
+  };
+
+  const applyPattern = (pattern: WorkoutPattern) => {
+    setSelectedPattern(pattern);
+    
+    // Apply pattern-specific defaults
+    switch (pattern) {
+      case "superset":
+        setCurrentBlock({
+          ...currentBlock,
+          type: "custom_sequence",
+          params: {
+            setsPerExercise: 3,
+            workSec: 45,
+            restSec: 10, // Minimal rest between exercises
+            roundRestSec: 0,
+            transitionSec: 0
+          }
+        });
+        break;
+      case "straight_sets":
+        setCurrentBlock({
+          ...currentBlock,
+          type: "custom_sequence",
+          params: {
+            setsPerExercise: 3,
+            workSec: 45,
+            restSec: 60, // Normal rest between sets
+            roundRestSec: 0,
+            transitionSec: 0
+          }
+        });
+        break;
+      case "circuit":
+        setCurrentBlock({
+          ...currentBlock,
+          type: "custom_sequence",
+          params: {
+            setsPerExercise: 3, // Number of rounds
+            workSec: 40,
+            restSec: 10, // Short rest between exercises
+            roundRestSec: 90, // Longer rest between rounds
+            transitionSec: 0
+          }
+        });
+        break;
+      case "custom":
+        // Keep current params
+        break;
+    }
+  };
+
+  const getPatternDescription = (pattern: WorkoutPattern) => {
+    switch (pattern) {
+      case "superset":
+        return "2-3 exercises with minimal rest, repeated for multiple sets";
+      case "straight_sets":
+        return "Same exercise repeated for multiple sets with full rest";
+      case "circuit":
+        return "Multiple exercises for 1 set each, then repeat the circuit";
+      case "custom":
+        return "Fully customizable parameters";
+    }
   };
 
   const handleDragStart = (index: number) => {
@@ -260,7 +359,8 @@ export default function AdminPanel() {
 
     blocks.forEach((block) => {
       const durationMs = block.params.durationMs || 0;
-      const exercise = block.exercises[0] ? exercises?.find(ex => ex.id === block.exercises[0]) : undefined;
+      const exerciseId = block.exercises[0]?.exerciseId;
+      const exercise = exerciseId ? exercises?.find(ex => ex.id === exerciseId) : undefined;
 
       const step: ExecutionStep = {
         atMs: currentTimeMs,
@@ -328,159 +428,214 @@ export default function AdminPanel() {
                 Define parameters for a workout block
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="block-name">Block Name</Label>
-                <Input
-                  id="block-name"
-                  data-testid="input-block-name"
-                  value={currentBlock.name || ""}
-                  onChange={(e) => setCurrentBlock({ ...currentBlock, name: e.target.value })}
-                  placeholder="e.g., Main Work Set"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="block-description">Description (Optional)</Label>
-                <Textarea
-                  id="block-description"
-                  data-testid="input-block-description"
-                  value={currentBlock.description || ""}
-                  onChange={(e) => setCurrentBlock({ ...currentBlock, description: e.target.value })}
-                  placeholder="Brief description of this block"
-                  rows={2}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="block-type">Block Type</Label>
-                <Select
-                  value={currentBlock.params?.type}
-                  onValueChange={(value) => setCurrentBlock({
-                    ...currentBlock,
-                    params: { ...currentBlock.params, type: value as BlockParams['type'] }
-                  })}
-                >
-                  <SelectTrigger id="block-type" data-testid="select-block-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="work">Work Period</SelectItem>
-                    <SelectItem value="rest">Rest Period</SelectItem>
-                    <SelectItem value="await_ready">Wait for User Ready</SelectItem>
-                    <SelectItem value="form_cue">Form/Coaching Cue</SelectItem>
-                    <SelectItem value="transition">Transition Time</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {(currentBlock.params?.type === "work" || 
-                currentBlock.params?.type === "rest" || 
-                currentBlock.params?.type === "transition") && (
+            <CardContent className="space-y-6">
+              {/* 1. Name & Description */}
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="duration">Duration (seconds)</Label>
+                  <Label htmlFor="block-name">Block Name *</Label>
                   <Input
-                    id="duration"
-                    data-testid="input-duration"
-                    type="number"
-                    value={currentBlock.params?.durationMs ? currentBlock.params.durationMs / 1000 : ""}
-                    onChange={(e) => setCurrentBlock({
-                      ...currentBlock,
-                      params: { 
-                        ...currentBlock.params, 
-                        type: currentBlock.params?.type!,
-                        durationMs: parseInt(e.target.value) * 1000 
-                      }
-                    })}
-                    placeholder="30"
+                    id="block-name"
+                    data-testid="input-block-name"
+                    value={currentBlock.name || ""}
+                    onChange={(e) => setCurrentBlock({ ...currentBlock, name: e.target.value })}
+                    placeholder="e.g., Push Superset"
                   />
                 </div>
-              )}
 
-              {(currentBlock.params?.type === "work" || currentBlock.params?.type === "form_cue") && (
                 <div>
-                  <Label>Exercise</Label>
-                  <div className="space-y-2">
-                    {currentBlock.exercises?.map((exId) => (
-                      <div key={exId} className="flex items-center justify-between p-2 bg-muted rounded">
-                        <span className="text-sm">{getExerciseName(exId)}</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setCurrentBlock({
-                            ...currentBlock,
-                            exercises: currentBlock.exercises?.filter(id => id !== exId)
-                          })}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      data-testid="button-add-exercise"
-                      onClick={() => setShowExercisePicker(true)}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Exercise
-                    </Button>
-                  </div>
+                  <Label htmlFor="block-description">Description (Optional)</Label>
+                  <Textarea
+                    id="block-description"
+                    data-testid="input-block-description"
+                    value={currentBlock.description || ""}
+                    onChange={(e) => setCurrentBlock({ ...currentBlock, description: e.target.value })}
+                    placeholder="Brief description"
+                    rows={2}
+                  />
                 </div>
-              )}
+              </div>
 
-              {currentBlock.params?.type === "form_cue" && (
-                <>
+              {/* 2. Pattern Presets */}
+              <div className="space-y-2">
+                <Label>Workout Pattern</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={selectedPattern === "superset" ? "default" : "outline"}
+                    onClick={() => applyPattern("superset")}
+                    className="h-auto py-3 flex-col items-start"
+                    data-testid="button-pattern-superset"
+                  >
+                    <span className="font-semibold">🔄 Superset</span>
+                    <span className="text-xs text-left opacity-80">2-3 exercises, minimal rest</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedPattern === "straight_sets" ? "default" : "outline"}
+                    onClick={() => applyPattern("straight_sets")}
+                    className="h-auto py-3 flex-col items-start"
+                    data-testid="button-pattern-straight"
+                  >
+                    <span className="font-semibold">💪 Straight Sets</span>
+                    <span className="text-xs text-left opacity-80">Same exercise, multiple sets</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedPattern === "circuit" ? "default" : "outline"}
+                    onClick={() => applyPattern("circuit")}
+                    className="h-auto py-3 flex-col items-start"
+                    data-testid="button-pattern-circuit"
+                  >
+                    <span className="font-semibold">🔁 Circuit</span>
+                    <span className="text-xs text-left opacity-80">6+ exercises, rest between rounds</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedPattern === "custom" ? "default" : "outline"}
+                    onClick={() => applyPattern("custom")}
+                    className="h-auto py-3 flex-col items-start"
+                    data-testid="button-pattern-custom"
+                  >
+                    <span className="font-semibold">⚙️ Custom</span>
+                    <span className="text-xs text-left opacity-80">Full control</span>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">{getPatternDescription(selectedPattern)}</p>
+              </div>
+
+              {/* 3. Add Exercises */}
+              <div>
+                <Label>Exercises</Label>
+                <div className="space-y-2">
+                  {currentBlock.exercises?.map((ex, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{getExerciseName(ex.exerciseId)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {ex.workSec || currentBlock.params?.workSec}s work · {ex.restSec || currentBlock.params?.restSec}s rest
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeExerciseFromBlock(idx)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    data-testid="button-add-exercise"
+                    onClick={() => setShowExercisePicker(true)}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Exercise
+                  </Button>
+                </div>
+              </div>
+
+              {/* 4. Sets/Rounds */}
+              <div>
+                <Label htmlFor="sets">
+                  {selectedPattern === "circuit" ? "Rounds" : "Sets"} per Exercise
+                </Label>
+                <Input
+                  id="sets"
+                  data-testid="input-sets"
+                  type="number"
+                  min="1"
+                  value={currentBlock.params?.setsPerExercise || ""}
+                  onChange={(e) => setCurrentBlock({
+                    ...currentBlock,
+                    params: { ...currentBlock.params, setsPerExercise: Number(e.target.value) }
+                  })}
+                  placeholder="3"
+                />
+              </div>
+
+              {/* 5. Work Duration */}
+              <div>
+                <Label htmlFor="work-duration">Work Duration (seconds)</Label>
+                <Input
+                  id="work-duration"
+                  data-testid="input-work-duration"
+                  type="number"
+                  min="1"
+                  value={currentBlock.params?.workSec || ""}
+                  onChange={(e) => setCurrentBlock({
+                    ...currentBlock,
+                    params: { ...currentBlock.params, workSec: Number(e.target.value) }
+                  })}
+                  placeholder="45"
+                />
+              </div>
+
+              {/* 6. Recovery Parameters */}
+              <div className="space-y-3">
+                <Label>Recovery</Label>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="cue-text">Cue Text (Display)</Label>
+                    <Label htmlFor="rest-duration" className="text-xs text-muted-foreground">
+                      Rest Between Exercises (s)
+                    </Label>
                     <Input
-                      id="cue-text"
-                      data-testid="input-cue-text"
-                      value={currentBlock.params?.cueText || ""}
+                      id="rest-duration"
+                      data-testid="input-rest-duration"
+                      type="number"
+                      min="0"
+                      value={currentBlock.params?.restSec ?? ""}
                       onChange={(e) => setCurrentBlock({
                         ...currentBlock,
-                        params: { 
-                          ...currentBlock.params,
-                          type: currentBlock.params?.type!,
-                          cueText: e.target.value 
-                        }
+                        params: { ...currentBlock.params, restSec: Number(e.target.value) }
                       })}
-                      placeholder="Keep your core engaged"
+                      placeholder="10"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="cue-audio">Cue Audio Text (Coach will say this)</Label>
-                    <Textarea
-                      id="cue-audio"
-                      data-testid="input-cue-audio"
-                      value={currentBlock.params?.cueAudioText || ""}
-                      onChange={(e) => setCurrentBlock({
-                        ...currentBlock,
-                        params: { 
-                          ...currentBlock.params,
-                          type: currentBlock.params?.type!,
-                          cueAudioText: e.target.value 
-                        }
-                      })}
-                      placeholder="Remember to keep your core engaged throughout the movement"
-                      rows={2}
-                    />
-                  </div>
-                </>
-              )}
+                  {selectedPattern === "circuit" && (
+                    <div>
+                      <Label htmlFor="round-rest" className="text-xs text-muted-foreground">
+                        Rest Between Rounds (s)
+                      </Label>
+                      <Input
+                        id="round-rest"
+                        data-testid="input-round-rest"
+                        type="number"
+                        min="0"
+                        value={currentBlock.params?.roundRestSec ?? ""}
+                        onChange={(e) => setCurrentBlock({
+                          ...currentBlock,
+                          params: { ...currentBlock.params, roundRestSec: Number(e.target.value) }
+                        })}
+                        placeholder="90"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
 
-              <div className="flex gap-2">
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-2">
                 <Button
                   onClick={addBlock}
                   className="flex-1"
                   data-testid="button-add-block"
+                  disabled={!currentBlock.name || !currentBlock.exercises?.length}
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Block
+                  Add Block to Workout
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => setCurrentBlock({ params: { type: "work" } })}
+                  onClick={() => {
+                    setCurrentBlock({ 
+                      type: "custom_sequence",
+                      params: { setsPerExercise: 3, workSec: 45, restSec: 10, roundRestSec: 0 },
+                      exercises: []
+                    });
+                    setSelectedPattern("superset");
+                  }}
                   data-testid="button-clear-form"
                 >
                   Clear
@@ -608,9 +763,9 @@ export default function AdminPanel() {
                       {block.exercises.length > 0 && (
                         <div className="mt-2">
                           <p className="text-xs text-muted-foreground mb-1">Exercises:</p>
-                          {block.exercises.map(exId => (
-                            <span key={exId} className="text-xs bg-primary/10 px-2 py-1 rounded mr-1">
-                              {getExerciseName(exId)}
+                          {block.exercises.map((ex, idx) => (
+                            <span key={idx} className="text-xs bg-primary/10 px-2 py-1 rounded mr-1">
+                              {getExerciseName(ex.exerciseId)}
                             </span>
                           ))}
                         </div>
