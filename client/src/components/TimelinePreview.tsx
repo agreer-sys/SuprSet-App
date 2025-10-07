@@ -17,6 +17,7 @@ interface ExecutionStep {
   endMs: number;
   type: 'work' | 'rest' | 'await_ready' | 'form_cue' | 'transition' | 'instruction' | 'hold';
   blockId?: string;
+  blockName?: string;
   text?: string;
   label?: string;
   exerciseId?: number;
@@ -25,6 +26,7 @@ interface ExecutionStep {
   message?: string;
   set?: number;
   round?: number;
+  preWorkout?: boolean;
   exercise?: {
     id: number;
     name: string;
@@ -46,8 +48,17 @@ interface TimelinePreviewProps {
 }
 
 export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelinePreviewProps) {
-  const formatTime = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
+  // Calculate pre-workout offset to adjust displayed times
+  const preWorkoutDurationMs = steps
+    .filter(step => step.preWorkout)
+    .reduce((sum, step) => sum + (step.endMs - step.atMs), 0);
+
+  const formatTime = (ms: number, isPreWorkout: boolean = false) => {
+    if (isPreWorkout) {
+      return "Ready...";
+    }
+    const adjustedMs = ms - preWorkoutDurationMs;
+    const totalSeconds = Math.floor(adjustedMs / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -91,7 +102,10 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
     }
   };
 
-  const totalDuration = steps.length > 0 ? steps[steps.length - 1].endMs : 0;
+  const totalDuration = steps.length > 0 ? steps[steps.length - 1].endMs - preWorkoutDurationMs : 0;
+  
+  // Track block changes for visual separators
+  let lastBlockId: string | undefined = undefined;
 
   return (
     <Card className="w-full">
@@ -106,21 +120,36 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
       <CardContent>
         <ScrollArea className="h-[500px] pr-4">
           <div className="space-y-2">
-            {steps.map((step, index) => (
-              <Dialog key={index}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left h-auto py-3 px-4 hover:bg-accent"
-                    data-testid={`timeline-step-${index}`}
-                  >
-                    <div className="flex items-start gap-3 w-full">
-                      <div className="flex items-center gap-2 min-w-[80px]">
-                        {getStepIcon(step.type)}
-                        <span className="text-xs text-muted-foreground">
-                          {formatTime(step.atMs)}
-                        </span>
-                      </div>
+            {steps.map((step, index) => {
+              // Check for block change
+              const isNewBlock = step.blockId && step.blockId !== lastBlockId;
+              if (step.blockId) {
+                lastBlockId = step.blockId;
+              }
+              
+              return (
+                <div key={index}>
+                  {/* Block Title Separator */}
+                  {isNewBlock && step.blockName && (
+                    <div className="bg-primary/10 border-l-4 border-primary px-4 py-2 mb-2 rounded">
+                      <p className="font-semibold text-sm">📋 {step.blockName}</p>
+                    </div>
+                  )}
+                  
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left h-auto py-3 px-4 hover:bg-accent"
+                        data-testid={`timeline-step-${index}`}
+                      >
+                        <div className="flex items-start gap-3 w-full">
+                          <div className="flex items-center gap-2 min-w-[80px]">
+                            {getStepIcon(step.type)}
+                            <span className="text-xs text-muted-foreground">
+                              {formatTime(step.atMs, step.preWorkout)}
+                            </span>
+                          </div>
                       
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -264,7 +293,9 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
                   </div>
                 </DialogContent>
               </Dialog>
-            ))}
+            </div>
+              );
+            })}
           </div>
         </ScrollArea>
       </CardContent>

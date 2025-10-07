@@ -93,6 +93,14 @@ export async function compileBlockToTimeline(
     postCardio,
   } = block.params as any;
 
+  // Debug logging to verify pattern is being received correctly
+  console.log('🔧 Compiler received block:', {
+    name: block.name,
+    type: block.type,
+    pattern,
+    params: block.params
+  });
+
   // Optional: Add intro instruction (marked as pre-workout - doesn't count toward timer)
   if (options.includeIntro) {
     steps.push({

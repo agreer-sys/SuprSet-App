@@ -1451,11 +1451,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           includeIntro: i === 0 // Only intro for first block
         });
         
-        // Shift all timestamps by cumulative offset
+        // Shift all timestamps by cumulative offset and add block metadata
         const shiftedSteps = timeline.executionTimeline.map(step => ({
           ...step,
           atMs: step.atMs + cumulativeTimeMs,
-          endMs: step.endMs + cumulativeTimeMs
+          endMs: step.endMs + cumulativeTimeMs,
+          blockId: block.id,
+          blockName: block.name
         }));
         
         allSteps.push(...shiftedSteps);
