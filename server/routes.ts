@@ -131,7 +131,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin check endpoint
-  app.get('/api/auth/is-admin', isAuthenticated, async (req: any, res) => {
+  // TEMPORARY: Bypass auth for development testing
+  app.get('/api/auth/is-admin', async (req: any, res) => {
+    // In development, always return admin access for testing
+    if (process.env.NODE_ENV === 'development') {
+      return res.json({ isAdmin: true });
+    }
+    
+    // In production, check actual authentication
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
