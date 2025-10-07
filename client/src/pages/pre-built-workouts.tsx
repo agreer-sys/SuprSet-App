@@ -86,24 +86,8 @@ export default function PreBuiltWorkouts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch workout templates (old system)
-  const { data: templatesResponse, isLoading: isLoadingTemplates } = useQuery({
-    queryKey: ['/api/workout-templates', filters],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (filters.workoutType) params.append('workoutType', filters.workoutType);
-      if (filters.category) params.append('category', filters.category);
-      if (filters.difficulty) params.append('difficulty', filters.difficulty);
-      
-      const url = `/api/workout-templates${params.toString() ? '?' + params.toString() : ''}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch templates');
-      return response.json();
-    },
-  });
-
-  // Fetch block workouts (new system)
-  const { data: blockWorkoutsResponse, isLoading: isLoadingBlockWorkouts } = useQuery({
+  // Fetch block workouts
+  const { data: blockWorkoutsResponse, isLoading } = useQuery({
     queryKey: ['/api/block-workouts'],
     queryFn: async () => {
       const response = await fetch('/api/block-workouts');
@@ -112,10 +96,8 @@ export default function PreBuiltWorkouts() {
     },
   });
 
-  // Ensure templates is always an array
-  const templates = Array.isArray(templatesResponse) ? templatesResponse : [];
+  // Ensure blockWorkouts is always an array
   const blockWorkouts = Array.isArray(blockWorkoutsResponse) ? blockWorkoutsResponse : [];
-  const isLoading = isLoadingTemplates || isLoadingBlockWorkouts;
 
   // Fetch detailed template when selected
   const { data: detailedTemplate, isLoading: isLoadingDetails } = useQuery<DetailedWorkoutTemplate>({
@@ -255,14 +237,9 @@ export default function PreBuiltWorkouts() {
         </select>
       </div>
 
-      {/* Block Workouts Section (New System) */}
+      {/* Block Workouts Section */}
       {blockWorkouts.length > 0 && (
-        <>
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Block Workouts</h2>
-            <p className="text-gray-600">New workout system with customizable blocks</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12" data-testid="block-workouts-grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="block-workouts-grid">
             {blockWorkouts.map((workout: any) => (
               <Card key={workout.id} className="hover:shadow-lg transition-shadow" data-testid={`block-workout-${workout.id}`}>
                 <CardHeader>
@@ -313,100 +290,11 @@ export default function PreBuiltWorkouts() {
                 </CardContent>
               </Card>
             ))}
-          </div>
-        </>
+        </div>
       )}
-
-      {/* Workout Templates Grid (Old System) */}
-      {templates.length > 0 && (
-        <>
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Classic Templates</h2>
-            <p className="text-gray-600">Legacy workout templates</p>
-          </div>
-        </>
-      )}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="workout-templates-grid">
-        {templates.map((template: WorkoutTemplate) => (
-          <Card key={template.id} className="hover:shadow-lg transition-shadow cursor-pointer" data-testid={`workout-template-${template.id}`}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <CardTitle className="text-lg mb-2" data-testid={`template-name-${template.id}`}>
-                    {template.name}
-                  </CardTitle>
-                  <CardDescription data-testid={`template-description-${template.id}`}>
-                    {template.description}
-                  </CardDescription>
-                </div>
-                <div className="flex flex-col gap-2 ml-4">
-                  <Badge 
-                    className={`${workoutTypeColors[template.workoutType as keyof typeof workoutTypeColors] || 'bg-gray-500'} text-white`}
-                    data-testid={`template-type-${template.id}`}
-                  >
-                    {template.workoutType}
-                  </Badge>
-                  <Badge 
-                    className={difficultyColors[template.difficulty as keyof typeof difficultyColors] || 'bg-gray-100 text-gray-800'}
-                    data-testid={`template-difficulty-${template.id}`}
-                  >
-                    {getDifficultyLabel(template.difficulty)}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span data-testid={`template-duration-${template.id}`}>
-                      {formatDuration(template.estimatedDuration)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Target className="h-4 w-4" />
-                    <span data-testid={`template-category-${template.id}`}>
-                      {template.category}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Zap className="h-4 w-4" />
-                    <span data-testid={`template-timing-${template.id}`}>
-                      {template.timingStructure}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => setSelectedTemplate(template as any)}
-                    data-testid={`view-details-${template.id}`}
-                  >
-                    View Details
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleStartWorkout(template.id)}
-                    disabled={startWorkoutMutation.isPending}
-                    data-testid={`start-workout-${template.id}`}
-                  >
-                    <Play className="h-4 w-4 mr-1" />
-                    {startWorkoutMutation.isPending ? 'Starting...' : 'Start'}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       {/* Empty State */}
-      {templates.length === 0 && blockWorkouts.length === 0 && (
+      {blockWorkouts.length === 0 && (
         <div className="text-center py-12" data-testid="empty-state">
           <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No workouts found</h3>
@@ -414,8 +302,8 @@ export default function PreBuiltWorkouts() {
         </div>
       )}
 
-      {/* Template Details Modal - TODO: Convert to proper modal */}
-      {selectedTemplate && detailedTemplate && (
+      {/* Old modal removed - not needed for block workouts */}
+      {false && selectedTemplate && detailedTemplate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="template-details-modal">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
