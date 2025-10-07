@@ -1296,7 +1296,12 @@ export class DatabaseStorage implements IStorage {
           .orderBy(blockExercises.orderIndex);
         return { 
           ...block, 
-          exercises: exercises.map(e => e.exerciseId)
+          exercises: exercises.map(e => ({
+            exerciseId: e.exerciseId,
+            targetReps: e.targetReps,
+            workSec: e.workSec,
+            restSec: e.restSec
+          }))
         };
       })
     );
