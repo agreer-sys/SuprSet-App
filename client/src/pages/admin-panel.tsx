@@ -99,7 +99,7 @@ export default function AdminPanel() {
         throw new Error("Add at least one block");
       }
 
-      return await apiRequest("POST", "/api/admin/block-workouts", {
+      return await apiRequest("/api/admin/block-workouts", "POST", {
         name: workoutName,
         description: workoutDescription,
         blocks: blocks
