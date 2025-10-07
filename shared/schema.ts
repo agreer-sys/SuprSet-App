@@ -419,6 +419,7 @@ export const blocks = pgTable("blocks", {
     roundRestSec?: number; // Rest between circuit rounds (after all exercises)
     transitionSec?: number;
     durationSec?: number;
+    targetReps?: string; // Reps (e.g., "12" or "10-12" range)
     
     // Advanced params
     awaitReadyBeforeStart?: boolean;

@@ -69,6 +69,7 @@ export default function AdminPanel() {
     exercises: []
   });
   const [selectedPattern, setSelectedPattern] = useState<WorkoutPattern>("superset");
+  const [workType, setWorkType] = useState<"time" | "reps">("time");
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [showTimelinePreview, setShowTimelinePreview] = useState(false);
@@ -512,7 +513,15 @@ export default function AdminPanel() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">{getExerciseName(ex.exerciseId)}</p>
                         <p className="text-xs text-muted-foreground">
-                          {ex.workSec || currentBlock.params?.workSec}s work · {ex.restSec || currentBlock.params?.restSec}s rest
+                          {currentBlock.params?.targetReps ? (
+                            <>
+                              <strong>{currentBlock.params.targetReps}</strong> reps · {ex.restSec || currentBlock.params?.restSec}s rest
+                            </>
+                          ) : (
+                            <>
+                              {ex.workSec || currentBlock.params?.workSec}s work · {ex.restSec || currentBlock.params?.restSec}s rest
+                            </>
+                          )}
                         </p>
                       </div>
                       <Button
@@ -555,21 +564,72 @@ export default function AdminPanel() {
                 />
               </div>
 
-              {/* 5. Work Duration */}
-              <div>
-                <Label htmlFor="work-duration">Work Duration (seconds)</Label>
-                <Input
-                  id="work-duration"
-                  data-testid="input-work-duration"
-                  type="number"
-                  min="1"
-                  value={currentBlock.params?.workSec || ""}
-                  onChange={(e) => setCurrentBlock({
-                    ...currentBlock,
-                    params: { ...currentBlock.params, workSec: Number(e.target.value) }
-                  })}
-                  placeholder="45"
-                />
+              {/* 5. Work: Time or Reps */}
+              <div className="space-y-3">
+                <div>
+                  <Label>Work Type</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={workType === "time" ? "default" : "outline"}
+                      onClick={() => setWorkType("time")}
+                      className="w-full"
+                      data-testid="button-work-type-time"
+                    >
+                      ⏱️ Time-Based
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={workType === "reps" ? "default" : "outline"}
+                      onClick={() => setWorkType("reps")}
+                      className="w-full"
+                      data-testid="button-work-type-reps"
+                    >
+                      🔢 Rep-Based
+                    </Button>
+                  </div>
+                </div>
+
+                {workType === "time" ? (
+                  <div>
+                    <Label htmlFor="work-duration">Work Duration (seconds)</Label>
+                    <Input
+                      id="work-duration"
+                      data-testid="input-work-duration"
+                      type="number"
+                      min="1"
+                      value={currentBlock.params?.workSec || ""}
+                      onChange={(e) => setCurrentBlock({
+                        ...currentBlock,
+                        params: { 
+                          ...currentBlock.params, 
+                          workSec: Number(e.target.value),
+                          targetReps: undefined // Clear reps when using time
+                        }
+                      })}
+                      placeholder="45"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <Label htmlFor="target-reps">Target Reps (or range like "12-15")</Label>
+                    <Input
+                      id="target-reps"
+                      data-testid="input-target-reps"
+                      type="text"
+                      value={currentBlock.params?.targetReps || ""}
+                      onChange={(e) => setCurrentBlock({
+                        ...currentBlock,
+                        params: { 
+                          ...currentBlock.params, 
+                          targetReps: e.target.value,
+                          workSec: undefined // Clear time when using reps
+                        }
+                      })}
+                      placeholder="12 or 10-12"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* 6. Recovery Parameters */}
@@ -635,6 +695,7 @@ export default function AdminPanel() {
                       exercises: []
                     });
                     setSelectedPattern("superset");
+                    setWorkType("time");
                   }}
                   data-testid="button-clear-form"
                 >
@@ -755,11 +816,38 @@ export default function AdminPanel() {
                       {block.description && (
                         <p className="text-sm mb-2">{block.description}</p>
                       )}
-                      {block.params.durationMs && (
-                        <p className="text-sm text-muted-foreground">
-                          Duration: {block.params.durationMs / 1000}s
-                        </p>
-                      )}
+                      
+                      {/* Timing Summary */}
+                      <div className="mt-2 space-y-1">
+                        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                          {block.params.setsPerExercise && (
+                            <span className="bg-muted px-2 py-1 rounded">
+                              <strong>{block.params.setsPerExercise}</strong> sets
+                            </span>
+                          )}
+                          {block.params.workSec && (
+                            <span className="bg-muted px-2 py-1 rounded">
+                              <strong>{block.params.workSec}s</strong> work
+                            </span>
+                          )}
+                          {block.params.targetReps && (
+                            <span className="bg-muted px-2 py-1 rounded">
+                              <strong>{block.params.targetReps}</strong> reps
+                            </span>
+                          )}
+                          {block.params.restSec !== undefined && (
+                            <span className="bg-muted px-2 py-1 rounded">
+                              <strong>{block.params.restSec}s</strong> rest
+                            </span>
+                          )}
+                          {block.params.roundRestSec && block.params.roundRestSec > 0 && (
+                            <span className="bg-muted px-2 py-1 rounded">
+                              <strong>{block.params.roundRestSec}s</strong> round rest
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
                       {block.exercises.length > 0 && (
                         <div className="mt-2">
                           <p className="text-xs text-muted-foreground mb-1">Exercises:</p>
