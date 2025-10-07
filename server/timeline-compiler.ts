@@ -84,6 +84,7 @@ export async function compileBlockToTimeline(
     setsPerExercise = 1,
     workSec = 30,
     restSec = 30,
+    roundRestSec = 0, // Rest between circuit rounds (default 0 for non-circuit workouts)
     transitionSec = 0,
     awaitReadyBeforeStart = false,
     postCardio,
@@ -159,11 +160,28 @@ export async function compileBlockToTimeline(
         });
         currentTimeMs += exerciseWorkSec * 1000;
 
-        // Rest step (except after last exercise of last set)
+        // Rest step logic
         const isLastExercise = exIndex === block.exercises.length - 1;
         const isLastSet = set === setsPerExercise;
         
-        if (!(isLastExercise && isLastSet)) {
+        // Skip rest entirely after last exercise of last set (workout over)
+        if (isLastExercise && isLastSet) {
+          // No rest - workout complete
+        }
+        // Add round rest after last exercise of a round (circuit training)
+        else if (isLastExercise && !isLastSet && roundRestSec > 0) {
+          steps.push({
+            step: stepCounter++,
+            type: "rest",
+            label: "Round Complete - Rest",
+            durationSec: roundRestSec,
+            atMs: currentTimeMs,
+            endMs: currentTimeMs + roundRestSec * 1000,
+          });
+          currentTimeMs += roundRestSec * 1000;
+        }
+        // Add normal exercise rest between exercises within a round
+        else {
           steps.push({
             step: stepCounter++,
             type: "rest",
