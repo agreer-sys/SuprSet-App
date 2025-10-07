@@ -1419,6 +1419,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Block compilation endpoint - preview timeline from blocks
+  app.post('/api/blocks/compile-preview', async (req: any, res) => {
+    try {
+      const { block, workoutName } = req.body;
+      
+      if (!block || !block.exercises || block.exercises.length === 0) {
+        return res.status(400).json({ message: "Block must contain exercises" });
+      }
+
+      // Import the compiler
+      const { compileBlockToTimeline } = await import('./timeline-compiler');
+      
+      // Compile the block to timeline
+      const timeline = await compileBlockToTimeline(block, {
+        workoutName: workoutName || block.name || "Preview",
+        includeIntro: false
+      });
+      
+      res.json(timeline);
+    } catch (error: any) {
+      console.error("Error compiling block preview:", error);
+      res.status(500).json({ message: "Failed to compile block", error: error.message });
+    }
+  });
+
   // Workouts API routes
   app.get('/api/workouts', isAuthenticated, async (req: any, res) => {
     try {

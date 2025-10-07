@@ -12,14 +12,26 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock, Dumbbell, MessageSquare, Play, AlertCircle } from "lucide-react";
 
 interface ExecutionStep {
+  step?: number;
   atMs: number;
   endMs: number;
-  type: 'work' | 'rest' | 'await_ready' | 'form_cue' | 'transition';
-  blockId: string;
+  type: 'work' | 'rest' | 'await_ready' | 'form_cue' | 'transition' | 'instruction' | 'hold';
+  blockId?: string;
+  text?: string;
+  label?: string;
   exerciseId?: number;
   exerciseName?: string;
   durationSec?: number;
   message?: string;
+  set?: number;
+  round?: number;
+  exercise?: {
+    id: number;
+    name: string;
+    cues: string[];
+    equipment: string[];
+    muscleGroup: string;
+  };
   coachContext?: {
     primaryMuscleGroup?: string;
     movementPattern?: string;
@@ -120,11 +132,20 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
                           </span>
                         </div>
                         
-                        {step.exerciseName && (
-                          <p className="font-medium">{step.exerciseName}</p>
+                        {(step.exerciseName || step.exercise?.name) && (
+                          <div>
+                            <p className="font-medium">{step.exerciseName || step.exercise?.name}</p>
+                            {(step.set || step.round) && (
+                              <p className="text-xs text-muted-foreground">
+                                Set {step.set} {step.round && `• Exercise ${step.round}`}
+                              </p>
+                            )}
+                          </div>
                         )}
-                        {step.message && (
-                          <p className="text-sm text-muted-foreground">{step.message}</p>
+                        {(step.message || step.text || step.label) && (
+                          <p className="text-sm text-muted-foreground">
+                            {step.message || step.text || step.label}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -164,46 +185,59 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
                       </div>
                     </div>
 
-                    {step.exerciseName && (
+                    {(step.exerciseName || step.exercise) && (
                       <>
                         <div>
                           <p className="text-sm font-medium mb-1">Exercise</p>
-                          <p className="text-lg font-semibold">{step.exerciseName}</p>
-                          {step.exerciseId && (
-                            <p className="text-xs text-muted-foreground">ID: {step.exerciseId}</p>
+                          <p className="text-lg font-semibold">
+                            {step.exerciseName || step.exercise?.name}
+                          </p>
+                          {(step.exerciseId || step.exercise?.id) && (
+                            <p className="text-xs text-muted-foreground">
+                              ID: {step.exerciseId || step.exercise?.id}
+                            </p>
+                          )}
+                          {(step.set || step.round) && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Set {step.set} {step.round && `• Exercise ${step.round}`}
+                            </p>
                           )}
                         </div>
 
-                        {step.coachContext && (
+                        {(step.exercise || step.coachContext) && (
                           <div className="border-t pt-4">
-                            <p className="text-sm font-medium mb-2">Coach Context</p>
+                            <p className="text-sm font-medium mb-2">Exercise Details</p>
                             <div className="grid grid-cols-2 gap-3">
-                              {step.coachContext.primaryMuscleGroup && (
+                              {(step.exercise?.muscleGroup || step.coachContext?.primaryMuscleGroup) && (
                                 <div>
                                   <p className="text-xs text-muted-foreground">Primary Muscle</p>
-                                  <p className="text-sm">{step.coachContext.primaryMuscleGroup}</p>
+                                  <p className="text-sm">
+                                    {step.exercise?.muscleGroup || step.coachContext?.primaryMuscleGroup}
+                                  </p>
                                 </div>
                               )}
-                              {step.coachContext.movementPattern && (
+                              {step.coachContext?.movementPattern && (
                                 <div>
                                   <p className="text-xs text-muted-foreground">Movement Pattern</p>
                                   <p className="text-sm">{step.coachContext.movementPattern}</p>
                                 </div>
                               )}
-                              {step.coachContext.equipmentPrimary && (
+                              {(step.exercise?.equipment?.[0] || step.coachContext?.equipmentPrimary) && (
                                 <div>
                                   <p className="text-xs text-muted-foreground">Equipment</p>
-                                  <p className="text-sm">{step.coachContext.equipmentPrimary}</p>
+                                  <p className="text-sm">
+                                    {step.exercise?.equipment?.[0] || step.coachContext?.equipmentPrimary}
+                                  </p>
                                 </div>
                               )}
                             </div>
                             
-                            {step.coachContext.coachingBulletPoints && 
-                             step.coachContext.coachingBulletPoints.length > 0 && (
+                            {(step.exercise?.cues || step.coachContext?.coachingBulletPoints) && 
+                             (step.exercise?.cues?.length || step.coachContext?.coachingBulletPoints?.length) && (
                               <div className="mt-3">
                                 <p className="text-xs text-muted-foreground mb-1">Coaching Points</p>
                                 <ul className="text-sm list-disc list-inside space-y-1">
-                                  {step.coachContext.coachingBulletPoints.map((point, i) => (
+                                  {(step.exercise?.cues || step.coachContext?.coachingBulletPoints || []).map((point, i) => (
                                     <li key={i}>{point}</li>
                                   ))}
                                 </ul>
@@ -221,10 +255,12 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
                       </div>
                     )}
 
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-xs font-medium mb-1">Block ID</p>
-                      <code className="text-xs">{step.blockId}</code>
-                    </div>
+                    {step.blockId && (
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="text-xs font-medium mb-1">Block ID</p>
+                        <code className="text-xs">{step.blockId}</code>
+                      </div>
+                    )}
                   </div>
                 </DialogContent>
               </Dialog>

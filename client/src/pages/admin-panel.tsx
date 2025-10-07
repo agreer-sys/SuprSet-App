@@ -348,7 +348,7 @@ export default function AdminPanel() {
     setBlocks(newBlocks);
   };
 
-  const compileTimeline = () => {
+  const compileTimeline = async () => {
     if (blocks.length === 0) {
       toast({
         title: "No blocks to compile",
@@ -358,49 +358,38 @@ export default function AdminPanel() {
       return;
     }
 
-    const steps: ExecutionStep[] = [];
-    let currentTimeMs = 0;
+    try {
+      // For now, compile just the first block (can extend to multi-block later)
+      const block = blocks[0];
+      
+      const response = await fetch('/api/blocks/compile-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          block,
+          workoutName: workoutName || block.name || "Preview"
+        })
+      });
 
-    blocks.forEach((block) => {
-      const durationMs = block.params.durationMs || 0;
-      const exerciseId = block.exercises[0]?.exerciseId;
-      const exercise = exerciseId ? exercises?.find(ex => ex.id === exerciseId) : undefined;
-
-      const step: ExecutionStep = {
-        atMs: currentTimeMs,
-        endMs: currentTimeMs + durationMs,
-        type: block.params.type,
-        blockId: block.id,
-        durationSec: Math.floor(durationMs / 1000),
-      };
-
-      if (exercise) {
-        step.exerciseId = exercise.id;
-        step.exerciseName = exercise.name;
-        step.coachContext = {
-          primaryMuscleGroup: exercise.primaryMuscleGroup || undefined,
-          movementPattern: exercise.movementPattern || undefined,
-          equipmentPrimary: exercise.equipmentPrimary || exercise.equipment,
-          coachingBulletPoints: exercise.coachingBulletPoints
-            ? exercise.coachingBulletPoints.split(/[\n;]/).map(c => c.trim()).filter(c => c.length > 0)
-            : undefined
-        };
+      if (!response.ok) {
+        throw new Error('Failed to compile timeline');
       }
 
-      if (block.params.cueText) {
-        step.message = block.params.cueText;
-      }
-
-      if (block.params.type === "await_ready") {
-        step.message = "Waiting for ready signal...";
-      }
-
-      steps.push(step);
-      currentTimeMs += durationMs;
-    });
-
-    setCompiledTimeline(steps);
-    setShowTimelinePreview(true);
+      const timeline = await response.json();
+      setCompiledTimeline(timeline.executionTimeline || []);
+      setShowTimelinePreview(true);
+      
+      toast({
+        title: "Timeline compiled!",
+        description: `${timeline.executionTimeline.length} steps generated`
+      });
+    } catch (error: any) {
+      toast({
+        title: "Compilation failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   return (
