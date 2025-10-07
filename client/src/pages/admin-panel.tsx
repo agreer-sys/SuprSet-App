@@ -438,16 +438,17 @@ export default function AdminPanel() {
     });
   };
 
-  // Load workout for editing
-  const loadWorkoutForEdit = async (workoutId: number) => {
-    try {
-      const response = await fetch(`/api/admin/block-workouts/${workoutId}/with-blocks`);
+  // Load workout for editing using React Query mutation for proper error handling
+  const loadWorkoutMutation = useMutation({
+    mutationFn: async (workoutId: number) => {
+      const response = await fetch(`/api/admin/block-workouts/${workoutId}/edit`);
       if (!response.ok) {
-        throw new Error('Failed to fetch workout');
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to fetch workout');
       }
-
-      const data = await response.json();
-      
+      return await response.json();
+    },
+    onSuccess: (data) => {
       // Populate workout fields
       setWorkoutName(data.name);
       setWorkoutDescription(data.description || "");
@@ -468,21 +469,22 @@ export default function AdminPanel() {
       }));
       
       setBlocks(transformedBlocks);
-      setEditingWorkoutId(workoutId);
+      setEditingWorkoutId(data.id);
       setActiveTab("create");
       
       toast({
         title: "Workout loaded",
         description: "You can now edit this workout"
       });
-    } catch (error: any) {
+    },
+    onError: (error: Error) => {
       toast({
         title: "Failed to load workout",
         description: error.message,
         variant: "destructive"
       });
     }
-  };
+  });
 
   const addExerciseToBlock = (exerciseId: number) => {
     const newExercise: BlockExercise = {
@@ -1347,7 +1349,7 @@ export default function AdminPanel() {
       </TabsContent>
 
       <TabsContent value="manage" className="mt-6">
-        <ManageWorkoutsTab onEditWorkout={loadWorkoutForEdit} />
+        <ManageWorkoutsTab onEditWorkout={(id) => loadWorkoutMutation.mutate(id)} />
       </TabsContent>
     </Tabs>
 
