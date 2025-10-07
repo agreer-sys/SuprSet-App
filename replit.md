@@ -30,7 +30,12 @@ The application uses a client-server architecture with a React frontend and an E
 - **AI Workout Coach**: Real-time OpenAI Realtime API (GPT-3.5-turbo optimized) for conversational voice interaction with ~500ms latency, natural interruptions, and native function calling for workout controls. Server-side relay injects RAG knowledge base context. The coach receives full `executionTimeline` context for block workouts with throttled updates.
 - **Block-Based Workout Architecture**: Workouts are built from parameter-driven Blocks that compile into ExecutionTimelines with absolute timestamps. This replaces hardcoded workout formats with universal Block parameters. An admin panel for backend-only workout creation is in development.
 - **Drift-Free Timeline Execution**: Utilizes an absolute timestamp system with drift detection and 15-second resync validation. Pause/resume functionality properly freezes elapsed time.
-- **`await_ready` Step Type Handler**: The timeline pauses at `await_ready` steps, awaiting user confirmation via a special UI button, and re-anchors the timeline upon confirmation.
+- **Adaptive Ready System (`await_ready`)**: Timeline automatically pauses at strategic points for real-world flexibility:
+  - **Between Blocks**: Auto-inserted between all workout blocks, allowing rest and transition time
+  - **After Rep-Based Sets**: Auto-inserted when exercises use `targetReps` (e.g., "12-15") instead of timed work
+  - **User Activation**: Coach prompts "Say 'Ready' or 'Go'" - supports voice commands or UI button
+  - **Timeline Re-anchoring**: When resumed, all future timestamps recalculate from current moment (drift-free)
+  - **Phase 2 Vision**: Voice-based rep/weight tracking - user reports "13 reps", coach asks "What's the weight?", logs data for progressive overload
 - **Admin Authentication System**: `isAdmin` boolean field in the users table with dedicated middleware restricts access to `/api/admin/*` endpoints. Admin status is preserved across logins via the `upsertUser` function. Admin creation requires direct database access.
 
 **Data Integration**
