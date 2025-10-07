@@ -29,7 +29,7 @@ interface BlockExercise {
   orderIndex: number;
   workSec?: number;
   restSec?: number;
-  targetReps?: number;
+  targetReps?: string; // Text to support ranges like "12-15", "10 each leg"
 }
 
 interface Block {
@@ -568,28 +568,95 @@ export default function AdminPanel() {
                   <Label>Exercises</Label>
                   <div className="space-y-2">
                     {currentBlock.exercises?.map((ex, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{getExerciseName(ex.exerciseId)}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {currentBlock.params?.targetReps ? (
-                              <>
-                                <strong>{currentBlock.params.targetReps}</strong> reps · {ex.restSec || currentBlock.params?.restSec}s rest
-                              </>
-                            ) : (
-                              <>
-                                {ex.workSec || currentBlock.params?.workSec}s work · {ex.restSec || currentBlock.params?.restSec}s rest
-                              </>
-                            )}
-                          </p>
+                      <div key={idx} className="p-3 bg-muted rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{getExerciseName(ex.exerciseId)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {ex.targetReps || currentBlock.params?.targetReps ? (
+                                <>
+                                  <strong>{ex.targetReps || currentBlock.params?.targetReps}</strong> reps · {ex.restSec || currentBlock.params?.restSec}s rest
+                                </>
+                              ) : (
+                                <>
+                                  {ex.workSec || currentBlock.params?.workSec}s work · {ex.restSec || currentBlock.params?.restSec}s rest
+                                </>
+                              )}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeExerciseFromBlock(idx)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => removeExerciseFromBlock(idx)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        
+                        {/* Exercise-level overrides */}
+                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/50">
+                          {currentBlock.params?.targetReps ? (
+                            <div>
+                              <Label className="text-xs">Target Reps Override</Label>
+                              <Input
+                                type="text"
+                                placeholder={currentBlock.params.targetReps}
+                                value={ex.targetReps || ""}
+                                onChange={(e) => {
+                                  const updated = [...(currentBlock.exercises || [])];
+                                  updated[idx] = { ...updated[idx], targetReps: e.target.value || undefined };
+                                  setCurrentBlock({ ...currentBlock, exercises: updated });
+                                }}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          ) : (
+                            <div>
+                              <Label className="text-xs">Work Sec Override</Label>
+                              <Input
+                                type="number"
+                                placeholder={String(currentBlock.params?.workSec || "")}
+                                value={ex.workSec || ""}
+                                onChange={(e) => {
+                                  const updated = [...(currentBlock.exercises || [])];
+                                  updated[idx] = { ...updated[idx], workSec: e.target.value ? Number(e.target.value) : undefined };
+                                  setCurrentBlock({ ...currentBlock, exercises: updated });
+                                }}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <Label className="text-xs">Rest Sec Override</Label>
+                            <Input
+                              type="number"
+                              placeholder={String(currentBlock.params?.restSec || "")}
+                              value={ex.restSec || ""}
+                              onChange={(e) => {
+                                const updated = [...(currentBlock.exercises || [])];
+                                updated[idx] = { ...updated[idx], restSec: e.target.value ? Number(e.target.value) : undefined };
+                                setCurrentBlock({ ...currentBlock, exercises: updated });
+                              }}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          {!currentBlock.params?.targetReps && (
+                            <div>
+                              <Label className="text-xs">Target Reps Override</Label>
+                              <Input
+                                type="text"
+                                placeholder="e.g., 12-15"
+                                value={ex.targetReps || ""}
+                                onChange={(e) => {
+                                  const updated = [...(currentBlock.exercises || [])];
+                                  updated[idx] = { ...updated[idx], targetReps: e.target.value || undefined };
+                                  setCurrentBlock({ ...currentBlock, exercises: updated });
+                                }}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                     <Button
