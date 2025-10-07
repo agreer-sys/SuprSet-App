@@ -174,25 +174,26 @@ export async function compileBlockToTimeline(
           });
           currentTimeMs += exerciseWorkSec * 1000;
 
-          // For rep-based exercises, add await_ready after work step
-          if (isRepBased) {
-            steps.push({
-              step: stepCounter++,
-              type: "await_ready",
-              label: `Finished ${targetReps} reps?`,
-              coachPrompt: `How many reps did you get? You can say the number, or just say 'Ready' to continue.`,
-              atMs: currentTimeMs,
-              endMs: currentTimeMs, // Zero duration - waits indefinitely
-              nextStepId: `step-${stepCounter}`,
-            });
-            // Note: currentTimeMs doesn't advance - await_ready re-anchors timeline
-          }
-
           // Rest between sets (but not after the last set of the last exercise)
           const isLastSet = set === setsPerExercise;
           const isLastExercise = exIndex === block.exercises.length - 1;
           
-          if (!isLastSet || !isLastExercise) {
+          // For rep-based exercises, await_ready REPLACES the rest period
+          if (isRepBased && (!isLastSet || !isLastExercise)) {
+            steps.push({
+              step: stepCounter++,
+              type: "await_ready",
+              label: `Finished ${targetReps} reps?`,
+              coachPrompt: `Great work! How many reps did you get? You can say the number, or just say 'Ready' when you're rested.`,
+              atMs: currentTimeMs,
+              endMs: currentTimeMs, // Zero duration - waits indefinitely (user rests during this)
+              nextStepId: `step-${stepCounter}`,
+            });
+            // Note: currentTimeMs doesn't advance - await_ready re-anchors timeline
+            // The pause serves as the rest period - no separate rest step needed
+          }
+          // For time-based exercises, use normal rest periods
+          else if (!isRepBased && (!isLastSet || !isLastExercise)) {
             steps.push({
               step: stepCounter++,
               type: "rest",
@@ -248,20 +249,6 @@ export async function compileBlockToTimeline(
           });
           currentTimeMs += exerciseWorkSec * 1000;
 
-          // For rep-based exercises, add await_ready after work step
-          if (isRepBased) {
-            steps.push({
-              step: stepCounter++,
-              type: "await_ready",
-              label: `Finished ${targetReps} reps?`,
-              coachPrompt: `How many reps did you get? You can say the number, or just say 'Ready' to continue.`,
-              atMs: currentTimeMs,
-              endMs: currentTimeMs, // Zero duration - waits indefinitely
-              nextStepId: `step-${stepCounter}`,
-            });
-            // Note: currentTimeMs doesn't advance - await_ready re-anchors timeline
-          }
-
           // Rest step logic
           const isLastExercise = exIndex === block.exercises.length - 1;
           const isLastSet = set === setsPerExercise;
@@ -270,6 +257,21 @@ export async function compileBlockToTimeline(
           if (isLastExercise && isLastSet) {
             // No rest - workout complete
           }
+          // For rep-based exercises, await_ready REPLACES rest periods
+          else if (isRepBased) {
+            steps.push({
+              step: stepCounter++,
+              type: "await_ready",
+              label: `Finished ${targetReps} reps?`,
+              coachPrompt: `Great work! How many reps did you get? You can say the number, or just say 'Ready' when you're rested.`,
+              atMs: currentTimeMs,
+              endMs: currentTimeMs, // Zero duration - waits indefinitely (user rests during this)
+              nextStepId: `step-${stepCounter}`,
+            });
+            // Note: currentTimeMs doesn't advance - await_ready re-anchors timeline
+            // The pause serves as the rest period - no separate rest step needed
+          }
+          // For time-based exercises, use normal rest periods
           // Add round rest after last exercise of a round (circuit training)
           else if (isLastExercise && !isLastSet && roundRestSec > 0) {
             steps.push({
