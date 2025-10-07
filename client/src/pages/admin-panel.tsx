@@ -249,6 +249,7 @@ export default function AdminPanel() {
           ...currentBlock,
           type: "custom_sequence",
           params: {
+            pattern: "superset", // Save pattern for compiler
             setsPerExercise: 3,
             workSec: 45,
             restSec: 10, // Minimal rest between exercises
@@ -262,6 +263,7 @@ export default function AdminPanel() {
           ...currentBlock,
           type: "custom_sequence",
           params: {
+            pattern: "straight_sets", // Save pattern for compiler
             setsPerExercise: 3,
             workSec: 45,
             restSec: 60, // Normal rest between sets
@@ -275,6 +277,7 @@ export default function AdminPanel() {
           ...currentBlock,
           type: "custom_sequence",
           params: {
+            pattern: "circuit", // Save pattern for compiler
             setsPerExercise: 3, // Number of rounds
             workSec: 40,
             restSec: 10, // Short rest between exercises

@@ -81,6 +81,7 @@ export async function compileBlockToTimeline(
 
   // Extract block params
   const {
+    pattern = "circuit", // Default to circuit if not specified
     setsPerExercise = 1,
     workSec = 30,
     restSec = 30,
@@ -119,77 +120,136 @@ export async function compileBlockToTimeline(
 
   // Main block compilation
   if (block.type === "custom_sequence") {
-    // Expand rounds: repeat exercises for each set
-    for (let set = 1; set <= setsPerExercise; set++) {
+    // STRAIGHT SETS: Complete all sets of one exercise before moving to next
+    if (pattern === "straight_sets") {
       for (let exIndex = 0; exIndex < block.exercises.length; exIndex++) {
         const exercise = block.exercises[exIndex];
         const exerciseWorkSec = exercise.workSec || workSec;
         const exerciseRestSec = exercise.restSec || restSec;
 
-        // Calculate round number (which exercise in the sequence)
-        const round = exIndex + 1;
+        for (let set = 1; set <= setsPerExercise; set++) {
+          // Work step
+          const cues = exercise.coachingBulletPoints
+            ? exercise.coachingBulletPoints
+                .split(/[\n;]/)
+                .map((c) => c.trim().replace(/^[•\-\*]\s*/, ""))
+                .filter((c) => c.length > 0)
+            : [];
 
-        // Work step
-        const cues = exercise.coachingBulletPoints
-          ? exercise.coachingBulletPoints
-              .split(/[\n;]/)
-              .map((c) => c.trim().replace(/^[•\-\*]\s*/, ""))
-              .filter((c) => c.length > 0)
-          : [];
-
-        steps.push({
-          step: stepCounter++,
-          type: "work",
-          exercise: {
-            id: exercise.exerciseId,
-            name: exercise.exerciseName,
-            cues,
-            equipment: [
-              exercise.equipmentPrimary,
-              ...(exercise.equipmentSecondary || []),
-            ].filter(Boolean) as string[],
-            muscleGroup: exercise.primaryMuscleGroup || "Unknown",
-            videoUrl: exercise.videoUrl || undefined,
-            imageUrl: exercise.imageUrl || undefined,
-          },
-          atMs: currentTimeMs,
-          endMs: currentTimeMs + exerciseWorkSec * 1000,
-          durationSec: exerciseWorkSec,
-          set,
-          round,
-        });
-        currentTimeMs += exerciseWorkSec * 1000;
-
-        // Rest step logic
-        const isLastExercise = exIndex === block.exercises.length - 1;
-        const isLastSet = set === setsPerExercise;
-        
-        // Skip rest entirely after last exercise of last set (workout over)
-        if (isLastExercise && isLastSet) {
-          // No rest - workout complete
-        }
-        // Add round rest after last exercise of a round (circuit training)
-        else if (isLastExercise && !isLastSet && roundRestSec > 0) {
           steps.push({
             step: stepCounter++,
-            type: "rest",
-            label: "Round Complete - Rest",
-            durationSec: roundRestSec,
+            type: "work",
+            exercise: {
+              id: exercise.exerciseId,
+              name: exercise.exerciseName,
+              cues,
+              equipment: [
+                exercise.equipmentPrimary,
+                ...(exercise.equipmentSecondary || []),
+              ].filter(Boolean) as string[],
+              muscleGroup: exercise.primaryMuscleGroup || "Unknown",
+              videoUrl: exercise.videoUrl || undefined,
+              imageUrl: exercise.imageUrl || undefined,
+            },
             atMs: currentTimeMs,
-            endMs: currentTimeMs + roundRestSec * 1000,
+            endMs: currentTimeMs + exerciseWorkSec * 1000,
+            durationSec: exerciseWorkSec,
+            set,
+            round: exIndex + 1,
           });
-          currentTimeMs += roundRestSec * 1000;
+          currentTimeMs += exerciseWorkSec * 1000;
+
+          // Rest between sets (but not after the last set of the last exercise)
+          const isLastSet = set === setsPerExercise;
+          const isLastExercise = exIndex === block.exercises.length - 1;
+          
+          if (!isLastSet || !isLastExercise) {
+            steps.push({
+              step: stepCounter++,
+              type: "rest",
+              text: isLastSet ? "Transition to next exercise" : `Rest before set ${set + 1}`,
+              atMs: currentTimeMs,
+              endMs: currentTimeMs + exerciseRestSec * 1000,
+              durationSec: exerciseRestSec,
+            });
+            currentTimeMs += exerciseRestSec * 1000;
+          }
         }
-        // Add normal exercise rest between exercises within a round
-        else {
+      }
+    } 
+    // CIRCUIT/SUPERSET: Do all exercises once, then repeat (rounds)
+    else {
+      for (let set = 1; set <= setsPerExercise; set++) {
+        for (let exIndex = 0; exIndex < block.exercises.length; exIndex++) {
+          const exercise = block.exercises[exIndex];
+          const exerciseWorkSec = exercise.workSec || workSec;
+          const exerciseRestSec = exercise.restSec || restSec;
+
+          // Calculate round number (which exercise in the sequence)
+          const round = exIndex + 1;
+
+          // Work step
+          const cues = exercise.coachingBulletPoints
+            ? exercise.coachingBulletPoints
+                .split(/[\n;]/)
+                .map((c) => c.trim().replace(/^[•\-\*]\s*/, ""))
+                .filter((c) => c.length > 0)
+            : [];
+
           steps.push({
             step: stepCounter++,
-            type: "rest",
-            durationSec: exerciseRestSec,
+            type: "work",
+            exercise: {
+              id: exercise.exerciseId,
+              name: exercise.exerciseName,
+              cues,
+              equipment: [
+                exercise.equipmentPrimary,
+                ...(exercise.equipmentSecondary || []),
+              ].filter(Boolean) as string[],
+              muscleGroup: exercise.primaryMuscleGroup || "Unknown",
+              videoUrl: exercise.videoUrl || undefined,
+              imageUrl: exercise.imageUrl || undefined,
+            },
             atMs: currentTimeMs,
-            endMs: currentTimeMs + exerciseRestSec * 1000,
+            endMs: currentTimeMs + exerciseWorkSec * 1000,
+            durationSec: exerciseWorkSec,
+            set,
+            round,
           });
-          currentTimeMs += exerciseRestSec * 1000;
+          currentTimeMs += exerciseWorkSec * 1000;
+
+          // Rest step logic
+          const isLastExercise = exIndex === block.exercises.length - 1;
+          const isLastSet = set === setsPerExercise;
+          
+          // Skip rest entirely after last exercise of last set (workout over)
+          if (isLastExercise && isLastSet) {
+            // No rest - workout complete
+          }
+          // Add round rest after last exercise of a round (circuit training)
+          else if (isLastExercise && !isLastSet && roundRestSec > 0) {
+            steps.push({
+              step: stepCounter++,
+              type: "rest",
+              label: "Round Complete - Rest",
+              durationSec: roundRestSec,
+              atMs: currentTimeMs,
+              endMs: currentTimeMs + roundRestSec * 1000,
+            });
+            currentTimeMs += roundRestSec * 1000;
+          }
+          // Add normal exercise rest between exercises within a round
+          else {
+            steps.push({
+              step: stepCounter++,
+              type: "rest",
+              durationSec: exerciseRestSec,
+              atMs: currentTimeMs,
+              endMs: currentTimeMs + exerciseRestSec * 1000,
+            });
+            currentTimeMs += exerciseRestSec * 1000;
+          }
         }
       }
     }
