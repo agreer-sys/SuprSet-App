@@ -64,7 +64,7 @@ interface ExecutionStep {
 }
 
 // Manage Workouts Tab Component
-function ManageWorkoutsTab() {
+function ManageWorkoutsTab({ onEditWorkout }: { onEditWorkout: (id: number) => void }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [workoutToDelete, setWorkoutToDelete] = useState<number | null>(null);
@@ -211,6 +211,7 @@ function ManageWorkoutsTab() {
                     <Button
                       size="sm"
                       variant="outline"
+                      onClick={() => onEditWorkout(workout.id)}
                     >
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
@@ -272,6 +273,8 @@ export default function AdminPanel() {
   const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
   const [workoutName, setWorkoutName] = useState("");
   const [workoutDescription, setWorkoutDescription] = useState("");
+  const [editingWorkoutId, setEditingWorkoutId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState("create");
 
   // Check if user is admin
   const { data: adminStatus, isLoading: checkingAdmin } = useQuery<{ isAdmin: boolean }>({
@@ -303,21 +306,32 @@ export default function AdminPanel() {
         exercises: block.exercises.map(ex => ex.exerciseId) // Extract just the IDs
       }));
 
-      return await apiRequest("/api/admin/block-workouts", "POST", {
-        name: workoutName,
-        description: workoutDescription,
-        blocks: transformedBlocks
-      });
+      if (editingWorkoutId) {
+        // Update existing workout
+        return await apiRequest(`/api/admin/block-workouts/${editingWorkoutId}`, "PATCH", {
+          name: workoutName,
+          description: workoutDescription,
+          blocks: transformedBlocks
+        });
+      } else {
+        // Create new workout
+        return await apiRequest("/api/admin/block-workouts", "POST", {
+          name: workoutName,
+          description: workoutDescription,
+          blocks: transformedBlocks
+        });
+      }
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Workout saved!",
-        description: `${data.name} has been created successfully`
+        title: editingWorkoutId ? "Workout updated!" : "Workout saved!",
+        description: `${data.name} has been ${editingWorkoutId ? 'updated' : 'created'} successfully`
       });
       // Reset form
       setBlocks([]);
       setWorkoutName("");
       setWorkoutDescription("");
+      setEditingWorkoutId(null);
     },
     onError: (error: Error) => {
       toast({
@@ -422,6 +436,52 @@ export default function AdminPanel() {
       title: "Block duplicated",
       description: `${block.name} has been duplicated`
     });
+  };
+
+  // Load workout for editing
+  const loadWorkoutForEdit = async (workoutId: number) => {
+    try {
+      const response = await fetch(`/api/admin/block-workouts/${workoutId}/with-blocks`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch workout');
+      }
+
+      const data = await response.json();
+      
+      // Populate workout fields
+      setWorkoutName(data.name);
+      setWorkoutDescription(data.description || "");
+      
+      // Transform blocks back to UI format with full exercise objects
+      const transformedBlocks = data.blocks.map((block: any) => ({
+        id: block.id,
+        name: block.name,
+        description: block.description || "",
+        type: block.type,
+        params: block.params,
+        exercises: block.exercises.map((ex: any) => ({
+          exerciseId: ex.exerciseId,
+          targetReps: ex.targetReps,
+          workSec: ex.workSec,
+          restSec: ex.restSec
+        }))
+      }));
+      
+      setBlocks(transformedBlocks);
+      setEditingWorkoutId(workoutId);
+      setActiveTab("create");
+      
+      toast({
+        title: "Workout loaded",
+        description: "You can now edit this workout"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to load workout",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const addExerciseToBlock = (exerciseId: number) => {
@@ -653,7 +713,7 @@ export default function AdminPanel() {
           </Link>
         </div>
 
-        <Tabs defaultValue="create" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="create">Create Workout</TabsTrigger>
             <TabsTrigger value="manage">Manage Workouts</TabsTrigger>
@@ -1230,7 +1290,6 @@ export default function AdminPanel() {
             </CardContent>
           </Card>
         </div>
-      </div>
 
       {/* Exercise Picker Modal */}
       {showExercisePicker && (
@@ -1288,22 +1347,23 @@ export default function AdminPanel() {
       </TabsContent>
 
       <TabsContent value="manage" className="mt-6">
-        <ManageWorkoutsTab />
+        <ManageWorkoutsTab onEditWorkout={loadWorkoutForEdit} />
       </TabsContent>
     </Tabs>
 
-      {/* Timeline Preview Dialog */}
-      <Dialog open={showTimelinePreview} onOpenChange={setShowTimelinePreview}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>Compiled Workout Timeline</DialogTitle>
-          </DialogHeader>
-          <TimelinePreview 
-            steps={compiledTimeline} 
-            title="Block Sequence Preview"
-          />
-        </DialogContent>
-      </Dialog>
+        {/* Timeline Preview Dialog */}
+        <Dialog open={showTimelinePreview} onOpenChange={setShowTimelinePreview}>
+          <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Compiled Workout Timeline</DialogTitle>
+            </DialogHeader>
+            <TimelinePreview 
+              steps={compiledTimeline} 
+              title="Block Sequence Preview"
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
