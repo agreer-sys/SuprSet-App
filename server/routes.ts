@@ -237,6 +237,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Get all block workouts including unpublished (PROTECTED)
+  app.get('/api/admin/block-workouts', isAdmin, async (req, res) => {
+    try {
+      const workouts = await storage.getAllBlockWorkouts();
+      res.json(workouts);
+    } catch (error) {
+      console.error("Error fetching all block workouts:", error);
+      res.status(500).json({ message: "Failed to fetch workouts" });
+    }
+  });
+
+  // Admin: Get workout with blocks for editing (PROTECTED)
+  app.get('/api/admin/block-workouts/:id/edit', isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid workout ID" });
+      }
+      
+      const workout = await storage.getBlockWorkoutWithBlocks(id);
+      if (!workout) {
+        return res.status(404).json({ message: "Workout not found" });
+      }
+      
+      res.json(workout);
+    } catch (error) {
+      console.error("Error fetching workout for editing:", error);
+      res.status(500).json({ message: "Failed to fetch workout" });
+    }
+  });
+
+  // Admin: Update block workout (PROTECTED)
+  app.patch('/api/admin/block-workouts/:id', isAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid workout ID" });
+      }
+
+      const { name, description, blocks } = req.body;
+      
+      const workout = await storage.updateBlockWorkout(id, {
+        name,
+        description,
+        blocks
+      });
+      
+      res.json(workout);
+    } catch (error) {
+      console.error("Error updating block workout:", error);
+      res.status(500).json({ 
+        message: "Failed to update workout",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Admin: Delete block workout (PROTECTED)
+  app.delete('/api/admin/block-workouts/:id', isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid workout ID" });
+      }
+      
+      await storage.deleteBlockWorkout(id);
+      res.json({ message: "Workout deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting block workout:", error);
+      res.status(500).json({ 
+        message: "Failed to delete workout",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Admin: Toggle publish status (PROTECTED)
+  app.patch('/api/admin/block-workouts/:id/publish', isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid workout ID" });
+      }
+      
+      const workout = await storage.togglePublishBlockWorkout(id);
+      res.json(workout);
+    } catch (error) {
+      console.error("Error toggling publish status:", error);
+      res.status(500).json({ 
+        message: "Failed to toggle publish status",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Admin: Duplicate workout (PROTECTED)
+  app.post('/api/admin/block-workouts/:id/duplicate', isAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid workout ID" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const workout = await storage.duplicateBlockWorkout(id, userId);
+      res.status(201).json(workout);
+    } catch (error) {
+      console.error("Error duplicating block workout:", error);
+      res.status(500).json({ 
+        message: "Failed to duplicate workout",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Protected: Start block workout session
   app.post('/api/block-workout-sessions', isAuthenticated, async (req: any, res) => {
     try {

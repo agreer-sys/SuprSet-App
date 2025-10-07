@@ -140,13 +140,31 @@ export interface IStorage {
       id: string;
       name: string;
       description: string;
+      type?: string;
       params: any;
       exercises: number[];
     }>;
     createdBy: string;
   }): Promise<BlockWorkout>;
   getBlockWorkouts(): Promise<BlockWorkout[]>;
+  getAllBlockWorkouts(): Promise<BlockWorkout[]>; // Admin: includes unpublished
   getBlockWorkout(id: number): Promise<BlockWorkout | undefined>;
+  getBlockWorkoutWithBlocks(id: number): Promise<any>; // Get workout with full block data for editing
+  deleteBlockWorkout(id: number): Promise<void>;
+  togglePublishBlockWorkout(id: number): Promise<BlockWorkout>;
+  duplicateBlockWorkout(id: number, createdBy: string): Promise<BlockWorkout>;
+  updateBlockWorkout(id: number, data: {
+    name?: string;
+    description?: string;
+    blocks?: Array<{
+      id: string;
+      name: string;
+      description: string;
+      type?: string;
+      params: any;
+      exercises: number[];
+    }>;
+  }): Promise<BlockWorkout>;
   
   // Block Workout Session methods
   startBlockWorkoutSession(userId: string, workoutId: number): Promise<any>;
@@ -1242,6 +1260,350 @@ export class DatabaseStorage implements IStorage {
     const [workout] = await db.select().from(blockWorkouts)
       .where(eq(blockWorkouts.id, id));
     return workout;
+  }
+
+  async getAllBlockWorkouts(): Promise<BlockWorkout[]> {
+    // Admin-only: returns all workouts including unpublished
+    const workouts = await db.select().from(blockWorkouts)
+      .orderBy(desc(blockWorkouts.createdAt));
+    return workouts;
+  }
+
+  async getBlockWorkoutWithBlocks(id: number): Promise<any> {
+    // Get workout
+    const [workout] = await db.select().from(blockWorkouts)
+      .where(eq(blockWorkouts.id, id));
+    
+    if (!workout) {
+      return null;
+    }
+
+    // Get all blocks in sequence
+    const blockIds = workout.blockSequence.map((seq: any) => seq.blockId);
+    
+    if (blockIds.length === 0) {
+      return { ...workout, blocks: [] };
+    }
+
+    const workoutBlocks = await db.select().from(blocks)
+      .where(inArray(blocks.id, blockIds));
+
+    // Get exercises for each block
+    const blocksWithExercises = await Promise.all(
+      workoutBlocks.map(async (block) => {
+        const exercises = await db.select().from(blockExercises)
+          .where(eq(blockExercises.blockId, block.id))
+          .orderBy(blockExercises.orderIndex);
+        return { 
+          ...block, 
+          exercises: exercises.map(e => e.exerciseId)
+        };
+      })
+    );
+
+    // Sort blocks by workout sequence
+    const sortedBlocks = workout.blockSequence
+      .map((seq: any) => blocksWithExercises.find(b => b.id === seq.blockId)!)
+      .filter(Boolean);
+
+    return { ...workout, blocks: sortedBlocks };
+  }
+
+  async deleteBlockWorkout(id: number): Promise<void> {
+    // Get block IDs to delete associated exercises
+    const [workout] = await db.select().from(blockWorkouts)
+      .where(eq(blockWorkouts.id, id));
+    
+    if (!workout) {
+      throw new Error("Workout not found");
+    }
+
+    const blockIds = workout.blockSequence.map((seq: any) => seq.blockId);
+
+    // Delete block exercises
+    if (blockIds.length > 0) {
+      await db.delete(blockExercises)
+        .where(inArray(blockExercises.blockId, blockIds));
+
+      // Delete blocks
+      await db.delete(blocks)
+        .where(inArray(blocks.id, blockIds));
+    }
+
+    // Delete workout
+    await db.delete(blockWorkouts)
+      .where(eq(blockWorkouts.id, id));
+  }
+
+  async togglePublishBlockWorkout(id: number): Promise<BlockWorkout> {
+    const [workout] = await db.select().from(blockWorkouts)
+      .where(eq(blockWorkouts.id, id));
+    
+    if (!workout) {
+      throw new Error("Workout not found");
+    }
+
+    const newPublishState = !workout.isPublished;
+    
+    await db.update(blockWorkouts)
+      .set({ 
+        isPublished: newPublishState,
+        publishedAt: newPublishState ? new Date() : null
+      })
+      .where(eq(blockWorkouts.id, id));
+
+    const [updated] = await db.select().from(blockWorkouts)
+      .where(eq(blockWorkouts.id, id));
+    
+    return updated;
+  }
+
+  async duplicateBlockWorkout(id: number, createdBy: string): Promise<BlockWorkout> {
+    // Get original workout with blocks
+    const original = await this.getBlockWorkoutWithBlocks(id);
+    
+    if (!original) {
+      throw new Error("Workout not found");
+    }
+
+    // Refresh cache for exercises
+    await this.refreshCache();
+
+    // Create new workout
+    const [newWorkout] = await db.insert(blockWorkouts).values({
+      name: `${original.name} (Copy)`,
+      description: original.description,
+      createdBy,
+      blockSequence: [],
+      estimatedDurationMin: 0,
+      isPublished: false // Duplicates start as unpublished
+    }).returning();
+
+    // Duplicate blocks and exercises
+    for (let i = 0; i < original.blocks.length; i++) {
+      const originalBlock = original.blocks[i];
+      
+      // Create new block
+      const [newBlock] = await db.insert(blocks).values({
+        name: originalBlock.name,
+        description: originalBlock.description,
+        type: originalBlock.type,
+        params: originalBlock.params,
+        createdBy
+      }).returning();
+
+      // Duplicate exercises
+      for (let j = 0; j < originalBlock.exercises.length; j++) {
+        const exerciseId = originalBlock.exercises[j];
+        const exercise = this.exerciseCache.get(exerciseId)!;
+        
+        await db.insert(blockExercises).values({
+          blockId: newBlock.id,
+          exerciseId: exercise.id,
+          orderIndex: j,
+          exerciseName: exercise.name,
+          primaryMuscleGroup: exercise.primaryMuscleGroup || undefined,
+          movementPattern: exercise.movementPattern || undefined,
+          equipmentPrimary: exercise.equipmentPrimary || exercise.equipment,
+          equipmentSecondary: exercise.equipmentSecondary || [],
+          coachingBulletPoints: exercise.coachingBulletPoints || undefined,
+          videoUrl: exercise.videoUrl || undefined,
+          imageUrl: exercise.imageUrl || undefined
+        });
+      }
+
+      // Update workout's block sequence
+      const updatedSequence = [
+        ...(newWorkout.blockSequence || []),
+        { blockId: newBlock.id, orderIndex: i }
+      ];
+      
+      await db.update(blockWorkouts)
+        .set({ blockSequence: updatedSequence })
+        .where(eq(blockWorkouts.id, newWorkout.id));
+    }
+
+    // Fetch complete duplicated workout
+    const [complete] = await db.select().from(blockWorkouts)
+      .where(eq(blockWorkouts.id, newWorkout.id));
+    
+    return complete;
+  }
+
+  async updateBlockWorkout(id: number, data: {
+    name?: string;
+    description?: string;
+    blocks?: Array<{
+      id: string;
+      name: string;
+      description: string;
+      type?: string;
+      params: any;
+      exercises: number[];
+    }>;
+  }): Promise<BlockWorkout> {
+    // Refresh cache
+    await this.refreshCache();
+    
+    const [workout] = await db.select().from(blockWorkouts)
+      .where(eq(blockWorkouts.id, id));
+    
+    if (!workout) {
+      throw new Error("Workout not found");
+    }
+
+    // Update basic info if provided
+    if (data.name || data.description) {
+      await db.update(blockWorkouts)
+        .set({
+          name: data.name || workout.name,
+          description: data.description !== undefined ? data.description : workout.description
+        })
+        .where(eq(blockWorkouts.id, id));
+    }
+
+    // If blocks are provided, replace all blocks
+    if (data.blocks) {
+      // Delete old blocks and exercises
+      const oldBlockIds = workout.blockSequence.map((seq: any) => seq.blockId);
+      
+      if (oldBlockIds.length > 0) {
+        await db.delete(blockExercises)
+          .where(inArray(blockExercises.blockId, oldBlockIds));
+        await db.delete(blocks)
+          .where(inArray(blocks.id, oldBlockIds));
+      }
+
+      // Create new blocks (similar to createBlockWorkout)
+      const createdBlockIds: number[] = [];
+      
+      for (let i = 0; i < data.blocks.length; i++) {
+        const blockData = data.blocks[i];
+        
+        // Validate exercises exist
+        const missingExercises = blockData.exercises.filter(id => !this.exerciseCache.has(id));
+        if (missingExercises.length > 0) {
+          throw new Error(`Exercise IDs not found: ${missingExercises.join(', ')}`);
+        }
+        
+        // Create block
+        const [block] = await db.insert(blocks).values({
+          name: blockData.name,
+          description: blockData.description,
+          type: blockData.type || 'custom_sequence',
+          params: blockData.params,
+          createdBy: workout.createdBy || 'system'
+        }).returning();
+
+        createdBlockIds.push(block.id);
+
+        // Create block exercises
+        for (let j = 0; j < blockData.exercises.length; j++) {
+          const exerciseId = blockData.exercises[j];
+          const exercise = this.exerciseCache.get(exerciseId)!;
+          
+          await db.insert(blockExercises).values({
+            blockId: block.id,
+            exerciseId: exercise.id,
+            orderIndex: j,
+            exerciseName: exercise.name,
+            primaryMuscleGroup: exercise.primaryMuscleGroup || undefined,
+            movementPattern: exercise.movementPattern || undefined,
+            equipmentPrimary: exercise.equipmentPrimary || exercise.equipment,
+            equipmentSecondary: exercise.equipmentSecondary || [],
+            coachingBulletPoints: exercise.coachingBulletPoints || undefined,
+            videoUrl: exercise.videoUrl || undefined,
+            imageUrl: exercise.imageUrl || undefined
+          });
+        }
+      }
+
+      // Update block sequence
+      const newSequence = createdBlockIds.map((blockId, i) => ({ blockId, orderIndex: i }));
+      await db.update(blockWorkouts)
+        .set({ blockSequence: newSequence })
+        .where(eq(blockWorkouts.id, id));
+
+      // Recompile timeline with new blocks
+      const allBlocks = await db.select().from(blocks)
+        .where(inArray(blocks.id, createdBlockIds));
+      
+      const blocksWithExercises = await Promise.all(
+        allBlocks.map(async (block) => {
+          const exercises = await db.select().from(blockExercises)
+            .where(eq(blockExercises.blockId, block.id))
+            .orderBy(blockExercises.orderIndex);
+          return { ...block, exercises };
+        })
+      );
+
+      const sortedBlocks = createdBlockIds
+        .map(id => blocksWithExercises.find(b => b.id === id)!)
+        .filter(Boolean);
+
+      // Compile timeline
+      const allSteps: TimelineStep[] = [];
+      let currentTimeMs = 0;
+      let stepCounter = 1;
+
+      for (let i = 0; i < sortedBlocks.length; i++) {
+        const block = sortedBlocks[i];
+        const isFirstBlock = i === 0;
+        
+        const blockTimeline = await compileBlockToTimeline(
+          block,
+          {
+            workoutName: workout.name,
+            workoutStructure: "block_sequence",
+            includeIntro: isFirstBlock
+          }
+        );
+
+        for (const step of blockTimeline.executionTimeline) {
+          allSteps.push({
+            ...step,
+            step: stepCounter++,
+            atMs: currentTimeMs + step.atMs,
+            endMs: currentTimeMs + step.endMs
+          });
+        }
+
+        if (blockTimeline.executionTimeline.length > 0) {
+          const lastStep = blockTimeline.executionTimeline[blockTimeline.executionTimeline.length - 1];
+          currentTimeMs += lastStep.endMs;
+        }
+      }
+
+      const totalDurationSec = Math.floor(currentTimeMs / 1000);
+
+      const executionTimeline: ExecutionTimeline = {
+        workoutHeader: {
+          name: workout.name,
+          totalDurationSec,
+          structure: "block_sequence"
+        },
+        executionTimeline: allSteps,
+        sync: {
+          workoutStartEpochMs: 0,
+          resyncEveryMs: 15000,
+          allowedDriftMs: 250
+        }
+      };
+
+      await db.update(blockWorkouts)
+        .set({ 
+          executionTimeline,
+          estimatedDurationMin: Math.ceil(totalDurationSec / 60),
+          version: (workout.version || 0) + 1
+        })
+        .where(eq(blockWorkouts.id, id));
+    }
+
+    // Fetch and return updated workout
+    const [updated] = await db.select().from(blockWorkouts)
+      .where(eq(blockWorkouts.id, id));
+    
+    return updated;
   }
 
   async startBlockWorkoutSession(userId: string, workoutId: number): Promise<any> {
