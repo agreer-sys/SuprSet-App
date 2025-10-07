@@ -1258,7 +1258,7 @@ export default function AdminPanel() {
                           <p className="text-xs text-muted-foreground mb-1">Exercises:</p>
                           {block.exercises.map((ex, idx) => (
                             <span key={idx} className="text-xs bg-primary/10 px-2 py-1 rounded mr-1">
-                              {getExerciseName(ex.exerciseId)}
+                              {getExerciseName(typeof ex === 'number' ? ex : ex.exerciseId)}
                             </span>
                           ))}
                         </div>
