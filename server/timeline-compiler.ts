@@ -45,6 +45,7 @@ export interface TimelineStep {
   label?: string;
   nextStepId?: string;
   coachPrompt?: string;
+  preWorkout?: boolean; // Flag for steps before workout timer starts
 }
 
 export interface ExecutionTimeline {
@@ -52,6 +53,7 @@ export interface ExecutionTimeline {
     name: string;
     totalDurationSec: number;
     structure: string;
+    preWorkoutDurationMs?: number; // Duration of intro/countdown before workout timer starts
   };
   executionTimeline: TimelineStep[];
   sync: {
@@ -91,7 +93,7 @@ export async function compileBlockToTimeline(
     postCardio,
   } = block.params as any;
 
-  // Optional: Add intro instruction
+  // Optional: Add intro instruction (marked as pre-workout - doesn't count toward timer)
   if (options.includeIntro) {
     steps.push({
       step: stepCounter++,
@@ -100,6 +102,7 @@ export async function compileBlockToTimeline(
       atMs: currentTimeMs,
       endMs: currentTimeMs + 5000, // 5 second intro
       durationSec: 5,
+      preWorkout: true, // This step happens before workout timer starts
     });
     currentTimeMs += 5000;
   }
@@ -304,14 +307,18 @@ export async function compileBlockToTimeline(
   }
   // Add more block types here (amrap_loop, emom_window, etc.) as needed
 
-  // Calculate total duration
+  // Calculate total duration and pre-workout duration
   const totalDurationSec = Math.ceil(currentTimeMs / 1000);
+  const preWorkoutDurationMs = steps
+    .filter(step => step.preWorkout)
+    .reduce((sum, step) => sum + (step.endMs - step.atMs), 0);
 
   return {
     workoutHeader: {
       name: options.workoutName,
       totalDurationSec,
       structure: options.workoutStructure || block.type,
+      preWorkoutDurationMs,
     },
     executionTimeline: steps,
     sync: {
@@ -333,7 +340,7 @@ export async function compileWorkoutTimeline(
   let currentTimeMs = 0;
   let stepCounter = 1;
 
-  // Intro instruction
+  // Intro instruction (marked as pre-workout - doesn't count toward timer)
   allSteps.push({
     step: stepCounter++,
     type: "instruction",
@@ -341,6 +348,7 @@ export async function compileWorkoutTimeline(
     atMs: currentTimeMs,
     endMs: currentTimeMs + 5000,
     durationSec: 5,
+    preWorkout: true,
   });
   currentTimeMs += 5000;
 
@@ -368,14 +376,18 @@ export async function compileWorkoutTimeline(
     currentTimeMs += blockTimeline.workoutHeader.totalDurationSec * 1000;
   }
 
-  // Calculate total duration
+  // Calculate total duration and pre-workout duration
   const totalDurationSec = Math.ceil(currentTimeMs / 1000);
+  const preWorkoutDurationMs = allSteps
+    .filter(step => step.preWorkout)
+    .reduce((sum, step) => sum + (step.endMs - step.atMs), 0);
 
   return {
     workoutHeader: {
       name: workoutName,
       totalDurationSec,
       structure: "multi-block",
+      preWorkoutDurationMs,
     },
     executionTimeline: allSteps,
     sync: {
