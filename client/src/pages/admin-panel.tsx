@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,9 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, Save, Eye, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Eye, GripVertical, ArrowUp, ArrowDown, Edit, Copy, Power, PowerOff, Clock } from "lucide-react";
 import type { Exercise } from "@shared/schema";
 import { TimelinePreview } from "@/components/TimelinePreview";
 
@@ -58,6 +61,197 @@ interface ExecutionStep {
     equipmentPrimary?: string;
     coachingBulletPoints?: string[];
   };
+}
+
+// Manage Workouts Tab Component
+function ManageWorkoutsTab() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [workoutToDelete, setWorkoutToDelete] = useState<number | null>(null);
+
+  // Fetch all workouts (admin)
+  const { data: workouts, isLoading } = useQuery({
+    queryKey: ['/api/admin/block-workouts'],
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest(`/api/admin/block-workouts/${id}`, "DELETE");
+    },
+    onSuccess: () => {
+      toast({ title: "Workout deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/block-workouts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/block-workouts'] });
+      setWorkoutToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Publish toggle mutation
+  const togglePublishMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest(`/api/admin/block-workouts/${id}/publish`, "PATCH");
+    },
+    onSuccess: () => {
+      toast({ title: "Publish status updated" });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/block-workouts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/block-workouts'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Duplicate mutation
+  const duplicateMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/admin/block-workouts/${id}/duplicate`, "POST");
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Workout duplicated",
+        description: `Created "${data.name}"`
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/block-workouts'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Duplicate failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  if (isLoading) {
+    return <div className="text-center py-12">Loading workouts...</div>;
+  }
+
+  const workoutsList = Array.isArray(workouts) ? workouts : [];
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>All Workouts</CardTitle>
+          <CardDescription>
+            Manage your block workouts - edit, delete, publish, or duplicate
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {workoutsList.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No workouts created yet. Create one in the "Create Workout" tab.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {workoutsList.map((workout: any) => (
+                <div
+                  key={workout.id}
+                  className="border rounded-lg p-4 flex items-center justify-between gap-4"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold">{workout.name}</h3>
+                      <Badge variant={workout.isPublished ? "default" : "secondary"}>
+                        {workout.isPublished ? "Published" : "Draft"}
+                      </Badge>
+                    </div>
+                    {workout.description && (
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {workout.description}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {workout.estimatedDurationMin}min
+                      </span>
+                      <span>{workout.blockSequence?.length || 0} blocks</span>
+                      <span>
+                        Created {new Date(workout.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => togglePublishMutation.mutate(workout.id)}
+                      disabled={togglePublishMutation.isPending}
+                    >
+                      {workout.isPublished ? (
+                        <PowerOff className="h-4 w-4 mr-1" />
+                      ) : (
+                        <Power className="h-4 w-4 mr-1" />
+                      )}
+                      {workout.isPublished ? "Unpublish" : "Publish"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => duplicateMutation.mutate(workout.id)}
+                      disabled={duplicateMutation.isPending}
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                      Duplicate
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setWorkoutToDelete(workout.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={workoutToDelete !== null} onOpenChange={() => setWorkoutToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Workout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this workout. Active sessions can still complete, but new sessions cannot be started.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => workoutToDelete && deleteMutation.mutate(workoutToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
 }
 
 export default function AdminPanel() {
@@ -459,9 +653,16 @@ export default function AdminPanel() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Block Builder Form */}
-          <Card data-testid="card-block-builder">
+        <Tabs defaultValue="create" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="create">Create Workout</TabsTrigger>
+            <TabsTrigger value="manage">Manage Workouts</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="create" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Block Builder Form */}
+              <Card data-testid="card-block-builder">
             <CardHeader>
               <CardTitle>Build Block</CardTitle>
               <CardDescription>
@@ -1084,6 +1285,12 @@ export default function AdminPanel() {
           </Card>
         </div>
       )}
+      </TabsContent>
+
+      <TabsContent value="manage" className="mt-6">
+        <ManageWorkoutsTab />
+      </TabsContent>
+    </Tabs>
 
       {/* Timeline Preview Dialog */}
       <Dialog open={showTimelinePreview} onOpenChange={setShowTimelinePreview}>
