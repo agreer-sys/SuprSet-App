@@ -342,6 +342,54 @@ export default function AdminPanel() {
     }
   });
 
+  // Load workout for editing using React Query mutation for proper error handling
+  const loadWorkoutMutation = useMutation({
+    mutationFn: async (workoutId: number) => {
+      const response = await fetch(`/api/admin/block-workouts/${workoutId}/edit`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to fetch workout');
+      }
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      // Populate workout fields
+      setWorkoutName(data.name);
+      setWorkoutDescription(data.description || "");
+      
+      // Transform blocks back to UI format with full exercise objects
+      const transformedBlocks = data.blocks.map((block: any) => ({
+        id: block.id,
+        name: block.name,
+        description: block.description || "",
+        type: block.type,
+        params: block.params,
+        exercises: block.exercises.map((ex: any) => ({
+          exerciseId: ex.exerciseId,
+          targetReps: ex.targetReps,
+          workSec: ex.workSec,
+          restSec: ex.restSec
+        }))
+      }));
+      
+      setBlocks(transformedBlocks);
+      setEditingWorkoutId(data.id);
+      setActiveTab("create");
+      
+      toast({
+        title: "Workout loaded",
+        description: "You can now edit this workout"
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to load workout",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   if (checkingAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -437,54 +485,6 @@ export default function AdminPanel() {
       description: `${block.name} has been duplicated`
     });
   };
-
-  // Load workout for editing using React Query mutation for proper error handling
-  const loadWorkoutMutation = useMutation({
-    mutationFn: async (workoutId: number) => {
-      const response = await fetch(`/api/admin/block-workouts/${workoutId}/edit`);
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to fetch workout');
-      }
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      // Populate workout fields
-      setWorkoutName(data.name);
-      setWorkoutDescription(data.description || "");
-      
-      // Transform blocks back to UI format with full exercise objects
-      const transformedBlocks = data.blocks.map((block: any) => ({
-        id: block.id,
-        name: block.name,
-        description: block.description || "",
-        type: block.type,
-        params: block.params,
-        exercises: block.exercises.map((ex: any) => ({
-          exerciseId: ex.exerciseId,
-          targetReps: ex.targetReps,
-          workSec: ex.workSec,
-          restSec: ex.restSec
-        }))
-      }));
-      
-      setBlocks(transformedBlocks);
-      setEditingWorkoutId(data.id);
-      setActiveTab("create");
-      
-      toast({
-        title: "Workout loaded",
-        description: "You can now edit this workout"
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to load workout",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
 
   const addExerciseToBlock = (exerciseId: number) => {
     const newExercise: BlockExercise = {
