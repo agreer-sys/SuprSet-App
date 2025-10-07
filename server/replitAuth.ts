@@ -220,12 +220,31 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 export const isAdmin: RequestHandler = async (req, res, next) => {
   // TEMPORARY: Bypass auth in development for testing
   if (process.env.NODE_ENV === 'development') {
+    const devUserId = 'dev-admin-user';
+    
     // Set up mock user for development
     (req as any).user = {
       claims: {
-        sub: 'dev-admin-user'
+        sub: devUserId
       }
     };
+    
+    // Ensure dev user exists in database
+    try {
+      const existingUser = await storage.getUser(devUserId);
+      if (!existingUser) {
+        await storage.upsertUser({
+          id: devUserId,
+          email: 'dev@admin.local',
+          firstName: 'Dev',
+          lastName: 'Admin',
+          isAdmin: true
+        });
+      }
+    } catch (error) {
+      console.error('Error ensuring dev user exists:', error);
+    }
+    
     return next();
   }
 
