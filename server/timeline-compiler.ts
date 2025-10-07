@@ -90,8 +90,12 @@ export async function compileBlockToTimeline(
     roundRestSec = 0, // Rest between circuit rounds (default 0 for non-circuit workouts)
     transitionSec = 0,
     awaitReadyBeforeStart = false,
+    targetReps, // Rep-based exercises (e.g., "12" or "10-12")
     postCardio,
   } = block.params as any;
+
+  // Determine if this is a rep-based block (has targetReps but no explicit workSec override)
+  const isRepBased = targetReps && !block.params.workSec;
 
   // Debug logging to verify pattern is being received correctly
   console.log('🔧 Compiler received block:', {
@@ -170,6 +174,20 @@ export async function compileBlockToTimeline(
           });
           currentTimeMs += exerciseWorkSec * 1000;
 
+          // For rep-based exercises, add await_ready after work step
+          if (isRepBased) {
+            steps.push({
+              step: stepCounter++,
+              type: "await_ready",
+              label: `Finished ${targetReps} reps?`,
+              coachPrompt: `How many reps did you get? You can say the number, or just say 'Ready' to continue.`,
+              atMs: currentTimeMs,
+              endMs: currentTimeMs, // Zero duration - waits indefinitely
+              nextStepId: `step-${stepCounter}`,
+            });
+            // Note: currentTimeMs doesn't advance - await_ready re-anchors timeline
+          }
+
           // Rest between sets (but not after the last set of the last exercise)
           const isLastSet = set === setsPerExercise;
           const isLastExercise = exIndex === block.exercises.length - 1;
@@ -229,6 +247,20 @@ export async function compileBlockToTimeline(
             round,
           });
           currentTimeMs += exerciseWorkSec * 1000;
+
+          // For rep-based exercises, add await_ready after work step
+          if (isRepBased) {
+            steps.push({
+              step: stepCounter++,
+              type: "await_ready",
+              label: `Finished ${targetReps} reps?`,
+              coachPrompt: `How many reps did you get? You can say the number, or just say 'Ready' to continue.`,
+              atMs: currentTimeMs,
+              endMs: currentTimeMs, // Zero duration - waits indefinitely
+              nextStepId: `step-${stepCounter}`,
+            });
+            // Note: currentTimeMs doesn't advance - await_ready re-anchors timeline
+          }
 
           // Rest step logic
           const isLastExercise = exIndex === block.exercises.length - 1;
@@ -363,6 +395,7 @@ export async function compileWorkoutTimeline(
   // Compile each block
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
+    const isLastBlock = i === blocks.length - 1;
     
     // Compile block to timeline
     const blockTimeline = await compileBlockToTimeline(block, {
@@ -382,6 +415,21 @@ export async function compileWorkoutTimeline(
     }
 
     currentTimeMs += blockTimeline.workoutHeader.totalDurationSec * 1000;
+
+    // Insert await_ready between blocks (but not after the last block)
+    if (!isLastBlock) {
+      const nextBlock = blocks[i + 1];
+      allSteps.push({
+        step: stepCounter++,
+        type: "await_ready",
+        label: `Ready for ${nextBlock.name}?`,
+        coachPrompt: `Great work on ${block.name}! Take a moment to rest. When you're ready for ${nextBlock.name}, say 'Ready' or 'Go'.`,
+        atMs: currentTimeMs,
+        endMs: currentTimeMs, // Zero duration - waits indefinitely
+        nextStepId: `step-${stepCounter}`,
+      });
+      // Note: currentTimeMs doesn't advance - await_ready re-anchors timeline
+    }
   }
 
   // Calculate total duration and pre-workout duration
