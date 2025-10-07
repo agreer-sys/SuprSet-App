@@ -1419,25 +1419,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Block compilation endpoint - preview timeline from blocks
+  // Block compilation endpoint - preview timeline from blocks (supports single or multiple)
   app.post('/api/blocks/compile-preview', async (req: any, res) => {
     try {
-      const { block, workoutName } = req.body;
+      const { blocks, workoutName } = req.body;
       
-      if (!block || !block.exercises || block.exercises.length === 0) {
-        return res.status(400).json({ message: "Block must contain exercises" });
+      if (!blocks || (Array.isArray(blocks) ? blocks.length === 0 : !blocks.exercises)) {
+        return res.status(400).json({ message: "Must provide blocks with exercises" });
       }
 
       // Import the compiler
       const { compileBlockToTimeline } = await import('./timeline-compiler');
       
-      // Compile the block to timeline
-      const timeline = await compileBlockToTimeline(block, {
-        workoutName: workoutName || block.name || "Preview",
-        includeIntro: false
-      });
+      // Handle both single block and array of blocks
+      const blockArray = Array.isArray(blocks) ? blocks : [blocks];
       
-      res.json(timeline);
+      // Compile all blocks sequentially with cumulative time offsets
+      let allSteps: any[] = [];
+      let cumulativeTimeMs = 0;
+      
+      for (let i = 0; i < blockArray.length; i++) {
+        const block = blockArray[i];
+        
+        if (!block.exercises || block.exercises.length === 0) {
+          continue; // Skip empty blocks
+        }
+        
+        // Compile this block starting at 0
+        const timeline = await compileBlockToTimeline(block, {
+          workoutName: workoutName || block.name || `Block ${i + 1}`,
+          includeIntro: i === 0 // Only intro for first block
+        });
+        
+        // Shift all timestamps by cumulative offset
+        const shiftedSteps = timeline.executionTimeline.map(step => ({
+          ...step,
+          atMs: step.atMs + cumulativeTimeMs,
+          endMs: step.endMs + cumulativeTimeMs
+        }));
+        
+        allSteps.push(...shiftedSteps);
+        
+        // Update cumulative time for next block
+        if (shiftedSteps.length > 0) {
+          cumulativeTimeMs = shiftedSteps[shiftedSteps.length - 1].endMs;
+        }
+      }
+      
+      // Build final timeline
+      const finalTimeline = {
+        workoutHeader: {
+          name: workoutName || "Multi-Block Workout",
+          totalDurationSec: Math.floor(cumulativeTimeMs / 1000),
+          structure: `${blockArray.length} block${blockArray.length > 1 ? 's' : ''}`
+        },
+        executionTimeline: allSteps,
+        sync: {
+          workoutStartEpochMs: Date.now(),
+          resyncEveryMs: 15000,
+          allowedDriftMs: 500
+        }
+      };
+      
+      res.json(finalTimeline);
     } catch (error: any) {
       console.error("Error compiling block preview:", error);
       res.status(500).json({ message: "Failed to compile block", error: error.message });

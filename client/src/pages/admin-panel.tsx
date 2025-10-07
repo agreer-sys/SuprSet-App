@@ -359,15 +359,30 @@ export default function AdminPanel() {
     }
 
     try {
-      // For now, compile just the first block (can extend to multi-block later)
-      const block = blocks[0];
+      // Enrich blocks with exercise metadata before compilation
+      const enrichedBlocks = blocks.map(block => ({
+        ...block,
+        exercises: block.exercises?.map(ex => {
+          const exerciseData = exercises?.find(e => e.id === ex.exerciseId);
+          return {
+            ...ex,
+            exerciseName: exerciseData?.name || 'Unknown Exercise',
+            equipmentPrimary: exerciseData?.equipmentPrimary || exerciseData?.equipment,
+            equipmentSecondary: exerciseData?.equipmentSecondary || [],
+            primaryMuscleGroup: exerciseData?.primaryMuscleGroup,
+            coachingBulletPoints: exerciseData?.coachingBulletPoints,
+            videoUrl: exerciseData?.videoUrl,
+            imageUrl: exerciseData?.imageUrl
+          };
+        }) || []
+      }));
       
       const response = await fetch('/api/blocks/compile-preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          block,
-          workoutName: workoutName || block.name || "Preview"
+          blocks: enrichedBlocks,
+          workoutName: workoutName || "Workout Preview"
         })
       });
 
@@ -381,7 +396,7 @@ export default function AdminPanel() {
       
       toast({
         title: "Timeline compiled!",
-        description: `${timeline.executionTimeline.length} steps generated`
+        description: `${timeline.executionTimeline.length} steps from ${blocks.length} block${blocks.length > 1 ? 's' : ''}`
       });
     } catch (error: any) {
       toast({
