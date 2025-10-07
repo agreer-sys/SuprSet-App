@@ -898,7 +898,9 @@ export default function WorkoutSessionPage() {
             <div>
               <h1 className="text-2xl font-bold">{executionTimeline.workoutHeader.name}</h1>
               <p className="text-muted-foreground">
-                {workoutStartEpochMs ? `Elapsed: ${formatTime(Math.floor(elapsedMs / 1000))}` : `Duration: ${Math.floor(executionTimeline.workoutHeader.totalDurationSec / 60)} min`}
+                {workoutStartEpochMs 
+                  ? `Elapsed: ${formatTime(Math.floor((elapsedMs - (executionTimeline.workoutHeader.preWorkoutDurationMs || 0)) / 1000))}`
+                  : `Duration: ${Math.floor(executionTimeline.workoutHeader.totalDurationSec / 60)} min`}
               </p>
             </div>
             <div className="flex gap-2">
@@ -1021,7 +1023,7 @@ export default function WorkoutSessionPage() {
                   <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
                   <h3 className="text-2xl font-bold mb-2">Workout Complete!</h3>
                   <p className="text-muted-foreground">
-                    Total time: {formatTime(Math.floor(elapsedMs / 1000))}
+                    Total time: {formatTime(Math.floor((elapsedMs - (executionTimeline.workoutHeader.preWorkoutDurationMs || 0)) / 1000))}
                   </p>
                 </div>
               </CardContent>
