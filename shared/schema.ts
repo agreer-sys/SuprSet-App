@@ -416,6 +416,7 @@ export const blocks = pgTable("blocks", {
     setsPerExercise?: number;
     workSec?: number;
     restSec?: number;
+    roundRestSec?: number; // Rest between circuit rounds (after all exercises)
     transitionSec?: number;
     durationSec?: number;
     
