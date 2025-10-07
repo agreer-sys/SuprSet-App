@@ -1055,7 +1055,9 @@ export class DatabaseStorage implements IStorage {
       estimatedDurationMin: 0
     }).returning();
 
-    // Create blocks and exercises
+    // Create blocks and exercises - track created block IDs
+    const createdBlockIds: number[] = [];
+    
     for (let i = 0; i < data.blocks.length; i++) {
       const blockData = data.blocks[i];
       
@@ -1074,6 +1076,8 @@ export class DatabaseStorage implements IStorage {
         params: blockData.params,
         createdBy: data.createdBy
       }).returning();
+
+      createdBlockIds.push(block.id);
 
       // Create block exercises with snapshot data
       for (let j = 0; j < blockData.exercises.length; j++) {
@@ -1113,9 +1117,11 @@ export class DatabaseStorage implements IStorage {
         .where(eq(blockWorkouts.id, workout.id));
     }
 
-    // Now compile the timeline from all blocks
+    console.log('🔧 Created block IDs:', createdBlockIds);
+
+    // Now compile the timeline from all blocks - use tracked IDs
     const allBlocks = await db.select().from(blocks)
-      .where(inArray(blocks.id, workout.blockSequence.map(b => b.blockId)));
+      .where(inArray(blocks.id, createdBlockIds));
     
     // Fetch exercises for each block
     const blocksWithExercises = await Promise.all(
@@ -1135,9 +1141,9 @@ export class DatabaseStorage implements IStorage {
       })
     );
 
-    // Sort blocks by workout sequence
-    const sortedBlocks = workout.blockSequence
-      .map(seq => blocksWithExercises.find(b => b.id === seq.blockId)!)
+    // Sort blocks by creation order (createdBlockIds is already in correct sequence)
+    const sortedBlocks = createdBlockIds
+      .map(id => blocksWithExercises.find(b => b.id === id)!)
       .filter(Boolean);
 
     // Compile each block and combine into one timeline
