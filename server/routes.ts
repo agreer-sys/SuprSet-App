@@ -1466,12 +1466,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Calculate pre-workout duration from all steps
+      const preWorkoutDurationMs = allSteps
+        .filter(step => step.preWorkout)
+        .reduce((sum, step) => sum + (step.endMs - step.atMs), 0);
+
       // Build final timeline
       const finalTimeline = {
         workoutHeader: {
           name: workoutName || "Multi-Block Workout",
           totalDurationSec: Math.floor(cumulativeTimeMs / 1000),
-          structure: `${blockArray.length} block${blockArray.length > 1 ? 's' : ''}`
+          structure: `${blockArray.length} block${blockArray.length > 1 ? 's' : ''}`,
+          preWorkoutDurationMs
         },
         executionTimeline: allSteps,
         sync: {
