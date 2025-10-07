@@ -1052,7 +1052,9 @@ export class DatabaseStorage implements IStorage {
       description: data.description,
       createdBy: data.createdBy,
       blockSequence: [],
-      estimatedDurationMin: 0
+      estimatedDurationMin: 0,
+      isPublished: true, // Auto-publish admin-created workouts
+      publishedAt: new Date()
     }).returning();
 
     // Create blocks and exercises - track created block IDs

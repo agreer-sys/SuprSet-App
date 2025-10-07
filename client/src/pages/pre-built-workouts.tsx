@@ -86,8 +86,8 @@ export default function PreBuiltWorkouts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch workout templates
-  const { data: templatesResponse, isLoading } = useQuery({
+  // Fetch workout templates (old system)
+  const { data: templatesResponse, isLoading: isLoadingTemplates } = useQuery({
     queryKey: ['/api/workout-templates', filters],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -102,8 +102,20 @@ export default function PreBuiltWorkouts() {
     },
   });
 
+  // Fetch block workouts (new system)
+  const { data: blockWorkoutsResponse, isLoading: isLoadingBlockWorkouts } = useQuery({
+    queryKey: ['/api/block-workouts'],
+    queryFn: async () => {
+      const response = await fetch('/api/block-workouts');
+      if (!response.ok) throw new Error('Failed to fetch block workouts');
+      return response.json();
+    },
+  });
+
   // Ensure templates is always an array
   const templates = Array.isArray(templatesResponse) ? templatesResponse : [];
+  const blockWorkouts = Array.isArray(blockWorkoutsResponse) ? blockWorkoutsResponse : [];
+  const isLoading = isLoadingTemplates || isLoadingBlockWorkouts;
 
   // Fetch detailed template when selected
   const { data: detailedTemplate, isLoading: isLoadingDetails } = useQuery<DetailedWorkoutTemplate>({
@@ -243,7 +255,77 @@ export default function PreBuiltWorkouts() {
         </select>
       </div>
 
-      {/* Workout Templates Grid */}
+      {/* Block Workouts Section (New System) */}
+      {blockWorkouts.length > 0 && (
+        <>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Block Workouts</h2>
+            <p className="text-gray-600">New workout system with customizable blocks</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12" data-testid="block-workouts-grid">
+            {blockWorkouts.map((workout: any) => (
+              <Card key={workout.id} className="hover:shadow-lg transition-shadow" data-testid={`block-workout-${workout.id}`}>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className="bg-purple-500 text-white">
+                          Block Workout
+                        </Badge>
+                      </div>
+                      <CardTitle className="text-lg mb-2" data-testid={`block-workout-name-${workout.id}`}>
+                        {workout.name}
+                      </CardTitle>
+                      {workout.description && (
+                        <CardDescription data-testid={`block-workout-description-${workout.id}`}>
+                          {workout.description}
+                        </CardDescription>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        <span data-testid={`block-workout-duration-${workout.id}`}>
+                          {workout.estimatedDurationMin}min
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Target className="h-4 w-4" />
+                        <span>{workout.blockSequence?.length || 0} blocks</span>
+                      </div>
+                    </div>
+
+                    <Link href={`/workout-session?blockWorkoutId=${workout.id}`}>
+                      <Button 
+                        size="sm" 
+                        className="w-full"
+                        data-testid={`start-block-workout-${workout.id}`}
+                      >
+                        <Play className="h-4 w-4 mr-1" />
+                        Start Workout
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Workout Templates Grid (Old System) */}
+      {templates.length > 0 && (
+        <>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Classic Templates</h2>
+            <p className="text-gray-600">Legacy workout templates</p>
+          </div>
+        </>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="workout-templates-grid">
         {templates.map((template: WorkoutTemplate) => (
           <Card key={template.id} className="hover:shadow-lg transition-shadow cursor-pointer" data-testid={`workout-template-${template.id}`}>
@@ -324,11 +406,11 @@ export default function PreBuiltWorkouts() {
       </div>
 
       {/* Empty State */}
-      {templates && templates.length === 0 && (
+      {templates.length === 0 && blockWorkouts.length === 0 && (
         <div className="text-center py-12" data-testid="empty-state">
           <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No workouts found</h3>
-          <p className="text-gray-600">Try adjusting your filters to see more workout templates.</p>
+          <p className="text-gray-600">No workouts available yet. Check back soon or create one in the admin panel.</p>
         </div>
       )}
 
