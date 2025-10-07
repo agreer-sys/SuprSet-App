@@ -167,6 +167,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { name, description, blocks: blocksData } = req.body;
 
+      console.log('🔧 Received workout data:', {
+        name,
+        blockCount: blocksData?.length,
+        blocks: blocksData?.map((b: any) => ({
+          name: b.name,
+          type: b.type,
+          exerciseCount: b.exercises?.length,
+          exercises: b.exercises
+        }))
+      });
+
       if (!name || !blocksData || !Array.isArray(blocksData) || blocksData.length === 0) {
         return res.status(400).json({ 
           message: "Workout name and blocks array required" 

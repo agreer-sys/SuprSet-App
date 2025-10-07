@@ -1059,11 +1059,18 @@ export class DatabaseStorage implements IStorage {
     for (let i = 0; i < data.blocks.length; i++) {
       const blockData = data.blocks[i];
       
+      console.log('🔧 Creating block:', {
+        name: blockData.name,
+        type: blockData.type,
+        exerciseCount: blockData.exercises.length,
+        exercises: blockData.exercises
+      });
+      
       // Create block
       const [block] = await db.insert(blocks).values({
         name: blockData.name,
         description: blockData.description,
-        type: blockData.params.type || 'custom_sequence',
+        type: blockData.type || 'custom_sequence',
         params: blockData.params,
         createdBy: data.createdBy
       }).returning();
@@ -1072,6 +1079,13 @@ export class DatabaseStorage implements IStorage {
       for (let j = 0; j < blockData.exercises.length; j++) {
         const exerciseId = blockData.exercises[j];
         const exercise = this.exerciseCache.get(exerciseId)!;
+        
+        console.log('🔧 Creating block exercise:', {
+          blockId: block.id,
+          exerciseId: exercise.id,
+          exerciseName: exercise.name,
+          orderIndex: j
+        });
         
         await db.insert(blockExercises).values({
           blockId: block.id,
@@ -1109,6 +1123,14 @@ export class DatabaseStorage implements IStorage {
         const exercises = await db.select().from(blockExercises)
           .where(eq(blockExercises.blockId, block.id))
           .orderBy(blockExercises.orderIndex);
+        
+        console.log('🔧 Fetched exercises for block:', {
+          blockId: block.id,
+          blockName: block.name,
+          exerciseCount: exercises.length,
+          exercises: exercises.map(e => ({ id: e.exerciseId, name: e.exerciseName }))
+        });
+        
         return { ...block, exercises };
       })
     );
