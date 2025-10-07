@@ -99,10 +99,19 @@ export default function AdminPanel() {
         throw new Error("Add at least one block");
       }
 
+      // Transform blocks to match backend API format
+      const transformedBlocks = blocks.map(block => ({
+        id: block.id,
+        name: block.name,
+        description: block.description,
+        params: block.params,
+        exercises: block.exercises.map(ex => ex.exerciseId) // Extract just the IDs
+      }));
+
       return await apiRequest("/api/admin/block-workouts", "POST", {
         name: workoutName,
         description: workoutDescription,
-        blocks: blocks
+        blocks: transformedBlocks
       });
     },
     onSuccess: (data: any) => {
