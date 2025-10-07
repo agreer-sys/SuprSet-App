@@ -1,14 +1,21 @@
-import { Dumbbell, Bell, Camera, Home, Menu, User, LogOut, Upload, Target } from "lucide-react";
+import { Dumbbell, Bell, Camera, Home, Menu, User, LogOut, Upload, Target, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [location] = useLocation();
   const { user, isAuthenticated } = useAuth();
+  
+  // Check if user is admin
+  const { data: adminStatus } = useQuery<{ isAdmin: boolean }>({
+    queryKey: ['/api/auth/is-admin'],
+    enabled: isAuthenticated
+  });
   
   const signOut = () => {
     window.location.href = '/api/logout';
@@ -106,6 +113,19 @@ export default function Header() {
                 >
                   <Upload className="h-4 w-4" />
                   Batch Upload
+                </Button>
+              </Link>
+            )}
+            
+            {adminStatus?.isAdmin && (
+              <Link href="/admin">
+                <Button 
+                  variant={location === "/admin" ? "default" : "ghost"} 
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Admin
                 </Button>
               </Link>
             )}
@@ -229,6 +249,20 @@ export default function Header() {
                   >
                     <Upload className="h-4 w-4" />
                     Batch Upload
+                  </Button>
+                </Link>
+              )}
+              
+              {adminStatus?.isAdmin && (
+                <Link href="/admin">
+                  <Button 
+                    variant={location === "/admin" ? "default" : "ghost"} 
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <Settings className="h-4 w-4" />
+                    Admin
                   </Button>
                 </Link>
               )}
