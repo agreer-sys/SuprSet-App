@@ -94,9 +94,6 @@ export async function compileBlockToTimeline(
     postCardio,
   } = block.params as any;
 
-  // Determine if this is a rep-based block (has targetReps but no explicit workSec override)
-  const isRepBased = targetReps && !block.params.workSec;
-
   // Debug logging to verify pattern is being received correctly
   console.log('🔧 Compiler received block:', {
     name: block.name,
@@ -141,6 +138,11 @@ export async function compileBlockToTimeline(
         const exercise = block.exercises[exIndex];
         const exerciseWorkSec = exercise.workSec || workSec;
         const exerciseRestSec = exercise.restSec || restSec;
+        
+        // Check exercise-level targetReps first, fall back to block-level
+        const exerciseTargetReps = exercise.targetReps || targetReps;
+        // Determine if this exercise is rep-based (has targetReps but no explicit workSec override)
+        const isRepBased = exerciseTargetReps && !exercise.workSec && !block.params.workSec;
 
         for (let set = 1; set <= setsPerExercise; set++) {
           // Work step
@@ -183,7 +185,7 @@ export async function compileBlockToTimeline(
             steps.push({
               step: stepCounter++,
               type: "await_ready",
-              label: `Finished ${targetReps} reps?`,
+              label: `Finished ${exerciseTargetReps} reps?`,
               coachPrompt: `Great work! How many reps did you get? You can say the number, or just say 'Ready' when you're rested.`,
               atMs: currentTimeMs,
               endMs: currentTimeMs, // Zero duration - waits indefinitely (user rests during this)
@@ -214,6 +216,11 @@ export async function compileBlockToTimeline(
           const exercise = block.exercises[exIndex];
           const exerciseWorkSec = exercise.workSec || workSec;
           const exerciseRestSec = exercise.restSec || restSec;
+          
+          // Check exercise-level targetReps first, fall back to block-level
+          const exerciseTargetReps = exercise.targetReps || targetReps;
+          // Determine if this exercise is rep-based (has targetReps but no explicit workSec override)
+          const isRepBased = exerciseTargetReps && !exercise.workSec && !block.params.workSec;
 
           // Calculate round number (which exercise in the sequence)
           const round = exIndex + 1;
@@ -262,7 +269,7 @@ export async function compileBlockToTimeline(
             steps.push({
               step: stepCounter++,
               type: "await_ready",
-              label: `Finished ${targetReps} reps?`,
+              label: `Finished ${exerciseTargetReps} reps?`,
               coachPrompt: `Great work! How many reps did you get? You can say the number, or just say 'Ready' when you're rested.`,
               atMs: currentTimeMs,
               endMs: currentTimeMs, // Zero duration - waits indefinitely (user rests during this)
