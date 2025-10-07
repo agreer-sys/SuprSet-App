@@ -463,7 +463,7 @@ export const blockExercises = pgTable("block_exercises", {
   // Exercise-specific overrides (optional)
   workSec: integer("work_sec"), // Override block-level timing
   restSec: integer("rest_sec"),
-  targetReps: integer("target_reps"),
+  targetReps: text("target_reps"), // Override block-level reps (e.g., "12-15", "10 each leg")
   notes: text("notes"),
   
   // Snapshot of exercise data from Airtable (for coach context)
