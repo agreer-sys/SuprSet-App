@@ -104,6 +104,7 @@ export default function AdminPanel() {
         id: block.id,
         name: block.name,
         description: block.description,
+        type: block.type,
         params: block.params,
         exercises: block.exercises.map(ex => ex.exerciseId) // Extract just the IDs
       }));
