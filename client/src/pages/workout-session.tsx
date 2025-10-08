@@ -86,7 +86,7 @@ export default function WorkoutSessionPage() {
   // Use block session if available, otherwise template session
   const session = blockSession || templateSession;
   const isBlockWorkout = !!blockSession;
-  const executionTimeline = blockSession?.snapshotTimeline;
+  const executionTimeline = blockSession?.executionTimelineSnapshot || blockSession?.blockWorkout?.executionTimeline;
   
   console.log('📊 Session data:', { blockSession, templateSession, session, isLoading, isLoadingBlock, isLoadingTemplate });
   console.log('📊 Execution timeline:', { executionTimeline, isBlockWorkout, hasTimeline: !!executionTimeline });
