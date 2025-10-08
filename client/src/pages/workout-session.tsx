@@ -19,8 +19,6 @@ import { useRealtimeVoice } from '@/hooks/useRealtimeVoice';
 import type { WorkoutSessionNew, SetLog, CoachingSession } from "@shared/schema";
 
 export default function WorkoutSessionPage() {
-  console.log('🏋️ WorkoutSessionPage rendering');
-  
   const [currentExercise, setCurrentExercise] = useState<'A' | 'B'>('A');
   const [currentSet, setCurrentSet] = useState(1);
   const [templateExerciseIndex, setTemplateExerciseIndex] = useState(0);
@@ -87,9 +85,6 @@ export default function WorkoutSessionPage() {
   const session = blockSession || templateSession;
   const isBlockWorkout = !!blockSession;
   const executionTimeline = blockSession?.executionTimelineSnapshot || blockSession?.blockWorkout?.executionTimeline;
-  
-  console.log('📊 Session data:', { blockSession, templateSession, session, isLoading, isLoadingBlock, isLoadingTemplate });
-  console.log('📊 Execution timeline:', { executionTimeline, isBlockWorkout, hasTimeline: !!executionTimeline });
 
 
   // Memoize templateExercises to prevent infinite loop - only recreate when session data changes
