@@ -1037,29 +1037,37 @@ export default function WorkoutSessionPage() {
               <CardTitle>Timeline</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {executionTimeline.executionTimeline.slice(0, 10).map((step: any, idx: number) => (
-                  <div 
-                    key={idx} 
-                    className={`flex gap-3 p-3 border rounded-lg ${idx === currentStepIndex && workoutStartEpochMs ? 'border-primary bg-primary/5' : ''}`}
-                  >
-                    <div className="flex-shrink-0 w-16 text-sm font-mono text-muted-foreground">
-                      {Math.floor(step.atMs / 1000 / 60)}:{(Math.floor(step.atMs / 1000) % 60).toString().padStart(2, '0')}
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                {executionTimeline.executionTimeline.map((step: any, idx: number) => {
+                  // Calculate workout time (excluding pre-workout instruction)
+                  const preWorkoutDurationMs = executionTimeline.workoutHeader?.preWorkoutDurationMs || 5000;
+                  const workoutTimeMs = step.preWorkout ? 0 : Math.max(0, step.atMs - preWorkoutDurationMs);
+                  const minutes = Math.floor(workoutTimeMs / 1000 / 60);
+                  const seconds = Math.floor(workoutTimeMs / 1000) % 60;
+                  
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`flex gap-3 p-3 border rounded-lg ${idx === currentStepIndex && workoutStartEpochMs ? 'border-primary bg-primary/5' : ''}`}
+                    >
+                      <div className="flex-shrink-0 w-16 text-sm font-mono text-muted-foreground">
+                        {step.preWorkout ? 'START' : `${minutes}:${seconds.toString().padStart(2, '0')}`}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium capitalize">{step.type}</div>
+                        {step.exercise?.name && (
+                          <div className="text-sm text-muted-foreground">{step.exercise.name}</div>
+                        )}
+                        {step.text && (
+                          <div className="text-sm text-muted-foreground">{step.text}</div>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0 text-sm text-muted-foreground">
+                        {Math.floor((step.endMs - step.atMs) / 1000)}s
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium capitalize">{step.type}</div>
-                      {step.exercise?.name && (
-                        <div className="text-sm text-muted-foreground">{step.exercise.name}</div>
-                      )}
-                      {step.text && (
-                        <div className="text-sm text-muted-foreground">{step.text}</div>
-                      )}
-                    </div>
-                    <div className="flex-shrink-0 text-sm text-muted-foreground">
-                      {Math.floor((step.endMs - step.atMs) / 1000)}s
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
