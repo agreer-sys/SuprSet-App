@@ -742,11 +742,21 @@ export default function WorkoutSessionPage() {
 
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
-        if (elapsed >= step.atMs && elapsed < step.endMs) {
+        const duration = step.endMs - step.atMs;
+        
+        // For 0-duration steps (await_ready), match when we've reached or passed atMs
+        // But skip if we've already processed this step (currentStepIndex > i)
+        if (duration === 0 && elapsed >= step.atMs && currentStepIndex <= i) {
           newStepIndex = i;
           break;
-        } else if (elapsed >= step.endMs && i === steps.length - 1) {
-          // Past last step - workout complete
+        }
+        // For normal steps, match within the time range
+        else if (duration > 0 && elapsed >= step.atMs && elapsed < step.endMs) {
+          newStepIndex = i;
+          break;
+        } 
+        // Past last step - workout complete
+        else if (elapsed >= step.endMs && i === steps.length - 1) {
           newStepIndex = steps.length;
           break;
         }
@@ -778,8 +788,14 @@ export default function WorkoutSessionPage() {
       // Resync validation every 15 seconds
       const timeSinceLastResync = elapsed - lastResyncMs.current;
       if (timeSinceLastResync >= RESYNC_INTERVAL_MS) {
-        // Verify we're on the correct step
-        const expectedStep = steps.find((s: any) => elapsed >= s.atMs && elapsed < s.endMs);
+        // Verify we're on the correct step (handle 0-duration steps)
+        const expectedStep = steps.find((s: any) => {
+          const stepDuration = s.endMs - s.atMs;
+          if (stepDuration === 0) {
+            return elapsed >= s.atMs && currentStepIndex <= steps.indexOf(s);
+          }
+          return elapsed >= s.atMs && elapsed < s.endMs;
+        });
         if (expectedStep && newStepIndex < steps.length && steps[newStepIndex] !== expectedStep) {
           console.warn(`⚠️ Resync correction: expected step ${steps.indexOf(expectedStep)}, got ${newStepIndex}`);
           setCurrentStepIndex(steps.indexOf(expectedStep));
