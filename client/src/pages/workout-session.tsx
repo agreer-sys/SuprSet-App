@@ -886,6 +886,15 @@ export default function WorkoutSessionPage() {
       ? executionTimeline.executionTimeline[currentStepIndex]
       : null;
     
+    // Workout complete - past last step
+    if (!currentStep && currentStepIndex >= executionTimeline.executionTimeline.length && !hasSpokenForStepRef.current.has('workout_complete')) {
+      realtime.sendEvent('workout_complete', {
+        total_duration_s: Math.floor(elapsedMs / 1000),
+      });
+      hasSpokenForStepRef.current.add('workout_complete');
+      return;
+    }
+    
     if (!currentStep) return;
     
     // Detect step transitions and send appropriate events
@@ -938,7 +947,7 @@ export default function WorkoutSessionPage() {
     }
     
     hasSpokenForStepRef.current.add(currentStepIndex);
-  }, [realtime.isConnected, realtime.sendEvent, realtime.sendText, isBlockWorkout, executionTimeline, currentStepIndex, workoutStartEpochMs]);
+  }, [realtime.isConnected, realtime.sendEvent, realtime.sendText, isBlockWorkout, executionTimeline, currentStepIndex, workoutStartEpochMs, elapsedMs]);
 
   // 10-second warning for work periods
   const tenSecWarningStepRef = useRef<number | null>(null);
