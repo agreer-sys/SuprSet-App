@@ -1,0 +1,349 @@
+/**********************************************************************
+ *  SUPRSET COACH LIGHT – MASTER VERSION
+ *  Node 18+ / Replit / OpenAI Realtime API
+ *  Features:
+ *   • Minimal-chatter AI persona (<4 s speech)
+ *   • Timer/AI sync with event streaming
+ *   • Mode-aware logic (rep / time / hybrid)
+ *   • await_ready gating for manual readiness
+ *   • User performance logging (record_set)
+ *********************************************************************/
+
+import fs from "fs";
+import path from "path";
+import WebSocket from "ws";
+
+/* ---------- CONFIG ------------------------------------------------ */
+const USER_ID = "user_123";
+const WORKOUT_ID = "wkt_2025_10_08";
+const LOG_PATH = path.join(process.cwd(), "workout_logs.json");
+const MODEL_URL =
+  "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview";
+
+/* ---------- MOCK DATA (replace with DB calls) -------------------- */
+const userProfile = {
+  user_id: USER_ID,
+  goals: ["strength", "hypertrophy"],
+  history: { bench_1RM_est: 225, squat_1RM_est: 315 },
+};
+
+// mode = "rep" | "time" | "hybrid"
+const workoutPlan = {
+  workout_id: WORKOUT_ID,
+  mode: "rep",
+  blocks: [
+    {
+      name: "Block 1",
+      exercises: [
+        {
+          id: "ex_bench",
+          name: "Barbell Bench Press",
+          sets: 3,
+          work_s: 60,
+          rest_s: 60,
+        },
+      ],
+    },
+  ],
+};
+
+/* ---------- UTILITIES --------------------------------------------- */
+function speak(text) {
+  // Replace with ElevenLabs/OpenAI TTS
+  console.log("[TTS]", text);
+}
+function loadLogs() {
+  try {
+    return JSON.parse(fs.readFileSync(LOG_PATH, "utf8"));
+  } catch {
+    return [];
+  }
+}
+function saveLog(entry) {
+  const logs = loadLogs();
+  logs.push(entry);
+  fs.writeFileSync(LOG_PATH, JSON.stringify(logs, null, 2));
+}
+
+/* ---------- GLOBAL STATE ------------------------------------------ */
+const ws = new WebSocket(MODEL_URL, {
+  headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+});
+
+const state = {
+  isRunning: false,
+  currentTime: 0,
+  totalTime: 0,
+  phase: "idle",
+  blockIndex: 0,
+  exerciseIndex: 0,
+  setIndex: 0,
+  seconds_left: 0,
+};
+
+let awaitingReady = false;
+let currentExercise = null;
+
+/* ---------- COMMUNICATION HELPERS -------------------------------- */
+function sendEvent(name, data) {
+  ws.send(JSON.stringify({ type: "event", name, data }));
+}
+function sendInstruction(text) {
+  ws.send(JSON.stringify({ type: "input_text", text }));
+}
+
+/* ---------- TOOL HANDLING ---------------------------------------- */
+async function handleToolCall(call) {
+  const { name, arguments: args, id } = call;
+
+  if (name === "get_user_profile") {
+    ws.send(
+      JSON.stringify({ type: "tool_result", tool_call_id: id, result: userProfile })
+    );
+    return;
+  }
+
+  if (name === "record_set") {
+    const entry = { ts: new Date().toISOString(), ...args };
+    saveLog(entry);
+    ws.send(
+      JSON.stringify({
+        type: "tool_result",
+        tool_call_id: id,
+        result: { ok: true },
+      })
+    );
+    return;
+  }
+
+  if (name === "get_next_exercise") {
+    const block = workoutPlan.blocks[state.blockIndex];
+    const nextIndex = Math.min(
+      args.current_index + 1,
+      block.exercises.length - 1
+    );
+    ws.send(
+      JSON.stringify({
+        type: "tool_result",
+        tool_call_id: id,
+        result: block.exercises[nextIndex],
+      })
+    );
+  }
+}
+
+/* ---------- SOCKET EVENTS ---------------------------------------- */
+ws.on("message", async (raw) => {
+  const msg = JSON.parse(raw.toString());
+  if (msg.type === "response" && msg.output?.text) await speak(msg.output.text);
+  if (msg.type === "tool_call") await handleToolCall(msg);
+});
+
+ws.on("open", () => {
+  /**********************************************************************
+   *  UPDATED SYSTEM INSTRUCTIONS (minimal-chatter persona with await_ready)
+   *********************************************************************/
+  const SYSTEM_PROMPT = `
+SYSTEM: You are SuprSet Coach Light.
+
+Context:
+- You understand the user's full workout plan, block timing, and profile (goals, history, recent performance).
+- The workout can be in one of three modes:
+  • "rep" = rep-based strength training (manual readiness between sets)
+  • "time" = time-based intervals (auto-continues between sets)
+  • "hybrid" = mixed or block-based training (await readiness between blocks only)
+
+Core Objectives:
+- Guide the workout using minimal speech.
+- Every spoken response must be under ~4 seconds of speech (≈8–12 words).
+- Speak only when contextually necessary:
+  1. At SET START → announce exercise + set number + ONE key coaching cue.
+  2. 10 SECONDS BEFORE SET END → one short motivation line.
+  3. At SET END → ask: "Weight and reps?" Wait for user input, confirm, and call tool record_set.
+  4. During REST → remain silent unless setup for next action is needed.
+  5. During TRANSITIONS or BLOCK CHANGES → announce next phase briefly.
+  6. Only respond to safety-critical form issues during work sets.
+
+Event Awareness:
+- You will receive: set_start, set_10s_remaining, set_complete, rest_start, rest_complete,
+  timer_update, await_ready, user_ready, block_transition, workout_complete.
+
+Behavior Rules:
+- On await_ready:
+  • If mode = "rep": ask if user is ready for the next set. Wait for a clear confirmation (yes, ready, go).
+  • If mode = "hybrid": ask only between blocks.
+  • If mode = "time": ignore this event; continue automatically.
+  • Do not continue until user_ready event is received.
+- On user_ready: acknowledge readiness briefly ("Let's go") and resume workout.
+- On timer_update: pace motivational lines according to phase/time remaining.
+- On workout_complete: congratulate briefly and end the session.
+
+Communication Tone:
+- Confident, calm, supportive; speak like an experienced performance coach.
+- Never stack multiple coaching points.
+- Never small talk or repeat filler lines excessively.
+- Assume the user is listening over music; keep messages concise and clear.
+
+Tools you can use:
+- get_user_profile({ user_id })
+- record_set({ user_id, workout_id, exercise_id, set_index, weight, reps, rpe? })
+- get_next_exercise({ workout_id, current_index })
+Use tools only when needed to personalize coaching or record data.
+
+Response Format:
+- Output plain text (host handles TTS).`;
+
+  sendInstruction(SYSTEM_PROMPT);
+  sendInstruction(`USER_PROFILE_JSON:\n${JSON.stringify(userProfile)}`);
+  sendInstruction(`WORKOUT_PLAN_JSON:\n${JSON.stringify(workoutPlan)}`);
+
+  runWorkoutBlock();
+});
+
+/* ---------- WORKOUT ENGINE --------------------------------------- */
+function runWorkoutBlock() {
+  const block = workoutPlan.blocks[state.blockIndex];
+  if (!block) {
+    sendEvent("workout_complete", { workout_id: WORKOUT_ID });
+    return;
+  }
+  state.exerciseIndex = 0;
+  runExercise(block);
+}
+
+function runExercise(block) {
+  currentExercise = block.exercises[state.exerciseIndex];
+  if (!currentExercise) {
+    state.blockIndex++;
+    if (state.blockIndex >= workoutPlan.blocks.length) {
+      sendEvent("workout_complete", { workout_id: WORKOUT_ID });
+      return;
+    }
+    sendEvent("block_transition", {
+      to: workoutPlan.blocks[state.blockIndex].name,
+    });
+    return runWorkoutBlock();
+  }
+  state.setIndex = 0;
+  cycleSet(currentExercise);
+}
+
+function cycleSet(ex) {
+  if (state.setIndex >= ex.sets) {
+    state.exerciseIndex++;
+    return runExercise(workoutPlan.blocks[state.blockIndex]);
+  }
+
+  /* ---- WORK PHASE ---- */
+  state.phase = "work";
+  state.isRunning = true;
+  state.currentTime = 0;
+  state.totalTime = ex.work_s;
+  sendEvent("set_start", {
+    exercise_id: ex.id,
+    set_index: state.setIndex,
+    work_s: ex.work_s,
+  });
+
+  const workInterval = setInterval(() => {
+    if (!state.isRunning) return;
+    state.currentTime++;
+    state.seconds_left = Math.max(0, state.totalTime - state.currentTime);
+    sendEvent("timer_update", {
+      ...state,
+      exercise_id: ex.id,
+      set_index: state.setIndex,
+    });
+
+    if (state.seconds_left === 10)
+      sendEvent("set_10s_remaining", {
+        exercise_id: ex.id,
+        set_index: state.setIndex,
+      });
+
+    if (state.currentTime >= state.totalTime) {
+      clearInterval(workInterval);
+      state.isRunning = false;
+      sendEvent("set_complete", {
+        exercise_id: ex.id,
+        set_index: state.setIndex,
+      });
+      restPhase(ex);
+    }
+  }, 1000);
+}
+
+/* ---- REST PHASE ---- */
+function restPhase(ex) {
+  state.phase = "rest";
+  state.currentTime = 0;
+  state.totalTime = ex.rest_s;
+  sendEvent("rest_start", { duration: ex.rest_s });
+
+  const restInterval = setInterval(() => {
+    state.currentTime++;
+    state.seconds_left = Math.max(0, state.totalTime - state.currentTime);
+    sendEvent("timer_update", {
+      ...state,
+      exercise_id: ex.id,
+      set_index: state.setIndex,
+    });
+
+    if (state.currentTime >= state.totalTime) {
+      clearInterval(restInterval);
+      sendEvent("rest_complete", {});
+
+      const mode = workoutPlan.mode || "rep";
+
+      // --- SMART AWAIT LOGIC ---
+      if (mode === "rep") {
+        awaitingReady = true;
+        sendEvent("await_ready", {
+          next_exercise: ex.name,
+          next_set: state.setIndex + 1,
+        });
+        sendInstruction(
+          `Ask if the user is ready for the next set. Wait for confirmation before resuming.`
+        );
+      } else if (mode === "time") {
+        state.setIndex++;
+        cycleSet(ex); // auto-continue
+      } else if (mode === "hybrid") {
+        if (
+          state.exerciseIndex >=
+          workoutPlan.blocks[state.blockIndex].exercises.length - 1
+        ) {
+          awaitingReady = true;
+          sendEvent("await_ready", {
+            next_block: workoutPlan.blocks[state.blockIndex + 1]?.name,
+          });
+          sendInstruction(
+            `Ask if they are ready for the next block before continuing.`
+          );
+        } else {
+          state.setIndex++;
+          cycleSet(ex);
+        }
+      }
+    }
+  }, 1000);
+}
+
+/* ---------- USER INPUT ------------------------------------------- */
+function onUserReplyText(text) {
+  ws.send(JSON.stringify({ type: "input_text", text }));
+
+  if (awaitingReady && /^(yes|yep|ready|go|start|let'?s go)$/i.test(text.trim())) {
+    awaitingReady = false;
+    sendEvent("user_ready", {});
+    sendInstruction(`Acknowledge readiness and resume workout.`);
+    state.setIndex++;
+    cycleSet(currentExercise);
+  }
+}
+
+/**********************************************************************
+ * Hook onUserReplyText() to your chat/voice pipeline.
+ * Replace speak() with ElevenLabs/OpenAI TTS.
+ * Persist logs externally if desired.
+ *********************************************************************/
