@@ -36,7 +36,24 @@ The application uses a client-server architecture with a React frontend and an E
   - **User Activation**: Coach prompts "Say 'Ready' or 'Go'" - supports voice commands or UI button
   - **Timeline Re-anchoring**: When resumed, all future timestamps recalculate from current moment (drift-free)
   - **Phase 2 Vision**: Voice-based rep/weight tracking - user reports "13 reps", coach asks "What's the weight?", logs data for progressive overload
+  - **FIX APPLIED**: 0-duration step detection now properly handles await_ready steps in timeline execution
+- **Voice Prompts System**: Automatic AI coach announcements at key workout moments:
+  - **Step Transitions**: Announces exercise name/duration when starting work periods
+  - **10-Second Warnings**: Fires once per work interval with motivational cues
+  - **Rest Periods**: Announces rest/transition duration
+  - **FIX APPLIED**: Initial step now speaks correctly, 10s warnings fire exactly once using ref guards
 - **Admin Authentication System**: `isAdmin` boolean field in the users table with dedicated middleware restricts access to `/api/admin/*` endpoints. Admin status is preserved across logins via the `upsertUser` function. Admin creation requires direct database access.
+
+## Recent Fixes (Oct 8, 2025)
+- **Timeline Compilation**: Fixed `createBlockWorkout` to use `compileWorkoutTimeline()` instead of manual compilation, ensuring initial await_ready steps and exercise names are included
+- **0-Duration Step Detection**: Fixed step-finding logic to properly detect await_ready steps (duration=0) by checking `elapsed >= atMs` instead of requiring `elapsed < endMs`
+- **Exercise Names in Voice Prompts**: NEW workouts now include exercise names in voice prompts; old workouts still have broken timeline structure in database
+- **End Workout Button**: Temporarily removed auth requirement to allow guest users (SECURITY RISK: needs token-based protection)
+- **CRITICAL**: Users must create NEW workouts for fixes to apply - existing workouts in database have old timeline structure
+
+## Known Issues & TODO
+- **SECURITY**: `/api/workout-sessions/:id/complete` endpoint lacks protection - any caller can close arbitrary sessions if they know the ID (needs opaque token or auth guard)
+- **OLD WORKOUTS**: Existing workouts in database have manually-compiled timeline without await_ready steps or exercise names - need to be recreated
 
 **Data Integration**
 - **Airtable Service**: Handles API calls and data transformation.
