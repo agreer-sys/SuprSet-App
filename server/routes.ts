@@ -360,13 +360,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If no authenticated user, create a guest user in the database
       if (!userId) {
         userId = 'guest-user-' + Date.now();
-        await storage.upsertUser({
-          id: userId,
-          email: `${userId}@guest.local`,
-          firstName: 'Guest',
-          lastName: 'User',
-          isAdmin: false
-        });
+        console.log('🔧 Creating guest user:', userId);
+        try {
+          const guestUser = await storage.upsertUser({
+            id: userId,
+            email: `${userId}@guest.local`,
+            firstName: 'Guest',
+            lastName: 'User',
+            isAdmin: false
+          });
+          console.log('✅ Guest user created successfully:', guestUser);
+        } catch (upsertError) {
+          console.error('❌ Failed to create guest user:', upsertError);
+          throw upsertError;
+        }
       }
       
       const { workoutId } = req.body;
@@ -375,6 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Workout ID required" });
       }
       
+      console.log('🏋️ Starting session for user:', userId, 'workout:', workoutId);
       const session = await storage.startBlockWorkoutSession(userId, workoutId);
       res.status(201).json(session);
     } catch (error) {
