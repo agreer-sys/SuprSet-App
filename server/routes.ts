@@ -367,6 +367,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName: 'User',
           isAdmin: false
         });
+        
+        // Store guest userId in session for auth middleware
+        (req.session as any).userId = userId;
       }
       
       const { workoutId } = req.body;

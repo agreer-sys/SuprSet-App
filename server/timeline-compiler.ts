@@ -389,6 +389,19 @@ export async function compileWorkoutTimeline(
   let currentTimeMs = 0;
   let stepCounter = 1;
 
+  // Initial await_ready - pause before starting (doesn't count toward timer)
+  allSteps.push({
+    step: stepCounter++,
+    type: "await_ready",
+    label: "Get organized and connect with your coach",
+    coachPrompt: `Welcome to ${workoutName}! Take a moment to get organized. When you're ready to begin, say 'Ready' or 'Go'.`,
+    atMs: currentTimeMs,
+    endMs: currentTimeMs,
+    nextStepId: `step-${stepCounter}`,
+    preWorkout: true, // This step happens before workout timer starts
+  });
+  // Note: currentTimeMs doesn't advance - await_ready re-anchors timeline
+
   // Intro instruction (marked as pre-workout - doesn't count toward timer)
   allSteps.push({
     step: stepCounter++,

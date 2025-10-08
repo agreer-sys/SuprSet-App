@@ -189,6 +189,21 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // TEMPORARY: Allow guest users in development for testing
+  // Guest user pattern: session data includes userId starting with "guest-user-"
+  if (process.env.NODE_ENV === 'development') {
+    const sessionData = (req.session as any);
+    if (sessionData?.userId?.startsWith('guest-user-')) {
+      // Set up mock user for guest session
+      (req as any).user = {
+        claims: {
+          sub: sessionData.userId
+        }
+      };
+      return next();
+    }
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {

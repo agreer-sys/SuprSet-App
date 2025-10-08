@@ -854,6 +854,87 @@ export default function WorkoutSessionPage() {
     realtime.updateContext(context);
   }, [realtime.isConnected, isBlockWorkout, executionTimeline, currentStepIndex, isAwaitingReady, isPaused]);
 
+  // AI Coach Voice Prompts - Automatically speak at key moments
+  const previousStepIndexRef = useRef<number>(-1);
+  const hasSpokenForStepRef = useRef<Set<number>>(new Set());
+  
+  useEffect(() => {
+    if (!realtime.isConnected || !isBlockWorkout || !executionTimeline || !workoutStartEpochMs) return;
+    
+    // Check if we've already spoken for this step
+    if (previousStepIndexRef.current === currentStepIndex && hasSpokenForStepRef.current.has(currentStepIndex)) {
+      return;
+    }
+    
+    previousStepIndexRef.current = currentStepIndex;
+    
+    const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
+      ? executionTimeline.executionTimeline[currentStepIndex]
+      : null;
+    
+    if (!currentStep) return;
+    
+    // Skip if already spoken for this step
+    if (hasSpokenForStepRef.current.has(currentStepIndex)) return;
+    
+    let prompt = '';
+    
+    // Generate contextual prompt based on step type
+    if (currentStep.type === 'await_ready') {
+      prompt = currentStep.coachPrompt || `Take your time. Say 'Ready' when you are.`;
+    } else if (currentStep.type === 'instruction') {
+      // Pre-block intro or cooldown
+      if (currentStep.preWorkout) {
+        prompt = `Welcome! Get ready to begin. The countdown starts in a moment.`;
+      } else {
+        prompt = currentStep.text || 'Get ready for the next block.';
+      }
+    } else if (currentStep.type === 'work') {
+      // Work start prompt with exercise name and duration
+      const exerciseName = currentStep.exerciseName || 'Exercise';
+      const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
+      prompt = `${exerciseName} — ${duration} seconds. Let's go.`;
+    } else if (currentStep.type === 'rest' || currentStep.type === 'transition') {
+      const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
+      const label = currentStep.label || (currentStep.type === 'rest' ? 'Rest' : 'Transition');
+      prompt = `${label} — ${duration} seconds to recover.`;
+    }
+    
+    // Send prompt to coach and mark as spoken
+    if (prompt && realtime.sendText) {
+      console.log('🎙️ Coach prompt:', prompt);
+      realtime.sendText(prompt);
+      hasSpokenForStepRef.current.add(currentStepIndex);
+    }
+  }, [realtime.isConnected, realtime.sendText, isBlockWorkout, executionTimeline, currentStepIndex, workoutStartEpochMs]);
+
+  // 10-second warning for work periods
+  const tenSecWarningStepRef = useRef<number | null>(null);
+  
+  useEffect(() => {
+    if (!realtime.isConnected || !isBlockWorkout || !executionTimeline || isPaused || isAwaitingReady) return;
+    
+    const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
+      ? executionTimeline.executionTimeline[currentStepIndex]
+      : null;
+    
+    if (!currentStep || currentStep.type !== 'work') return;
+    
+    const stepDuration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
+    const timeRemaining = stepDuration - Math.floor(elapsedMs / 1000) + Math.floor(currentStep.atMs / 1000);
+    
+    // Trigger 10-second warning once per step
+    if (timeRemaining === 10 && tenSecWarningStepRef.current !== currentStepIndex) {
+      const motivationalCue = currentStep.coachCue || 'Keep pushing.';
+      const prompt = `10 seconds to go. ${motivationalCue}`;
+      if (realtime.sendText) {
+        console.log('🎙️ 10s warning:', prompt);
+        realtime.sendText(prompt);
+        tenSecWarningStepRef.current = currentStepIndex;
+      }
+    }
+  }, [realtime.isConnected, realtime.sendText, isBlockWorkout, executionTimeline, currentStepIndex, elapsedMs, isPaused, isAwaitingReady]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
