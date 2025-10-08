@@ -51,7 +51,7 @@ export default function WorkoutSessionPage() {
   const lastUpdateWallClockMs = useRef<number>(0);
 
   // Fetch active workout session - try block workout first, then fall back to template
-  const { data: blockSession } = useQuery<any>({
+  const { data: blockSession, isLoading: isLoadingBlock } = useQuery<any>({
     queryKey: ['/api/block-workout-sessions/active'],
     retry: false, // Don't retry on 404
     queryFn: async () => {
@@ -74,10 +74,12 @@ export default function WorkoutSessionPage() {
   });
 
   // Fallback to template-based workout if no block workout session
-  const { data: templateSession, isLoading } = useQuery<any>({
+  const { data: templateSession, isLoading: isLoadingTemplate } = useQuery<any>({
     queryKey: ['/api/workout-sessions/active'],
-    enabled: blockSession === null || blockSession === undefined, // Only fetch if no block session
+    enabled: blockSession === null, // Only fetch if block session explicitly returned null
   });
+  
+  const isLoading = isLoadingBlock || (blockSession === null && isLoadingTemplate);
 
   // Use block session if available, otherwise template session
   const session = blockSession || templateSession;
