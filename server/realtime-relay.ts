@@ -175,7 +175,7 @@ async function buildSessionInstructions(session: RealtimeSession): Promise<strin
     ? `\n\nWORKOUT TIMELINE:\n- Name: ${executionTimeline.workoutHeader.name}\n- Duration: ${Math.floor(executionTimeline.workoutHeader.totalDurationSec / 60)} min ${executionTimeline.workoutHeader.totalDurationSec % 60}s\n- Total Steps: ${executionTimeline.executionTimeline.length}\n\nUPCOMING STEPS:\n${executionTimeline.executionTimeline.slice(session.coachingContext?.currentStepIndex || 0, (session.coachingContext?.currentStepIndex || 0) + 5).map((step: any, idx: number) => {
         const timeMin = Math.floor(step.atMs / 60000);
         const timeSec = Math.floor((step.atMs % 60000) / 1000);
-        const exerciseInfo = step.exerciseName ? `${step.exerciseName}` : step.action;
+        const exerciseInfo = step.exercise?.name || step.text || step.type;
         const duration = step.endMs - step.atMs > 0 ? ` (${Math.floor((step.endMs - step.atMs) / 1000)}s)` : '';
         return `  ${timeMin}:${timeSec.toString().padStart(2, '0')} - ${exerciseInfo}${duration}`;
       }).join('\n')}`
@@ -194,7 +194,7 @@ async function buildSessionInstructions(session: RealtimeSession): Promise<strin
     : '';
 
   const currentStepContext = session.coachingContext?.currentStep
-    ? `\n\nCURRENT STEP:\n- Type: ${session.coachingContext.currentStep.type}\n- Action: ${session.coachingContext.currentStep.action}\n- Exercise: ${session.coachingContext.currentStep.exerciseName || 'N/A'}\n- Form Cue: ${session.coachingContext.currentStep.formCue || 'None'}\n- Awaiting Ready: ${session.coachingContext.isAwaitingReady ? 'YES - Call confirm_ready when user says they\'re ready' : 'No'}`
+    ? `\n\nCURRENT STEP:\n- Type: ${session.coachingContext.currentStep.type}\n- Action: ${session.coachingContext.currentStep.text || session.coachingContext.currentStep.type}\n- Exercise: ${session.coachingContext.currentStep.exercise?.name || 'N/A'}\n- Form Cue: ${session.coachingContext.currentStep.exercise?.cues?.[0] || 'None'}\n- Awaiting Ready: ${session.coachingContext.isAwaitingReady ? 'YES - Call confirm_ready when user says they\'re ready' : 'No'}`
     : '';
 
   const exerciseContext = session.coachingContext?.exercise
