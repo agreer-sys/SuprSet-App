@@ -54,7 +54,7 @@ import {
 import { airtableService } from "./airtable";
 import { db } from "./db";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
-import { compileBlockToTimeline, type ExecutionTimeline, type TimelineStep } from "./timeline-compiler";
+import { compileBlockToTimeline, compileWorkoutTimeline, type ExecutionTimeline, type TimelineStep } from "./timeline-compiler";
 
 export interface IStorage {
   // Exercise methods
@@ -1166,76 +1166,17 @@ export class DatabaseStorage implements IStorage {
       .map(id => blocksWithExercises.find(b => b.id === id)!)
       .filter(Boolean);
 
-    // Compile each block and combine into one timeline
-    const allSteps: TimelineStep[] = [];
-    let currentTimeMs = 0;
-    let stepCounter = 1;
-
-    for (let i = 0; i < sortedBlocks.length; i++) {
-      const block = sortedBlocks[i];
-      const isFirstBlock = i === 0;
-      
-      // Compile this block
-      const blockTimeline = await compileBlockToTimeline(
-        block,
-        {
-          workoutName: data.name,
-          workoutStructure: "block_sequence",
-          includeIntro: isFirstBlock
-        }
-      );
-
-      // Add all steps from this block, adjusting timestamps
-      for (const step of blockTimeline.executionTimeline) {
-        allSteps.push({
-          ...step,
-          step: stepCounter++,
-          atMs: currentTimeMs + step.atMs,
-          endMs: currentTimeMs + step.endMs
-        });
-      }
-
-      // Advance time to end of this block
-      if (blockTimeline.executionTimeline.length > 0) {
-        const lastStep = blockTimeline.executionTimeline[blockTimeline.executionTimeline.length - 1];
-        currentTimeMs += lastStep.endMs;
-      }
-    }
-
-    const totalDurationSec = Math.floor(currentTimeMs / 1000);
-
-    // Validate compiled timeline
-    if (allSteps.length === 0) {
-      throw new Error("Failed to compile workout: no steps generated");
-    }
-
-    // Validate chronological order
-    for (let i = 1; i < allSteps.length; i++) {
-      if (allSteps[i].atMs < allSteps[i-1].endMs) {
-        throw new Error(`Timeline validation failed: step ${i} overlaps with previous step`);
-      }
-    }
-
-    // Create the complete execution timeline
-    const executionTimeline: ExecutionTimeline = {
-      workoutHeader: {
-        name: data.name,
-        totalDurationSec,
-        structure: "block_sequence"
-      },
-      executionTimeline: allSteps,
-      sync: {
-        workoutStartEpochMs: 0, // Will be set when session starts
-        resyncEveryMs: 15000,
-        allowedDriftMs: 250
-      }
-    };
+    // Use compileWorkoutTimeline to get proper await_ready steps and structure
+    const executionTimeline = await compileWorkoutTimeline(
+      sortedBlocks,
+      data.name
+    );
 
     // Update workout with compiled timeline and increment version
     await db.update(blockWorkouts)
       .set({ 
         executionTimeline,
-        estimatedDurationMin: Math.ceil(totalDurationSec / 60),
+        estimatedDurationMin: Math.ceil(executionTimeline.workoutHeader.totalDurationSec / 60),
         isPublished: true,
         publishedAt: new Date(),
         version: (workout.version || 0) + 1

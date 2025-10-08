@@ -1751,7 +1751,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/workout-sessions/:id/complete', isAuthenticated, async (req: any, res) => {
+  // TEMP: Removed isAuthenticated to allow guest users - TODO: Add proper auth check
+  app.post('/api/workout-sessions/:id/complete', async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const { notes } = req.body;
