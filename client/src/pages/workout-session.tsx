@@ -89,6 +89,7 @@ export default function WorkoutSessionPage() {
   const executionTimeline = blockSession?.snapshotTimeline;
   
   console.log('📊 Session data:', { blockSession, templateSession, session, isLoading, isLoadingBlock, isLoadingTemplate });
+  console.log('📊 Execution timeline:', { executionTimeline, isBlockWorkout, hasTimeline: !!executionTimeline });
 
 
   // Memoize templateExercises to prevent infinite loop - only recreate when session data changes
