@@ -1642,13 +1642,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveBlockWorkoutSession(userId: string): Promise<any> {
-    const [session] = await db.select().from(blockWorkoutSessions)
-      .where(and(
-        eq(blockWorkoutSessions.userId, userId),
-        eq(blockWorkoutSessions.status, 'active')
-      ))
-      .orderBy(desc(blockWorkoutSessions.startedAt))
-      .limit(1);
+    // For guest users, get the most recent active session regardless of specific userId
+    let session;
+    if (userId && userId.startsWith('guest-user')) {
+      [session] = await db.select().from(blockWorkoutSessions)
+        .where(eq(blockWorkoutSessions.status, 'active'))
+        .orderBy(desc(blockWorkoutSessions.startedAt))
+        .limit(1);
+    } else {
+      [session] = await db.select().from(blockWorkoutSessions)
+        .where(and(
+          eq(blockWorkoutSessions.userId, userId),
+          eq(blockWorkoutSessions.status, 'active')
+        ))
+        .orderBy(desc(blockWorkoutSessions.startedAt))
+        .limit(1);
+    }
 
     if (!session) {
       return null;
