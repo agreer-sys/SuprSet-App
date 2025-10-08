@@ -106,19 +106,13 @@ export default function PreBuiltWorkouts() {
     enabled: !!selectedTemplate?.id,
   });
 
-  // Start workout session mutation
-  const startWorkoutMutation = useMutation({
-    mutationFn: async (templateId: number) => {
-      const response = await fetch('/api/workout-sessions/from-template', {
+  // Start block workout session mutation
+  const startBlockWorkoutMutation = useMutation({
+    mutationFn: async (workoutId: number) => {
+      const response = await fetch('/api/block-workout-sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          templateId, 
-          userId: 'user123', // TODO: Get from auth context
-          enableCoaching: coachingOptions.enableCoaching,
-          voiceEnabled: coachingOptions.voiceEnabled,
-          coachingStyle: coachingOptions.coachingStyle
-        }),
+        body: JSON.stringify({ workoutId }),
       });
       if (!response.ok) throw new Error('Failed to start workout');
       return response.json();
@@ -126,9 +120,9 @@ export default function PreBuiltWorkouts() {
     onSuccess: (data: any) => {
       toast({
         title: 'Workout Started!',
-        description: `Workout started successfully.`,
+        description: `Starting your workout with AI Coach...`,
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/workout-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/block-workout-sessions'] });
       setLocation('/workout-session'); // Navigate to workout session page
     },
     onError: (error: any) => {
@@ -276,16 +270,16 @@ export default function PreBuiltWorkouts() {
                       </div>
                     </div>
 
-                    <Link href={`/workout-session?blockWorkoutId=${workout.id}`}>
-                      <Button 
-                        size="sm" 
-                        className="w-full"
-                        data-testid={`start-block-workout-${workout.id}`}
-                      >
-                        <Play className="h-4 w-4 mr-1" />
-                        Start Workout
-                      </Button>
-                    </Link>
+                    <Button 
+                      size="sm" 
+                      className="w-full"
+                      data-testid={`start-block-workout-${workout.id}`}
+                      onClick={() => startBlockWorkoutMutation.mutate(workout.id)}
+                      disabled={startBlockWorkoutMutation.isPending}
+                    >
+                      <Play className="h-4 w-4 mr-1" />
+                      {startBlockWorkoutMutation.isPending ? 'Starting...' : 'Start Workout'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
