@@ -201,31 +201,57 @@ async function buildSessionInstructions(session: RealtimeSession): Promise<strin
     ? `\n\nCURRENT EXERCISE:\n- Name: ${session.coachingContext.exercise.name}\n- Primary Muscle: ${session.coachingContext.exercise.primaryMuscleGroup}\n- Equipment: ${session.coachingContext.exercise.equipment}\n- Form Tips: ${session.coachingContext.exercise.coachingBulletPoints || 'Focus on proper form'}`
     : '';
 
-  return `You are SuprSet AI Coach, a professional strength training coach specializing in superset workouts. You have a natural, conversational tone like a real personal trainer working with someone in the gym.
+  return `SYSTEM: You are SuprSet Coach Light.
 
-PERSONALITY:
-- Energetic but not over-the-top
-- Use contractions and natural speech patterns
-- Keep responses concise (1-3 sentences for quick questions)
-- Be encouraging without being cheesy
-- Reference the specific exercise and workout context naturally
+Context:
+- You understand the user's full workout plan, block timing, and timeline execution
+- The workout follows an event-driven model: the HOST controls all timing, you are an OBSERVER who responds to events
+- You will receive events like: set_start, set_10s_remaining, set_complete, rest_start, rest_complete, await_ready, user_ready, block_transition, workout_complete
 
-CAPABILITIES:
-- Provide form cues and technique advice
-- Give motivational encouragement between sets
-- Answer questions about exercise execution
-- Control workout flow (start/pause/resume timers)
-- Track progress and suggest adjustments
-- Confirm readiness when user says "ready", "let's go", "I'm ready" etc. by calling confirm_ready function
+Core Objectives:
+- Guide the workout using minimal speech
+- Every spoken response must be under ~4 seconds of speech (≈8–12 words)
+- Speak only when contextually necessary:
+  1. At SET START → announce exercise + set number + ONE key coaching cue
+  2. 10 SECONDS BEFORE SET END → one short motivation line
+  3. At SET END → ask: "Weight and reps?" Wait for user input, confirm, and call tool record_set
+  4. During REST → remain silent unless setup for next action is needed
+  5. During TRANSITIONS or BLOCK CHANGES → announce next phase briefly
+  6. Only respond to safety-critical form issues during work sets
+
+Event Awareness:
+- set_start: Work interval begins → announce exercise briefly with one cue
+- set_10s_remaining: 10 seconds left → short motivational line  
+- set_complete: Set ends → ask "Weight and reps?" and record using record_set tool
+- rest_start: Rest period begins → stay silent unless user asks question
+- rest_complete: Rest ends → prepare for next set
+- await_ready: Manual readiness gate → ask if user is ready, wait for confirmation
+- user_ready: User confirmed → acknowledge briefly ("Let's go") and prepare
+- block_transition: Moving between blocks → announce next block
+- workout_complete: Session ends → brief congratulations
 
 ${knowledgeBase}${timelineContext}${workoutTemplateContext}${currentState}${currentStepContext}${exerciseContext}
 
-IMPORTANT:
-- This is voice-only conversation, so be conversational and brief
-- Listen for workout control commands (pause, resume, ready)
-- When user says they're ready (at await_ready steps or anytime), call the confirm_ready function immediately
-- Call functions when user needs timer control or workflow changes
-- Don't repeat information unnecessarily - they can hear you clearly`;
+Behavior Rules:
+- NEVER control workout flow - the host manages all timers
+- On await_ready: ask if user is ready, wait for clear confirmation (yes, ready, go)
+- Do not continue until user_ready event is received
+- Assume the user is listening over music; keep messages concise and clear
+- Never stack multiple coaching points
+- Never small talk or repeat filler lines excessively
+
+Communication Tone:
+- Confident, calm, supportive; speak like an experienced performance coach
+- Use natural contractions and speech patterns
+- Be encouraging without being cheesy
+
+Tools you can use:
+- get_user_profile({ user_id }) - fetch user data for personalization
+- record_set({ exercise_id, set_index, weight, reps, rpe? }) - log performance after each set
+Use tools only when needed to personalize coaching or record data.
+
+Response Format:
+- Output plain text (host handles TTS)`;
 }
 
 async function updateSessionContext(session: RealtimeSession, context: any) {
@@ -253,89 +279,115 @@ async function updateSessionContext(session: RealtimeSession, context: any) {
 }
 
 function getWorkoutTools() {
+  // AI is an observer/responder only - no workflow control functions
+  // Host controls all timing and flow
   return [
     {
       type: 'function',
-      name: 'pause_workout',
-      description: 'Pause the current workout timer and exercise',
-      parameters: {
-        type: 'object',
-        properties: {},
-      },
-    },
-    {
-      type: 'function',
-      name: 'resume_workout',
-      description: 'Resume the paused workout',
-      parameters: {
-        type: 'object',
-        properties: {},
-      },
-    },
-    {
-      type: 'function',
-      name: 'confirm_ready',
-      description: 'Confirm that the user is ready to start or continue the workout (when they say "ready", "let\'s go", "I\'m ready", etc.)',
-      parameters: {
-        type: 'object',
-        properties: {},
-      },
-    },
-    {
-      type: 'function',
-      name: 'start_countdown',
-      description: 'Start a 10-second countdown before beginning exercise',
-      parameters: {
-        type: 'object',
-        properties: {},
-      },
-    },
-    {
-      type: 'function',
-      name: 'start_rest_timer',
-      description: 'Start a rest period timer',
+      name: 'record_set',
+      description: 'Record performance data for a completed set (weight, reps, RPE)',
       parameters: {
         type: 'object',
         properties: {
-          duration: {
+          exercise_id: {
+            type: 'string',
+            description: 'Exercise identifier',
+          },
+          set_index: {
             type: 'number',
-            description: 'Rest duration in seconds (default: 30)',
+            description: 'Set number (1-indexed)',
+          },
+          weight: {
+            type: 'number',
+            description: 'Weight used in pounds or kg',
+          },
+          reps: {
+            type: 'number',
+            description: 'Number of repetitions completed',
+          },
+          rpe: {
+            type: 'number',
+            description: 'Rate of Perceived Exertion (1-10 scale), optional',
           },
         },
+        required: ['exercise_id', 'set_index', 'weight', 'reps'],
       },
     },
     {
       type: 'function',
-      name: 'next_exercise',
-      description: 'Move to the next exercise in the workout',
+      name: 'get_user_profile',
+      description: 'Get user profile data including goals, training history, and estimated 1RMs',
       parameters: {
         type: 'object',
-        properties: {},
+        properties: {
+          user_id: {
+            type: 'string',
+            description: 'User identifier',
+          },
+        },
+        required: ['user_id'],
       },
     },
   ];
 }
 
 async function handleFunctionCall(session: RealtimeSession, message: any) {
-  const { name, call_id, arguments: args } = message;
+  const { name, call_id, arguments: argsStr } = message;
+  const args = argsStr ? JSON.parse(argsStr) : {};
   console.log(`🔧 Function called: ${name}`, args);
 
-  if (session.clientWs.readyState === WebSocket.OPEN) {
-    session.clientWs.send(JSON.stringify({
-      type: 'function_call',
-      function: name,
-      arguments: args ? JSON.parse(args) : {},
-      call_id,
-    }));
+  let result: any = { success: false, error: 'Unknown function' };
+
+  try {
+    if (name === 'record_set') {
+      // Store set performance data
+      // TODO: Save to database - for now just log and acknowledge
+      console.log('📊 Recording set:', args);
+      
+      // Forward to client for potential local storage/UI update
+      if (session.clientWs.readyState === WebSocket.OPEN) {
+        session.clientWs.send(JSON.stringify({
+          type: 'set_recorded',
+          data: args,
+        }));
+      }
+      
+      result = { 
+        success: true, 
+        message: `Logged ${args.weight} lbs × ${args.reps} reps` 
+      };
+    }
+    
+    else if (name === 'get_user_profile') {
+      // Fetch user profile data
+      // TODO: Get from database - for now return mock data
+      result = {
+        user_id: args.user_id || 'guest',
+        goals: ['strength', 'hypertrophy'],
+        training_history: {
+          bench_1RM_est: 225,
+          squat_1RM_est: 315,
+          deadlift_1RM_est: 405,
+        },
+        preferences: {
+          coaching_style: 'minimal',
+          voice_enabled: true,
+        },
+      };
+    }
+  } catch (error) {
+    console.error('Function call error:', error);
+    result = { success: false, error: String(error) };
   }
 
+  // Return result to OpenAI
   if (session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
     session.openaiWs.send(JSON.stringify({
       type: 'conversation.item.create',
       item: {
         type: 'function_call_output',
         call_id,
-        output: JSON.stringify({ success: true }),
+        output: JSON.stringify(result),
       },
     }));
   }

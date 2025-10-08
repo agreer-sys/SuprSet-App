@@ -1,0 +1,10 @@
+| Task                                                | Description                                                                                                                                         | Status |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| **1. Remove legacy function calls**                 | Delete all old direct calls in `realtime-relay.ts` such as `confirm_ready()`, `start_countdown()`, `start_rest_timer()`, `next_exercise()`.         | ☐      |
+| **2. Normalize event schema**                       | Use standardized event names listed below.                                                                                                          | ☐      |
+| **3. Load new system prompt**                       | Replace any existing system prompt with the *Minimal-Chatter Persona* from the Master Implementation (includes `await_ready` logic and < 4 s rule). | ☐      |
+| **4. Retain & refactor event-driven voice prompts** | Keep existing voice relay, ensure it subscribes to canonical events and plays audio sequentially.                                                   | ☐      |
+| **5. Implement `record_set` tool**                  | After every `set_complete`, AI prompts: “Weight and reps?” → host captures user input → AI logs via `record_set`.                                   | ☐      |
+| **6. Add optional beeps**                           | Host emits configurable beep sounds at `set_start` / `set_complete` for precise timing (never AI-triggered).                                        | ☐      |
+| **7. Verify exercise naming**                       | Ensure timeline events contain `exercise_id` + `exercise_name` matching DB records.                                                                 | ☐      |
+| **8. QA both modes**                                | Test REP mode (await_ready active) and TIME mode (auto flow). Confirm AI never overlaps host timers.                                                | ☐      |
