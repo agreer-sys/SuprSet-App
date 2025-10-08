@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface RealtimeConfig {
   sessionId: number;
-  onFunctionCall?: (functionName: string, args: any) => void;
   onTranscript?: (transcript: string, isFinal: boolean) => void;
   onError?: (error: string) => void;
 }
@@ -16,7 +15,6 @@ interface RealtimeState {
 
 export function useRealtimeVoice({
   sessionId,
-  onFunctionCall,
   onTranscript,
   onError,
 }: RealtimeConfig) {
@@ -80,11 +78,6 @@ export function useRealtimeVoice({
           onTranscript?.(message.transcript, true);
         }
 
-        if (message.type === 'function_call') {
-          console.log('🔧 Function call:', message.function, message.arguments);
-          onFunctionCall?.(message.function, message.arguments);
-        }
-
         if (message.type === 'input_audio_buffer.speech_started') {
           setState(prev => ({ ...prev, isListening: true }));
           
@@ -121,7 +114,7 @@ export function useRealtimeVoice({
       setState(prev => ({ ...prev, error: 'Failed to connect' }));
       onError?.('Failed to connect');
     }
-  }, [sessionId, onFunctionCall, onTranscript, onError]);
+  }, [sessionId, onTranscript, onError]);
 
   const startListening = useCallback(async () => {
     try {

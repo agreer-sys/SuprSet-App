@@ -106,56 +106,7 @@ export default function WorkoutSessionPage() {
     enabled: !!session?.id,
   });
 
-  // OpenAI Realtime API for voice interaction - replaces react-speech-recognition
-  const handleFunctionCall = useCallback((functionName: string, args: any) => {
-    console.log('🔧 AI Coach function call:', functionName, args);
-    
-    switch (functionName) {
-      case 'pause_workout':
-        // Save current state before pausing (template workouts)
-        if (isWorking) {
-          pausedState.current = { phase: 'work', timeRemaining: workTimer };
-        } else if (isResting) {
-          pausedState.current = { phase: 'rest', timeRemaining: restTimer };
-        } else if (countdown !== null) {
-          pausedState.current = { phase: 'countdown', timeRemaining: countdown };
-        }
-        setIsPaused(true);
-        break;
-      case 'resume_workout':
-        // Restore previous state (template workouts)
-        setIsPaused(false);
-        if (pausedState.current.phase === 'work') {
-          setWorkTimer(pausedState.current.timeRemaining);
-          setIsWorking(true);
-        } else if (pausedState.current.phase === 'rest') {
-          setRestTimer(pausedState.current.timeRemaining);
-          setIsResting(true);
-        } else if (pausedState.current.phase === 'countdown') {
-          setCountdown(pausedState.current.timeRemaining);
-        }
-        pausedState.current = { phase: null, timeRemaining: 0 };
-        break;
-      case 'confirm_ready':
-        // For await_ready steps in block workouts - trigger ready confirmation
-        if (isAwaitingReady) {
-          handleReadyConfirmed();
-        }
-        break;
-      case 'start_countdown':
-        setCountdown(10);
-        break;
-      case 'start_rest_timer':
-        setRestTimer(args.duration || 30);
-        setIsResting(true);
-        setIsWorking(false);
-        break;
-      case 'next_exercise':
-        setCurrentSet(prev => prev + 1);
-        break;
-    }
-  }, [isWorking, isResting, countdown, workTimer, restTimer, isAwaitingReady]);
-
+  // OpenAI Realtime API for voice interaction
   const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
     setCoachingMessage(transcript);
     if (isFinal && transcript.trim()) {
@@ -173,7 +124,6 @@ export default function WorkoutSessionPage() {
 
   const realtime = useRealtimeVoice({
     sessionId: session?.id || 0,
-    onFunctionCall: handleFunctionCall,
     onTranscript: handleTranscript,
     onError: handleRealtimeError,
   });
