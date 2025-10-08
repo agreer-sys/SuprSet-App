@@ -909,11 +909,22 @@ export default function WorkoutSessionPage() {
             <div className="flex gap-2">
               {!workoutStartEpochMs && (
                 <Button 
-                  onClick={() => {
+                  onClick={async () => {
                     const now = Date.now();
                     setWorkoutStartEpochMs(now);
                     lastResyncMs.current = 0;
                     console.log('🚀 Workout started at', new Date(now).toISOString());
+                    
+                    // Auto-connect AI Coach when workout starts
+                    try {
+                      if (!realtime.isConnected) {
+                        console.log('🎙️ Auto-connecting AI Coach...');
+                        await realtime.connect();
+                        console.log('✅ AI Coach connected - ready for voice interaction');
+                      }
+                    } catch (error) {
+                      console.error('Failed to auto-connect AI Coach:', error);
+                    }
                   }}
                   data-testid="button-start-workout"
                 >
