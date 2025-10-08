@@ -905,6 +905,9 @@ export default function WorkoutSessionPage() {
     // Send completion event for previous step
     if (previousStep && previousStepIndexRef.current !== currentStepIndex) {
       if (previousStep.type === 'work' && !hasSpokenForStepRef.current.has(`complete-${previousStepIndexRef.current}`)) {
+        // Play long beep at set completion
+        playLongBeep();
+        
         realtime.sendEvent('set_complete', {
           exercise_id: previousStep.exercise?.id || 'unknown',
           exercise_name: previousStep.exercise?.name || 'Exercise',
@@ -928,6 +931,9 @@ export default function WorkoutSessionPage() {
         next_exercise: currentStep.label || 'next exercise',
       });
     } else if (currentStep.type === 'work') {
+      // Play long beep at set start
+      playLongBeep();
+      
       const exerciseName = currentStep.exercise?.name || 'Exercise';
       const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
       realtime.sendEvent('set_start', {
