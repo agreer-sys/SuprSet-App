@@ -1325,6 +1325,10 @@ export class DatabaseStorage implements IStorage {
 
     const blockIds = workout.blockSequence.map((seq: any) => seq.blockId);
 
+    // First, delete any active sessions for this workout to avoid foreign key constraint
+    await db.delete(blockWorkoutSessions)
+      .where(eq(blockWorkoutSessions.blockWorkoutId, id));
+
     // Delete block exercises
     if (blockIds.length > 0) {
       await db.delete(blockExercises)
