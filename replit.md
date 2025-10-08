@@ -27,7 +27,11 @@ The application uses a client-server architecture with a React frontend and an E
 - **API Endpoints**: RESTful design for exercises, recommendations, search, and user contributions.
 - **Authentication**: Full Replit Auth with OpenID Connect.
 - **AI Training Pipeline**: Supports image compression and a PostgreSQL schema for AI training optimization with automatic dataset management and quality control.
-- **AI Workout Coach**: Real-time OpenAI Realtime API (GPT-3.5-turbo optimized) for conversational voice interaction with ~500ms latency, natural interruptions, and native function calling for workout controls. Server-side relay injects RAG knowledge base context. The coach receives full `executionTimeline` context for block workouts with throttled updates.
+- **AI Workout Coach (Event-Driven Observer)**: Real-time OpenAI Realtime API (GPT-3.5-turbo optimized) for conversational voice interaction with ~500ms latency and natural interruptions. **Architecture: Host controls all timing, AI observes via canonical events.** Server-side relay injects RAG knowledge base context. The coach receives full `executionTimeline` context for block workouts with throttled updates.
+  - **Canonical Events**: set_start, set_10s_remaining, set_complete, rest_start, rest_complete, await_ready, user_ready, workout_complete
+  - **Minimal-Chatter Prompt**: <4 second speech rule, event-driven responses only
+  - **record_set Tool**: AI asks "Weight and reps?" after set_complete, logs performance data
+  - **Beep System**: Long beeps at set_start/set_complete for precise timing feedback under music
 - **Block-Based Workout Architecture**: Workouts are built from parameter-driven Blocks that compile into ExecutionTimelines with absolute timestamps. This replaces hardcoded workout formats with universal Block parameters. An admin panel for backend-only workout creation is in development.
 - **Drift-Free Timeline Execution**: Utilizes an absolute timestamp system with drift detection and 15-second resync validation. Pause/resume functionality properly freezes elapsed time.
 - **Adaptive Ready System (`await_ready`)**: Timeline automatically pauses at strategic points for real-world flexibility:
@@ -45,6 +49,13 @@ The application uses a client-server architecture with a React frontend and an E
 - **Admin Authentication System**: `isAdmin` boolean field in the users table with dedicated middleware restricts access to `/api/admin/*` endpoints. Admin status is preserved across logins via the `upsertUser` function. Admin creation requires direct database access.
 
 ## Recent Fixes (Oct 8, 2025)
+- **Event-Driven AI Coach Refactor**: Completed migration from function-calling to observer pattern
+  - Removed all legacy workflow control functions (confirm_ready, start_countdown, start_rest_timer, next_exercise)
+  - Implemented canonical event system (set_start, set_10s_remaining, set_complete, rest_start, rest_complete, await_ready, user_ready, workout_complete)
+  - Added sendEvent function in useRealtimeVoice hook for structured event messaging
+  - Eliminated function-call handlers from client - AI can no longer control workflow
+  - Added beeps at set boundaries for timing precision under music
+  - All events include exercise_id and exercise_name from timeline for proper context
 - **Timeline Compilation**: Fixed `createBlockWorkout` to use `compileWorkoutTimeline()` instead of manual compilation, ensuring initial await_ready steps and exercise names are included
 - **0-Duration Step Detection**: Fixed step-finding logic to properly detect await_ready steps (duration=0) by checking `elapsed >= atMs` instead of requiring `elapsed < endMs`
 - **Exercise Names in Voice Prompts**: NEW workouts now include exercise names in voice prompts; old workouts still have broken timeline structure in database
