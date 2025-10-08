@@ -921,6 +921,14 @@ export default function WorkoutSessionPage() {
                         console.log('🎙️ Auto-connecting AI Coach...');
                         await realtime.connect();
                         console.log('✅ AI Coach connected - ready for voice interaction');
+                        
+                        // Auto-activate microphone for voice interaction
+                        setTimeout(async () => {
+                          if (!realtime.isListening) {
+                            console.log('🎤 Auto-activating microphone...');
+                            await realtime.startListening();
+                          }
+                        }, 1000); // Wait 1s for connection to stabilize
                       }
                     } catch (error) {
                       console.error('Failed to auto-connect AI Coach:', error);
