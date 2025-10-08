@@ -822,6 +822,11 @@ export default function WorkoutSessionPage() {
     
     const currentStep = executionTimeline.executionTimeline[currentStepIndex];
     
+    // Send user_ready event to AI
+    if (realtime.sendEvent) {
+      realtime.sendEvent('user_ready', {});
+    }
+    
     // Finalize the active pause first (await_ready auto-paused)
     if (pauseStartMs.current) {
       const pauseDuration = Date.now() - pauseStartMs.current;
@@ -870,19 +875,12 @@ export default function WorkoutSessionPage() {
     realtime.updateContext(context);
   }, [realtime.isConnected, isBlockWorkout, executionTimeline, currentStepIndex, isAwaitingReady, isPaused]);
 
-  // AI Coach Voice Prompts - Automatically speak at key moments
+  // AI Coach Voice Prompts - Event-driven model (host controls flow, AI observes)
   const previousStepIndexRef = useRef<number>(-1);
   const hasSpokenForStepRef = useRef<Set<number>>(new Set());
   
   useEffect(() => {
-    if (!realtime.isConnected || !isBlockWorkout || !executionTimeline || !workoutStartEpochMs) return;
-    
-    // Check if we've already spoken for this step
-    if (previousStepIndexRef.current === currentStepIndex && hasSpokenForStepRef.current.has(currentStepIndex)) {
-      return;
-    }
-    
-    previousStepIndexRef.current = currentStepIndex;
+    if (!realtime.isConnected || !realtime.sendEvent || !isBlockWorkout || !executionTimeline || !workoutStartEpochMs) return;
     
     const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
       ? executionTimeline.executionTimeline[currentStepIndex]
@@ -890,45 +888,63 @@ export default function WorkoutSessionPage() {
     
     if (!currentStep) return;
     
-    // Skip if already spoken for this step
+    // Detect step transitions and send appropriate events
+    const previousStep = previousStepIndexRef.current >= 0 && previousStepIndexRef.current < executionTimeline.executionTimeline.length
+      ? executionTimeline.executionTimeline[previousStepIndexRef.current]
+      : null;
+    
+    // Send completion event for previous step
+    if (previousStep && previousStepIndexRef.current !== currentStepIndex) {
+      if (previousStep.type === 'work' && !hasSpokenForStepRef.current.has(`complete-${previousStepIndexRef.current}`)) {
+        realtime.sendEvent('set_complete', {
+          exercise_id: previousStep.exercise?.id || 'unknown',
+          exercise_name: previousStep.exercise?.name || 'Exercise',
+          set_index: previousStep.set || 1,
+        });
+        hasSpokenForStepRef.current.add(`complete-${previousStepIndexRef.current}`);
+      } else if (previousStep.type === 'rest' && !hasSpokenForStepRef.current.has(`rest_complete-${previousStepIndexRef.current}`)) {
+        realtime.sendEvent('rest_complete');
+        hasSpokenForStepRef.current.add(`rest_complete-${previousStepIndexRef.current}`);
+      }
+    }
+    
+    previousStepIndexRef.current = currentStepIndex;
+    
+    // Skip if already sent event for this step
     if (hasSpokenForStepRef.current.has(currentStepIndex)) return;
     
-    let prompt = '';
-    
-    // Generate contextual prompt based on step type
+    // Send canonical events based on step type
     if (currentStep.type === 'await_ready') {
-      prompt = currentStep.coachPrompt || `Take your time. Say 'Ready' when you are.`;
-    } else if (currentStep.type === 'instruction') {
-      // Pre-block intro or cooldown
-      if (currentStep.preWorkout) {
-        prompt = `Welcome! Get ready to begin. The countdown starts in a moment.`;
-      } else {
-        prompt = currentStep.text || 'Get ready for the next block.';
-      }
+      realtime.sendEvent('await_ready', {
+        next_exercise: currentStep.label || 'next exercise',
+      });
     } else if (currentStep.type === 'work') {
-      // Work start prompt with exercise name and duration
-      const exerciseName = currentStep.exerciseName || 'Exercise';
+      const exerciseName = currentStep.exercise?.name || 'Exercise';
       const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
-      prompt = `${exerciseName} — ${duration} seconds. Let's go.`;
-    } else if (currentStep.type === 'rest' || currentStep.type === 'transition') {
+      realtime.sendEvent('set_start', {
+        exercise_id: currentStep.exercise?.id || 'unknown',
+        exercise_name: exerciseName,
+        set_index: currentStep.set || 1,
+        work_s: duration,
+      });
+    } else if (currentStep.type === 'rest') {
       const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
-      const label = currentStep.label || (currentStep.type === 'rest' ? 'Rest' : 'Transition');
-      prompt = `${label} — ${duration} seconds to recover.`;
+      realtime.sendEvent('rest_start', {
+        duration_s: duration,
+      });
+    } else if (currentStep.type === 'instruction' && currentStep.preWorkout) {
+      // Workout intro - not a canonical event, use sendText
+      realtime.sendText(`Welcome to ${executionTimeline.workoutHeader.name}. Get ready to begin.`);
     }
     
-    // Send prompt to coach and mark as spoken
-    if (prompt && realtime.sendText) {
-      console.log('🎙️ Coach prompt:', prompt);
-      realtime.sendText(prompt);
-      hasSpokenForStepRef.current.add(currentStepIndex);
-    }
-  }, [realtime.isConnected, realtime.sendText, isBlockWorkout, executionTimeline, currentStepIndex, workoutStartEpochMs]);
+    hasSpokenForStepRef.current.add(currentStepIndex);
+  }, [realtime.isConnected, realtime.sendEvent, realtime.sendText, isBlockWorkout, executionTimeline, currentStepIndex, workoutStartEpochMs]);
 
   // 10-second warning for work periods
   const tenSecWarningStepRef = useRef<number | null>(null);
   
   useEffect(() => {
-    if (!realtime.isConnected || !isBlockWorkout || !executionTimeline || isPaused || isAwaitingReady) return;
+    if (!realtime.isConnected || !realtime.sendEvent || !isBlockWorkout || !executionTimeline || isPaused || isAwaitingReady) return;
     
     const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
       ? executionTimeline.executionTimeline[currentStepIndex]
@@ -941,15 +957,14 @@ export default function WorkoutSessionPage() {
     
     // Trigger 10-second warning once per step
     if (timeRemaining === 10 && tenSecWarningStepRef.current !== currentStepIndex) {
-      const motivationalCue = currentStep.coachCue || 'Keep pushing.';
-      const prompt = `10 seconds to go. ${motivationalCue}`;
-      if (realtime.sendText) {
-        console.log('🎙️ 10s warning:', prompt);
-        realtime.sendText(prompt);
-        tenSecWarningStepRef.current = currentStepIndex;
-      }
+      realtime.sendEvent('set_10s_remaining', {
+        exercise_id: currentStep.exercise?.id || 'unknown',
+        exercise_name: currentStep.exercise?.name || 'Exercise',
+        set_index: currentStep.set || 1,
+      });
+      tenSecWarningStepRef.current = currentStepIndex;
     }
-  }, [realtime.isConnected, realtime.sendText, isBlockWorkout, executionTimeline, currentStepIndex, elapsedMs, isPaused, isAwaitingReady]);
+  }, [realtime.isConnected, realtime.sendEvent, isBlockWorkout, executionTimeline, currentStepIndex, elapsedMs, isPaused, isAwaitingReady]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

@@ -223,6 +223,35 @@ export function useRealtimeVoice({
     }
   }, []);
 
+  const sendEvent = useCallback((eventName: string, data?: any) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      // Format event as structured text that AI can interpret
+      const eventMessage = data 
+        ? `EVENT: ${eventName} ${JSON.stringify(data)}`
+        : `EVENT: ${eventName}`;
+      
+      console.log('📡 Sending event to AI:', eventMessage);
+      
+      wsRef.current.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text: eventMessage,
+            },
+          ],
+        },
+      }));
+
+      wsRef.current.send(JSON.stringify({
+        type: 'response.create',
+      }));
+    }
+  }, []);
+
   const disconnect = useCallback(() => {
     stopListening();
     
@@ -329,6 +358,7 @@ export function useRealtimeVoice({
     startListening,
     stopListening,
     sendText,
+    sendEvent,
     updateContext,
   };
 }
