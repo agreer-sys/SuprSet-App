@@ -1630,10 +1630,20 @@ export class DatabaseStorage implements IStorage {
       userId,
       blockWorkoutId: workoutId,
       status: 'active',
-      snapshotTimeline: workout.executionTimeline,
-      currentStepIndex: 0,
+      executionTimelineSnapshot: workout.executionTimeline,
+      currentStep: 0,
       startedAt: new Date()
     }).returning();
+    
+    // Create coaching session for AI support
+    await this.createCoachingSession({
+      sessionId: session.id,
+      messages: [{
+        role: 'system',
+        content: 'You are a motivating fitness coach guiding this workout. Be encouraging and supportive.',
+        timestamp: new Date().toISOString()
+      }]
+    });
 
     return {
       ...session,

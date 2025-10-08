@@ -752,17 +752,18 @@ export default function WorkoutSessionPage() {
         }
       }
 
-      // Check if we've reached an await_ready step
+      // Update step index first (before pausing)
+      if (newStepIndex !== currentStepIndex) {
+        console.log(`📍 Step transition: ${currentStepIndex} → ${newStepIndex} at ${Math.floor(elapsed / 1000)}s`);
+        setCurrentStepIndex(newStepIndex);
+      }
+
+      // Check if we've reached an await_ready step (after updating index)
       const currentStep = newStepIndex < steps.length ? steps[newStepIndex] : null;
       if (currentStep && currentStep.type === 'await_ready' && !isAwaitingReady) {
         console.log(`⏸️ Reached await_ready step at ${Math.floor(elapsed / 1000)}s - waiting for user confirmation`);
         setIsAwaitingReady(true);
         setIsPaused(true); // Auto-pause on await_ready
-      }
-
-      if (newStepIndex !== currentStepIndex) {
-        console.log(`📍 Step transition: ${currentStepIndex} → ${newStepIndex} at ${Math.floor(elapsed / 1000)}s`);
-        setCurrentStepIndex(newStepIndex);
       }
 
       // Drift detection: Check if setInterval is firing on time
