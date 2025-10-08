@@ -1047,12 +1047,12 @@ export default function WorkoutSessionPage() {
                       {Math.floor(step.atMs / 1000 / 60)}:{(Math.floor(step.atMs / 1000) % 60).toString().padStart(2, '0')}
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium">{step.action}</div>
-                      {step.exerciseName && (
-                        <div className="text-sm text-muted-foreground">{step.exerciseName}</div>
+                      <div className="font-medium capitalize">{step.type}</div>
+                      {step.exercise?.name && (
+                        <div className="text-sm text-muted-foreground">{step.exercise.name}</div>
                       )}
-                      {step.formCue && (
-                        <div className="text-xs text-muted-foreground italic">{step.formCue}</div>
+                      {step.text && (
+                        <div className="text-sm text-muted-foreground">{step.text}</div>
                       )}
                     </div>
                     <div className="flex-shrink-0 text-sm text-muted-foreground">
