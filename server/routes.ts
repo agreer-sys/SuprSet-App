@@ -355,7 +355,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Protected: Start block workout session (temp: works without auth for testing)
   app.post('/api/block-workout-sessions', async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub || 'guest-user-' + Date.now();
+      let userId = req.user?.claims?.sub;
+      
+      // If no authenticated user, create a guest user in the database
+      if (!userId) {
+        userId = 'guest-user-' + Date.now();
+        await storage.upsertUser({
+          id: userId,
+          email: `${userId}@guest.local`,
+          name: 'Guest User',
+          isAdmin: false
+        });
+      }
+      
       const { workoutId } = req.body;
       
       if (!workoutId) {
