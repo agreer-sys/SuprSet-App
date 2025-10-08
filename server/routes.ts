@@ -363,7 +363,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.upsertUser({
           id: userId,
           email: `${userId}@guest.local`,
-          name: 'Guest User',
+          firstName: 'Guest',
+          lastName: 'User',
           isAdmin: false
         });
       }
