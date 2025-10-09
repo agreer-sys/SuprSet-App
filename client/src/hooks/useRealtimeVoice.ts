@@ -222,6 +222,22 @@ export function useRealtimeVoice({
     }
   }, []);
 
+  // Helper: decide if an event should trigger AI speech/output
+  const shouldTriggerResponse = useCallback((eventName: string): boolean => {
+    const TRIGGER_EVENTS = [
+      "set_start",          // announce exercise + cue
+      "set_10s_remaining",  // motivation
+      "set_complete",       // ask weight/reps
+      "rest_start",         // rest instruction
+      "await_ready",        // ask readiness
+      "user_ready",         // acknowledge readiness
+      "block_transition",   // announce next block
+      "workout_complete"    // session end
+    ];
+
+    return TRIGGER_EVENTS.includes(eventName);
+  }, []);
+
   const processQueuedEvent = useCallback(() => {
     if (eventQueueRef.current.length === 0 || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       return;
@@ -258,51 +274,57 @@ export function useRealtimeVoice({
     }));
   }, []);
 
-  const sendEvent = useCallback((eventName: string, data?: any, triggerResponse: boolean = false) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      // Only send events that need a response
-      if (!triggerResponse) {
-        // Silent events: log but don't send to AI (no context needed for non-responses)
-        console.log('📡 Silent event (not sent to AI):', eventName, data || '');
-        return;
-      }
+  // Main function: send every event for context; trigger speech only for select ones
+  const sendEvent = useCallback((eventName: string, data?: any) => {
+    if (wsRef.current?.readyState !== WebSocket.OPEN) return;
 
-      // Check if AI is already responding - queue event for later
-      if (activeResponseRef.current) {
-        console.log('🔄 Queuing event (AI busy):', eventName);
-        eventQueueRef.current.push({ eventName, data });
-        return;
-      }
-      
-      // Format event as structured text that AI can interpret
-      const eventMessage = data 
-        ? `EVENT: ${eventName} ${JSON.stringify(data)}`
-        : `EVENT: ${eventName}`;
-      
-      console.log('📡 Sending event to AI:', eventMessage);
-      
-      // Send conversation item
-      wsRef.current.send(JSON.stringify({
-        type: 'conversation.item.create',
+    const triggerResponse = shouldTriggerResponse(eventName);
+
+    // --- Always send every event (AI needs full context) ---
+    const eventMessage = data
+      ? `EVENT: ${eventName} ${JSON.stringify(data)}`
+      : `EVENT: ${eventName}`;
+
+    console.log(
+      triggerResponse
+        ? "📡 Sending event to AI (will trigger response):"
+        : "📡 Sending event to AI (context only):",
+      eventMessage
+    );
+
+    // Send structured event message
+    wsRef.current.send(
+      JSON.stringify({
+        type: "conversation.item.create",
         item: {
-          type: 'message',
-          role: 'user',
+          type: "message",
+          role: "user",
           content: [
             {
-              type: 'input_text',
+              type: "input_text",
               text: eventMessage,
             },
           ],
         },
-      }));
+      })
+    );
 
-      // Trigger response immediately
+    // --- Only trigger AI speech/output for key events ---
+    if (triggerResponse) {
+      if (activeResponseRef.current) {
+        console.log("🔄 Queuing response-triggering event:", eventName);
+        eventQueueRef.current.push({ eventName, data });
+        return;
+      }
+
       activeResponseRef.current = true;
-      wsRef.current.send(JSON.stringify({
-        type: 'response.create',
-      }));
+      wsRef.current.send(
+        JSON.stringify({
+          type: "response.create",
+        })
+      );
     }
-  }, []);
+  }, [shouldTriggerResponse]);
 
   const disconnect = useCallback(() => {
     stopListening();

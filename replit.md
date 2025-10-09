@@ -49,14 +49,15 @@ The application uses a client-server architecture with a React frontend and an E
 - **Admin Authentication System**: `isAdmin` boolean field in the users table with dedicated middleware restricts access to `/api/admin/*` endpoints. Admin status is preserved across logins via the `upsertUser` function. Admin creation requires direct database access.
 
 ## Recent Fixes (Oct 9, 2025)
-- **Event Queue System**: Implemented FIFO event queue to prevent both response overlap AND event loss
-  - Silent events (set_start, set_complete, rest_complete, set_10s_remaining) are logged client-side only
-  - Trigger events (await_ready, rest_start, workout_complete) check `activeResponseRef`:
-    - If AI idle: send event + trigger response immediately
-    - If AI busy: queue event for later processing
+- **Event Queue System with "Always Send / Conditional Respond" Pattern**: Critical fix to restore AI context
+  - **ALL events sent to AI** for full workout context (set_start, set_complete, rest_start, rest_complete, set_10s_remaining, await_ready, workout_complete)
+  - `shouldTriggerResponse()` helper determines which events trigger AI speech:
+    - **Trigger events** (AI responds): set_start, set_10s_remaining, set_complete, rest_start, await_ready, user_ready, block_transition, workout_complete
+    - **Context-only events** (AI receives but doesn't respond): rest_complete
+  - FIFO event queue prevents response overlap - if AI is speaking, trigger events are queued
   - On `response.audio.done`: reset flag, then `processQueuedEvent()` processes next queued event
   - Queue cleared on disconnect to prevent stale events across sessions
-  - Ensures sequential responses with no event loss
+  - **Previous bug**: Silent events were not sent to AI at all, causing coach to lose workout context and remain silent
 - **Coach Timing Optimization**: Moved coach speech from WORK start to REST periods
   - Coach introduces NEXT exercise during REST, not at work start
   - `rest_start` event now includes `next_exercise` and `next_set` data for contextual introduction

@@ -827,7 +827,7 @@ export default function WorkoutSessionPage() {
 
   // AI Coach Voice Prompts - Event-driven model (host controls flow, AI observes)
   const previousStepIndexRef = useRef<number>(-1);
-  const hasSpokenForStepRef = useRef<Set<number>>(new Set());
+  const hasSpokenForStepRef = useRef<Set<number | string>>(new Set());
   
   useEffect(() => {
     if (!realtime.isConnected || !realtime.sendEvent || !isBlockWorkout || !executionTimeline || !workoutStartEpochMs) return;
@@ -840,7 +840,7 @@ export default function WorkoutSessionPage() {
     if (!currentStep && currentStepIndex >= executionTimeline.executionTimeline.length && !hasSpokenForStepRef.current.has('workout_complete')) {
       realtime.sendEvent('workout_complete', {
         total_duration_s: Math.floor(elapsedMs / 1000),
-      }, true); // Trigger response for final congratulations
+      });
       hasSpokenForStepRef.current.add('workout_complete');
       return;
     }
@@ -855,17 +855,14 @@ export default function WorkoutSessionPage() {
     // Send completion event for previous step
     if (previousStep && previousStepIndexRef.current !== currentStepIndex) {
       if (previousStep.type === 'work' && !hasSpokenForStepRef.current.has(`complete-${previousStepIndexRef.current}`)) {
-        // Silent event - coach will speak during the following rest_start
-        // Note: Beep at 1s remaining handles end-of-set audio cue
         realtime.sendEvent('set_complete', {
           exercise_id: previousStep.exercise?.id || 'unknown',
           exercise_name: previousStep.exercise?.name || 'Exercise',
           set_index: previousStep.set || 1,
-        }, false);
+        });
         hasSpokenForStepRef.current.add(`complete-${previousStepIndexRef.current}`);
       } else if (previousStep.type === 'rest' && !hasSpokenForStepRef.current.has(`rest_complete-${previousStepIndexRef.current}`)) {
-        // Silent event
-        realtime.sendEvent('rest_complete', {}, false);
+        realtime.sendEvent('rest_complete');
         hasSpokenForStepRef.current.add(`rest_complete-${previousStepIndexRef.current}`);
       }
     }
@@ -877,25 +874,21 @@ export default function WorkoutSessionPage() {
     
     // Send canonical events based on step type
     if (currentStep.type === 'await_ready') {
-      // Trigger response - coach needs to prompt user
       realtime.sendEvent('await_ready', {
         next_exercise: currentStep.label || 'next exercise',
-      }, true);
+      });
     } else if (currentStep.type === 'work') {
-      // Note: Rest countdown long beep at 1s acts as "get ready" signal
       const exerciseName = currentStep.exercise?.name || 'Exercise';
       const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
-      // Silent event - no coach response during work
       realtime.sendEvent('set_start', {
         exercise_id: currentStep.exercise?.id || 'unknown',
         exercise_name: exerciseName,
         set_index: currentStep.set || 1,
         work_s: duration,
-      }, false);
+      });
     } else if (currentStep.type === 'rest') {
       const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
       
-      // Trigger response during REST - coach introduces NEXT exercise
       const nextStep = currentStepIndex + 1 < executionTimeline.executionTimeline.length
         ? executionTimeline.executionTimeline[currentStepIndex + 1]
         : null;
@@ -904,7 +897,7 @@ export default function WorkoutSessionPage() {
         duration_s: duration,
         next_exercise: nextStep?.exercise?.name || null,
         next_set: nextStep?.set || null,
-      }, true);
+      });
     } else if (currentStep.type === 'instruction' && currentStep.preWorkout) {
       // Workout intro - not a canonical event, use sendText
       realtime.sendText(`Welcome to ${executionTimeline.workoutHeader.name}. Get ready to begin.`);
@@ -930,12 +923,11 @@ export default function WorkoutSessionPage() {
     
     // Trigger 10-second warning once per step
     if (timeRemaining === 10 && tenSecWarningStepRef.current !== currentStepIndex) {
-      // Silent event - informational only, no coach response needed
       realtime.sendEvent('set_10s_remaining', {
         exercise_id: currentStep.exercise?.id || 'unknown',
         exercise_name: currentStep.exercise?.name || 'Exercise',
         set_index: currentStep.set || 1,
-      }, false);
+      });
       tenSecWarningStepRef.current = currentStepIndex;
     }
   }, [realtime.isConnected, realtime.sendEvent, isBlockWorkout, executionTimeline, currentStepIndex, elapsedMs, isPaused, isAwaitingReady]);
