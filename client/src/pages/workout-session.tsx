@@ -1000,6 +1000,9 @@ export default function WorkoutSessionPage() {
               {!workoutStartEpochMs && (
                 <Button 
                   onClick={async () => {
+                    // Resume AudioContext for beeps (required for browser autoplay policy)
+                    await resumeAudioContext();
+                    
                     const now = Date.now();
                     setWorkoutStartEpochMs(now);
                     lastResyncMs.current = 0;
