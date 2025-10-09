@@ -109,11 +109,11 @@ export async function compileBlockToTimeline(
       type: "instruction",
       text: `Welcome to ${options.workoutName}. Get ready to begin.`,
       atMs: currentTimeMs,
-      endMs: currentTimeMs + 5000, // 5 second intro
-      durationSec: 5,
+      endMs: currentTimeMs + 10000, // 10 second intro
+      durationSec: 10,
       preWorkout: true, // This step happens before workout timer starts
     });
-    currentTimeMs += 5000;
+    currentTimeMs += 10000;
   }
 
   // Optional: Add await_ready before block starts
@@ -408,11 +408,11 @@ export async function compileWorkoutTimeline(
     type: "instruction",
     text: `Welcome to ${workoutName}. Get ready to begin.`,
     atMs: currentTimeMs,
-    endMs: currentTimeMs + 5000,
-    durationSec: 5,
+    endMs: currentTimeMs + 10000,
+    durationSec: 10,
     preWorkout: true,
   });
-  currentTimeMs += 5000;
+  currentTimeMs += 10000;
 
   // Compile each block
   for (let i = 0; i < blocks.length; i++) {
