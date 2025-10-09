@@ -251,7 +251,9 @@ Tools you can use:
 Use tools only when needed to personalize coaching or record data.
 
 Response Format:
-- Output plain text (host handles TTS)`;
+- Respond with natural spoken audio
+- Keep all responses under 4 seconds (~8-12 words)
+- Speak clearly and confidently as if coaching in person`;
 }
 
 async function updateSessionContext(session: RealtimeSession, context: any) {
