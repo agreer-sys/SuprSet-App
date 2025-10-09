@@ -49,11 +49,14 @@ The application uses a client-server architecture with a React frontend and an E
 - **Admin Authentication System**: `isAdmin` boolean field in the users table with dedicated middleware restricts access to `/api/admin/*` endpoints. Admin status is preserved across logins via the `upsertUser` function. Admin creation requires direct database access.
 
 ## Recent Fixes (Oct 9, 2025)
-- **CRITICAL: Audio Generation Restored**: Fixed server-side instruction that was suppressing all audio output
-  - **Root cause**: `buildSessionInstructions` had "Output plain text (host handles TTS)" which told AI to skip audio generation
-  - **Fix**: Replaced with "Respond with natural spoken audio" instruction
-  - **Result**: AI coach now produces audio responses instead of staying silent
-  - This was THE primary bug causing coach silence - all event handling was correct
+- **CRITICAL FIX #1: Session Update Flooding**: Server was flooding OpenAI with session.update on every step change
+  - **Root cause**: `updateSessionContext` sent `session.update` to OpenAI every 5-15 seconds (on every step change)
+  - **Impact**: Constant instruction updates interrupted AI responses and prevented audio generation
+  - **Fix**: Only send `session.update` for major changes (workout start), not every step - context is passed via events
+  - **Result**: AI can now respond without being constantly interrupted
+- **CRITICAL FIX #2: Audio Generation Instructions**: Fixed server-side instruction that was suppressing audio
+  - **Root cause**: `buildSessionInstructions` had "Output plain text (host handles TTS)"
+  - **Fix**: Replaced with "Respond with natural spoken audio"
 - **Event Queue System with "Always Send / Conditional Respond" Pattern**: Ensures AI has full workout context
   - **ALL events sent to AI** for context (set_start, set_complete, rest_start, rest_complete, set_10s_remaining, await_ready, workout_complete)
   - `shouldTriggerResponse()` helper determines which events trigger AI speech:

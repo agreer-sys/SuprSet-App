@@ -265,8 +265,12 @@ async function updateSessionContext(session: RealtimeSession, context: any) {
     workoutTemplate: context.workoutTemplate || session.coachingContext?.workoutTemplate
   };
   
-  // Rebuild instructions with new context and push to OpenAI
-  if (session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
+  // DO NOT send session.update on every context change - this floods OpenAI and prevents responses
+  // Context is passed via events, not instruction updates
+  // Only update instructions for major changes (workout start, not every step)
+  const isMajorUpdate = context.executionTimeline && !session.coachingContext?.executionTimeline;
+  
+  if (isMajorUpdate && session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
     const updatedInstructions = await buildSessionInstructions(session);
     
     session.openaiWs.send(JSON.stringify({
@@ -275,9 +279,10 @@ async function updateSessionContext(session: RealtimeSession, context: any) {
         instructions: updatedInstructions,
       },
     }));
+    console.log('📝 Updated session instructions for session:', session.sessionId);
+  } else {
+    console.log('📝 Updated session context (no instruction rebuild):', session.sessionId);
   }
-  
-  console.log('📝 Updated session context for session:', session.sessionId);
 }
 
 function getWorkoutTools() {
