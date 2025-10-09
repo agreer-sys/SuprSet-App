@@ -1,0 +1,182 @@
+
+2025-10-09 14:21:41.65
+⏰ Resync validated at 45s - step 3 correct
+2025-10-09 14:21:56.72
+⏰ Resync validated at 60s - step 3 correct
+2025-10-09 14:22:03.57
+Short beep played at
+2:22:03 PM
+2025-10-09 14:22:04.54
+Short beep played at
+2:22:04 PM
+2025-10-09 14:22:05.49
+Long beep played at
+2:22:05 PM
+2025-10-09 14:22:06.46
+📍 Step transition: 3 → 4 at 70s
+2025-10-09 14:22:06.46
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 4, isAwaitingReady: false, isPaused: false}
+2025-10-09 14:22:06.46
+📡 Silent event (not sent to AI):
+rest_complete
+{}
+2025-10-09 14:22:06.46
+📡 Silent event (not sent to AI):
+set_start
+{exercise_id: 801608340, exercise_name: "Dumbbell Clean and Press", set_index: 2, work_s: 30}
+2025-10-09 14:22:11.74
+⏰ Resync validated at 75s - step 4 correct
+2025-10-09 14:22:26.47
+📡 Silent event (not sent to AI):
+set_10s_remaining
+{exercise_id: 801608340, exercise_name: "Dumbbell Clean and Press", set_index: 2}
+2025-10-09 14:22:26.77
+⏰ Resync validated at 90s - step 4 correct
+2025-10-09 14:22:35.55
+Long beep played at
+2:22:35 PM
+2025-10-09 14:22:36.48
+📍 Step transition: 4 → 5 at 100s
+2025-10-09 14:22:36.48
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 5, isAwaitingReady: false, isPaused: false}
+2025-10-09 14:22:36.48
+📡 Silent event (not sent to AI):
+set_complete
+{exercise_id: 801608340, exercise_name: "Dumbbell Clean and Press", set_index: 2}
+2025-10-09 14:22:36.48
+📡 Sending event to AI:
+EVENT: rest_start {"duration_s":30,"next_exercise":"Dumbbell Clean and Press","next_set":3}
+2025-10-09 14:22:41.89
+⏰ Resync validated at 105s - step 5 correct
+2025-10-09 14:22:56.92
+⏰ Resync validated at 120s - step 5 correct
+2025-10-09 14:23:03.50
+Short beep played at
+2:23:03 PM
+2025-10-09 14:23:04.72
+Short beep played at
+2:23:04 PM
+2025-10-09 14:23:05.57
+Long beep played at
+2:23:05 PM
+2025-10-09 14:23:06.51
+📍 Step transition: 5 → 6 at 130s
+2025-10-09 14:23:06.51
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 6, isAwaitingReady: false, isPaused: false}
+2025-10-09 14:23:06.51
+📡 Silent event (not sent to AI):
+rest_complete
+{}
+2025-10-09 14:23:06.51
+📡 Silent event (not sent to AI):
+set_start
+{exercise_id: 801608340, exercise_name: "Dumbbell Clean and Press", set_index: 3, work_s: 30}
+2025-10-09 14:23:12.00
+⏰ Resync validated at 135s - step 6 correct
+2025-10-09 14:23:26.48
+📡 Silent event (not sent to AI):
+set_10s_remaining
+{exercise_id: 801608340, exercise_name: "Dumbbell Clean and Press", set_index: 3}
+2025-10-09 14:23:27.10
+⏰ Resync validated at 150s - step 6 correct
+2025-10-09 14:23:35.48
+Long beep played at
+2:23:35 PM
+2025-10-09 14:23:36.51
+📍 Step transition: 6 → 7 at 160s
+2025-10-09 14:23:36.51
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 7, isAwaitingReady: false, isPaused: false}
+2025-10-09 14:23:36.51
+📡 Silent event (not sent to AI):
+set_complete
+{exercise_id: 801608340, exercise_name: "Dumbbell Clean and Press", set_index: 3}
+2025-10-09 14:23:36.51
+📡 Sending event to AI:
+EVENT: rest_start {"duration_s":30,"next_exercise":"Tricep Pushdown (Rope)","next_set":1}
+2025-10-09 14:23:42.15
+⏰ Resync validated at 165s - step 7 correct
+2025-10-09 14:23:57.17
+⏰ Resync validated at 180s - step 7 correct
+2025-10-09 14:24:03.47
+Short beep played at
+2:24:03 PM
+2025-10-09 14:24:04.72
+Short beep played at
+2:24:04 PM
+2025-10-09 14:24:05.46
+Long beep played at
+2:24:05 PM
+2025-10-09 14:24:06.50
+📍 Step transition: 7 → 8 at 190s
+2025-10-09 14:24:06.50
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 8, isAwaitingReady: false, isPaused: false}
+2025-10-09 14:24:06.50
+📡 Silent event (not sent to AI):
+rest_complete
+{}
+2025-10-09 14:24:06.50
+📡 Silent event (not sent to AI):
+set_start
+{exercise_id: 1540917265, exercise_name: "Tricep Pushdown (Rope)", set_index: 1, work_s: 30}
+2025-10-09 14:24:12.22
+⏰ Resync validated at 195s - step 8 correct
+2025-10-09 14:24:26.54
+📡 Silent event (not sent to AI):
+set_10s_remaining
+{exercise_id: 1540917265, exercise_name: "Tricep Pushdown (Rope)", set_index: 1}
+2025-10-09 14:24:27.25
+⏰ Resync validated at 210s - step 8 correct
+2025-10-09 14:24:35.49
+Long beep played at
+2:24:35 PM
+2025-10-09 14:24:36.54
+📍 Step transition: 8 → 9 at 220s
+2025-10-09 14:24:36.54
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 9, isAwaitingReady: false, isPaused: false}
+2025-10-09 14:24:36.54
+📡 Silent event (not sent to AI):
+set_complete
+{exercise_id: 1540917265, exercise_name: "Tricep Pushdown (Rope)", set_index: 1}
+2025-10-09 14:24:36.54
+📡 Sending event to AI:
+EVENT: rest_start {"duration_s":30,"next_exercise":"Tricep Pushdown (Rope)","next_set":2}
+2025-10-09 14:24:42.34
+⏰ Resync validated at 225s - step 9 correct
+2025-10-09 14:24:57.35
+⏰ Resync validated at 240s - step 9 correct
+2025-10-09 14:25:03.46
+Short beep played at
+2:25:03 PM
+2025-10-09 14:25:04.47
+Short beep played at
+2:25:04 PM
+2025-10-09 14:25:05.51
+Long beep played at
+2:25:05 PM
+2025-10-09 14:25:06.55
+📍 Step transition: 9 → 10 at 250s
+2025-10-09 14:25:06.55
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 10, isAwaitingReady: false, isPaused: false}
+2025-10-09 14:25:06.55
+📡 Silent event (not sent to AI):
+rest_complete
+{}
+2025-10-09 14:25:06.55
+📡 Silent event (not sent to AI):
+set_start
+{exercise_id: 1540917265, exercise_name: "Tricep Pushdown (Rope)", set_index: 2, work_s: 30}
+2025-10-09 14:25:12.40
+⏰ Resync validated at 255s - step 10 correct
+2025-10-09 14:25:26.54
+📡 Silent event (not sent to AI):
+set_10s_remaining
+{exercise_id: 1540917265, exercise_name: "Tricep Pushdown (Rope)", set_index: 2}
+2025-10-09 14:25:27.49
+⏰ Resync validated at 271s - step 10 correct
