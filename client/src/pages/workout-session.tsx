@@ -855,10 +855,8 @@ export default function WorkoutSessionPage() {
     // Send completion event for previous step
     if (previousStep && previousStepIndexRef.current !== currentStepIndex) {
       if (previousStep.type === 'work' && !hasSpokenForStepRef.current.has(`complete-${previousStepIndexRef.current}`)) {
-        // Play long beep at set completion
-        playLongBeep();
-        
         // Silent event - coach will speak during the following rest_start
+        // Note: Beep at 1s remaining handles end-of-set audio cue
         realtime.sendEvent('set_complete', {
           exercise_id: previousStep.exercise?.id || 'unknown',
           exercise_name: previousStep.exercise?.name || 'Exercise',
@@ -884,9 +882,7 @@ export default function WorkoutSessionPage() {
         next_exercise: currentStep.label || 'next exercise',
       }, true);
     } else if (currentStep.type === 'work') {
-      // Play long beep at set start
-      playLongBeep();
-      
+      // Note: Rest countdown long beep at 1s acts as "get ready" signal
       const exerciseName = currentStep.exercise?.name || 'Exercise';
       const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
       // Silent event - no coach response during work
@@ -943,6 +939,65 @@ export default function WorkoutSessionPage() {
       tenSecWarningStepRef.current = currentStepIndex;
     }
   }, [realtime.isConnected, realtime.sendEvent, isBlockWorkout, executionTimeline, currentStepIndex, elapsedMs, isPaused, isAwaitingReady]);
+
+  // Countdown beeps for TIME-based workouts
+  const beepsPlayedRef = useRef<Set<string>>(new Set()); // Track "step-second" combinations
+  
+  useEffect(() => {
+    if (!isBlockWorkout || !executionTimeline || isPaused || isAwaitingReady || !workoutStartEpochMs) return;
+    
+    const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
+      ? executionTimeline.executionTimeline[currentStepIndex]
+      : null;
+    
+    if (!currentStep) return;
+    
+    // Skip beeps for rep-based steps (these use await_ready instead)
+    const isRepBased = currentStep.type === 'await_ready';
+    if (isRepBased) return;
+    
+    const stepDuration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
+    const timeRemaining = stepDuration - Math.floor(elapsedMs / 1000) + Math.floor(currentStep.atMs / 1000);
+    
+    // Helper to check if beep already played
+    const beepKey = (second: number) => `${currentStepIndex}-${second}`;
+    const hasPlayed = (second: number) => beepsPlayedRef.current.has(beepKey(second));
+    const markPlayed = (second: number) => beepsPlayedRef.current.add(beepKey(second));
+    
+    // REST beeps (if WORK follows): 2 short beeps at 3s, 2s, then 1 long beep at 1s
+    if (currentStep.type === 'rest') {
+      const nextStep = currentStepIndex + 1 < executionTimeline.executionTimeline.length
+        ? executionTimeline.executionTimeline[currentStepIndex + 1]
+        : null;
+      
+      // Only beep if next step is WORK (time-based)
+      if (nextStep?.type === 'work') {
+        if (timeRemaining === 3 && !hasPlayed(3)) {
+          playShortBeep();
+          markPlayed(3);
+        } else if (timeRemaining === 2 && !hasPlayed(2)) {
+          playShortBeep();
+          markPlayed(2);
+        } else if (timeRemaining === 1 && !hasPlayed(1)) {
+          playLongBeep();
+          markPlayed(1);
+        }
+      }
+    }
+    
+    // WORK beeps: 1 long beep at 1s remaining (end of set signal)
+    if (currentStep.type === 'work') {
+      if (timeRemaining === 1 && !hasPlayed(1)) {
+        playLongBeep();
+        markPlayed(1);
+      }
+    }
+  }, [isBlockWorkout, executionTimeline, currentStepIndex, elapsedMs, isPaused, isAwaitingReady, workoutStartEpochMs]);
+
+  // Clear beep tracking when step changes
+  useEffect(() => {
+    beepsPlayedRef.current.clear();
+  }, [currentStepIndex]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
