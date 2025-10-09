@@ -35,6 +35,7 @@ export function useRealtimeVoice({
   const autoStopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const needsRestartRef = useRef(false);
   const activeResponseRef = useRef(false); // Track if AI is currently responding
+  const eventQueueRef = useRef<Array<{eventName: string, data?: any}>>([]);
 
   const connect = useCallback(async () => {
     try {
@@ -96,6 +97,9 @@ export function useRealtimeVoice({
         if (message.type === 'response.audio.done') {
           setState(prev => ({ ...prev, isSpeaking: false }));
           activeResponseRef.current = false; // Reset flag when AI finishes responding
+          
+          // Process next queued event if any
+          setTimeout(() => processQueuedEvent(), 100); // Small delay to ensure state is clean
         }
       };
 
@@ -218,8 +222,58 @@ export function useRealtimeVoice({
     }
   }, []);
 
+  const processQueuedEvent = useCallback(() => {
+    if (eventQueueRef.current.length === 0 || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const event = eventQueueRef.current.shift();
+    if (!event) return;
+
+    const eventMessage = event.data 
+      ? `EVENT: ${event.eventName} ${JSON.stringify(event.data)}`
+      : `EVENT: ${event.eventName}`;
+    
+    console.log('📡 Processing queued event:', eventMessage);
+    
+    // Send conversation item
+    wsRef.current.send(JSON.stringify({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: eventMessage,
+          },
+        ],
+      },
+    }));
+
+    // Trigger response
+    activeResponseRef.current = true;
+    wsRef.current.send(JSON.stringify({
+      type: 'response.create',
+    }));
+  }, []);
+
   const sendEvent = useCallback((eventName: string, data?: any, triggerResponse: boolean = false) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      // Only send events that need a response
+      if (!triggerResponse) {
+        // Silent events: log but don't send to AI (no context needed for non-responses)
+        console.log('📡 Silent event (not sent to AI):', eventName, data || '');
+        return;
+      }
+
+      // Check if AI is already responding - queue event for later
+      if (activeResponseRef.current) {
+        console.log('🔄 Queuing event (AI busy):', eventName);
+        eventQueueRef.current.push({ eventName, data });
+        return;
+      }
+      
       // Format event as structured text that AI can interpret
       const eventMessage = data 
         ? `EVENT: ${eventName} ${JSON.stringify(data)}`
@@ -227,6 +281,7 @@ export function useRealtimeVoice({
       
       console.log('📡 Sending event to AI:', eventMessage);
       
+      // Send conversation item
       wsRef.current.send(JSON.stringify({
         type: 'conversation.item.create',
         item: {
@@ -241,13 +296,11 @@ export function useRealtimeVoice({
         },
       }));
 
-      // Only trigger response if explicitly requested (prevents 'already in progress' errors)
-      if (triggerResponse && !activeResponseRef.current) {
-        activeResponseRef.current = true;
-        wsRef.current.send(JSON.stringify({
-          type: 'response.create',
-        }));
-      }
+      // Trigger response immediately
+      activeResponseRef.current = true;
+      wsRef.current.send(JSON.stringify({
+        type: 'response.create',
+      }));
     }
   }, []);
 
@@ -258,6 +311,10 @@ export function useRealtimeVoice({
       wsRef.current.close();
       wsRef.current = null;
     }
+    
+    // Clear event queue to prevent stale events across sessions
+    eventQueueRef.current = [];
+    activeResponseRef.current = false;
   }, [stopListening]);
 
   const playAudioQueue = async () => {

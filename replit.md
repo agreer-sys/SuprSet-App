@@ -48,13 +48,36 @@ The application uses a client-server architecture with a React frontend and an E
   - **FIX APPLIED**: Initial step now speaks correctly, 10s warnings fire exactly once using ref guards
 - **Admin Authentication System**: `isAdmin` boolean field in the users table with dedicated middleware restricts access to `/api/admin/*` endpoints. Admin status is preserved across logins via the `upsertUser` function. Admin creation requires direct database access.
 
+## Recent Fixes (Oct 9, 2025)
+- **Event Queue System**: Implemented FIFO event queue to prevent both response overlap AND event loss
+  - Silent events (set_start, set_complete, rest_complete, set_10s_remaining) are logged client-side only
+  - Trigger events (await_ready, rest_start, workout_complete) check `activeResponseRef`:
+    - If AI idle: send event + trigger response immediately
+    - If AI busy: queue event for later processing
+  - On `response.audio.done`: reset flag, then `processQueuedEvent()` processes next queued event
+  - Queue cleared on disconnect to prevent stale events across sessions
+  - Ensures sequential responses with no event loss
+- **Coach Timing Optimization**: Moved coach speech from WORK start to REST periods
+  - Coach introduces NEXT exercise during REST, not at work start
+  - `rest_start` event now includes `next_exercise` and `next_set` data for contextual introduction
+  - Reduces interruptions during active work periods
+- **Instruction Duration**: Increased pre-workout instruction from 5s to 10s in timeline compiler for better user onboarding
+- **AudioContext Fix**: Added `resumeAudioContext()` call to Start Workout button ensuring beeps play immediately
+  - AudioContext now resumes on both mic toggle AND workout start
+  - Resolves browser autoplay policy restrictions
+- **Intelligent Beep System (TIME-based workouts only)**:
+  - **REST countdown**: Short beeps at 3s and 2s, long beep at 1s (prepares user for work)
+  - **WORK countdown**: Long beep at 1s remaining (signals end approaching)
+  - **REP-based workouts**: No countdown beeps - uses `await_ready` manual gate instead
+  - Removed old boundary beeps (set_start/set_complete) in favor of countdown system
+  - Step-based tracking prevents duplicate beeps using Set data structure
+
 ## Recent Fixes (Oct 8, 2025)
 - **Event-Driven AI Coach Refactor**: Completed migration from function-calling to observer pattern
   - Removed all legacy workflow control functions (confirm_ready, start_countdown, start_rest_timer, next_exercise)
   - Implemented canonical event system (set_start, set_10s_remaining, set_complete, rest_start, rest_complete, await_ready, user_ready, workout_complete)
   - Added sendEvent function in useRealtimeVoice hook for structured event messaging
   - Eliminated function-call handlers from client - AI can no longer control workflow
-  - Added beeps at set boundaries for timing precision under music
   - All events include exercise_id and exercise_name from timeline for proper context
 - **Timeline Compilation**: Fixed `createBlockWorkout` to use `compileWorkoutTimeline()` instead of manual compilation, ensuring initial await_ready steps and exercise names are included
 - **0-Duration Step Detection**: Fixed step-finding logic to properly detect await_ready steps (duration=0) by checking `elapsed >= atMs` instead of requiring `elapsed < endMs`
