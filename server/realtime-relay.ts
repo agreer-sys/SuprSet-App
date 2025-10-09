@@ -89,6 +89,7 @@ function setupOpenAIConnection(session: RealtimeSession) {
     };
 
     openaiWs.send(JSON.stringify(sessionConfig));
+    console.log('📝 Sent initial session config with instructions');
 
     clientWs.send(JSON.stringify({
       type: 'session.ready',
@@ -257,6 +258,8 @@ Response Format:
 }
 
 async function updateSessionContext(session: RealtimeSession, context: any) {
+  const hadTimeline = !!session.coachingContext?.executionTimeline;
+  
   // Deep merge new context with existing context to preserve workoutTemplate
   session.coachingContext = {
     ...session.coachingContext,
@@ -265,10 +268,11 @@ async function updateSessionContext(session: RealtimeSession, context: any) {
     workoutTemplate: context.workoutTemplate || session.coachingContext?.workoutTemplate
   };
   
-  // DO NOT send session.update on every context change - this floods OpenAI and prevents responses
-  // Context is passed via events, not instruction updates
-  // Only update instructions for major changes (workout start, not every step)
-  const isMajorUpdate = context.executionTimeline && !session.coachingContext?.executionTimeline;
+  // Only send session.update for MAJOR changes:
+  // 1. Workout timeline is loaded for the first time (workout start)
+  // 2. NOT for step transitions (isAwaitingReady, currentStepIndex changes)
+  const hasTimelineNow = !!session.coachingContext?.executionTimeline;
+  const isMajorUpdate = hasTimelineNow && !hadTimeline;
   
   if (isMajorUpdate && session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
     const updatedInstructions = await buildSessionInstructions(session);
@@ -279,7 +283,7 @@ async function updateSessionContext(session: RealtimeSession, context: any) {
         instructions: updatedInstructions,
       },
     }));
-    console.log('📝 Updated session instructions for session:', session.sessionId);
+    console.log('📝 Updated session instructions with workout timeline:', session.sessionId);
   } else {
     console.log('📝 Updated session context (no instruction rebuild):', session.sessionId);
   }

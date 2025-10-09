@@ -49,14 +49,21 @@ The application uses a client-server architecture with a React frontend and an E
 - **Admin Authentication System**: `isAdmin` boolean field in the users table with dedicated middleware restricts access to `/api/admin/*` endpoints. Admin status is preserved across logins via the `upsertUser` function. Admin creation requires direct database access.
 
 ## Recent Fixes (Oct 9, 2025)
-- **CRITICAL FIX #1: Session Update Flooding**: Server was flooding OpenAI with session.update on every step change
+- **CRITICAL FIX #1: Session Instructions Not Updated with Workout Timeline**:
+  - **Root cause**: Initial connection sent session.update with NO workout timeline, then when timeline was sent via session.update_context, instructions were never updated
+  - **Impact**: AI had "Respond with natural spoken audio" instructions but no workout context, so it couldn't respond meaningfully to events
+  - **Fix**: Properly detect when timeline is loaded for first time (`hasTimelineNow && !hadTimeline`) and send updated instructions
+  - **Result**: AI now receives full workout timeline context and can respond to events appropriately
+- **CRITICAL FIX #2: Session Update Flooding (Previous Bug)**:
   - **Root cause**: `updateSessionContext` sent `session.update` to OpenAI every 5-15 seconds (on every step change)
-  - **Impact**: Constant instruction updates interrupted AI responses and prevented audio generation
-  - **Fix**: Only send `session.update` for major changes (workout start), not every step - context is passed via events
-  - **Result**: AI can now respond without being constantly interrupted
-- **CRITICAL FIX #2: Audio Generation Instructions**: Fixed server-side instruction that was suppressing audio
+  - **Impact**: Constant instruction updates interrupted AI responses
+  - **Fix**: Only send `session.update` when timeline is first loaded, not on every step transition
+- **CRITICAL FIX #3: Audio Generation Instructions**: Fixed server-side instruction that was suppressing audio
   - **Root cause**: `buildSessionInstructions` had "Output plain text (host handles TTS)"
   - **Fix**: Replaced with "Respond with natural spoken audio"
+- **NEW: Countdown Beeps for INSTRUCTION Step**:
+  - Added 3-count beeps at end of pre-workout instruction (short at 3s, short at 2s, long at 1s)
+  - Matches REST countdown pattern to signal workout is about to begin
 - **Event Queue System with "Always Send / Conditional Respond" Pattern**: Ensures AI has full workout context
   - **ALL events sent to AI** for context (set_start, set_complete, rest_start, rest_complete, set_10s_remaining, await_ready, workout_complete)
   - `shouldTriggerResponse()` helper determines which events trigger AI speech:

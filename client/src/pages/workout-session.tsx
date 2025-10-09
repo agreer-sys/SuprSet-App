@@ -956,6 +956,27 @@ export default function WorkoutSessionPage() {
     const hasPlayed = (second: number) => beepsPlayedRef.current.has(beepKey(second));
     const markPlayed = (second: number) => beepsPlayedRef.current.add(beepKey(second));
     
+    // INSTRUCTION beeps (if WORK follows): 2 short beeps at 3s, 2s, then 1 long beep at 1s
+    if (currentStep.type === 'instruction' && currentStep.preWorkout) {
+      const nextStep = currentStepIndex + 1 < executionTimeline.executionTimeline.length
+        ? executionTimeline.executionTimeline[currentStepIndex + 1]
+        : null;
+      
+      // Only beep if next step is WORK (time-based)
+      if (nextStep?.type === 'work') {
+        if (timeRemaining === 3 && !hasPlayed(3)) {
+          playShortBeep();
+          markPlayed(3);
+        } else if (timeRemaining === 2 && !hasPlayed(2)) {
+          playShortBeep();
+          markPlayed(2);
+        } else if (timeRemaining === 1 && !hasPlayed(1)) {
+          playLongBeep();
+          markPlayed(1);
+        }
+      }
+    }
+    
     // REST beeps (if WORK follows): 2 short beeps at 3s, 2s, then 1 long beep at 1s
     if (currentStep.type === 'rest') {
       const nextStep = currentStepIndex + 1 < executionTimeline.executionTimeline.length
