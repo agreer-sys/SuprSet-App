@@ -34,6 +34,7 @@ export function useRealtimeVoice({
   const micPausedForPlaybackRef = useRef(false);
   const autoStopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const needsRestartRef = useRef(false);
+  const activeResponseRef = useRef(false); // Track if AI is currently responding
 
   const connect = useCallback(async () => {
     try {
@@ -94,6 +95,7 @@ export function useRealtimeVoice({
 
         if (message.type === 'response.audio.done') {
           setState(prev => ({ ...prev, isSpeaking: false }));
+          activeResponseRef.current = false; // Reset flag when AI finishes responding
         }
       };
 
@@ -216,7 +218,7 @@ export function useRealtimeVoice({
     }
   }, []);
 
-  const sendEvent = useCallback((eventName: string, data?: any) => {
+  const sendEvent = useCallback((eventName: string, data?: any, triggerResponse: boolean = false) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       // Format event as structured text that AI can interpret
       const eventMessage = data 
@@ -239,9 +241,13 @@ export function useRealtimeVoice({
         },
       }));
 
-      wsRef.current.send(JSON.stringify({
-        type: 'response.create',
-      }));
+      // Only trigger response if explicitly requested (prevents 'already in progress' errors)
+      if (triggerResponse && !activeResponseRef.current) {
+        activeResponseRef.current = true;
+        wsRef.current.send(JSON.stringify({
+          type: 'response.create',
+        }));
+      }
     }
   }, []);
 
