@@ -101,6 +101,15 @@ export function useRealtimeVoice({
           // Process next queued event if any
           setTimeout(() => processQueuedEvent(), 100); // Small delay to ensure state is clean
         }
+
+        // Additional safeguard: clear flag on response completion
+        if (message.type === 'response.done' || message.type === 'response.completed') {
+          console.log('✅ Response completed, clearing active flag');
+          activeResponseRef.current = false;
+          
+          // Process next queued event if any
+          setTimeout(() => processQueuedEvent(), 100);
+        }
       };
 
       ws.onerror = (error) => {
@@ -226,13 +235,13 @@ export function useRealtimeVoice({
   const shouldTriggerResponse = useCallback((eventName: string): boolean => {
     const TRIGGER_EVENTS = [
       "set_start",          // announce exercise + cue
-      "set_10s_remaining",  // motivation
       "set_complete",       // ask weight/reps
-      "rest_start",         // rest instruction
       "await_ready",        // ask readiness
       "user_ready",         // acknowledge readiness
       "block_transition",   // announce next block
       "workout_complete"    // session end
+      // REMOVED: set_10s_remaining (beep handles this)
+      // REMOVED: rest_start (context-only, beeps handle countdown)
     ];
 
     return TRIGGER_EVENTS.includes(eventName);
@@ -318,6 +327,12 @@ export function useRealtimeVoice({
       }
 
       activeResponseRef.current = true;
+      
+      // Add 1.2s grace period to ensure AI finishes streaming
+      setTimeout(() => {
+        activeResponseRef.current = false;
+      }, 1200);
+      
       wsRef.current.send(
         JSON.stringify({
           type: "response.create",
