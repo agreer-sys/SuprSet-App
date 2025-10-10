@@ -1,0 +1,70 @@
+
+> rest-express@1.0.0 dev
+Airtable Service initialized with Base ID: apppI2s9...
+🎙️ OpenAI Realtime API relay configured on /realtime
+✅ Loaded 1 knowledge items from cache
+3:24:04 AM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 12 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+3:24:08 AM [express] GET /api/auth/user 401 in 3ms :: {"message":"Unauthorized"}
+3:24:08 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+Search params: {
+  q: undefined,
+  category: undefined,
+  equipment: undefined,
+  muscleGroup: undefined
+}
+📋 Serving 83 equipment items from catalog
+3:24:08 AM [express] GET /api/exercises/equipment 304 in 9ms :: ["Abductor Machine","Adductor Machin…
+3:24:10 AM [express] GET /api/block-workouts 304 in 178ms :: [{"id":32,"name":"Block 1001","descript…
+Successfully loaded 215 exercises from Airtable
+Returning 215 exercises
+3:24:10 AM [express] GET /api/exercises/search 304 in 2008ms :: [{"id":2093634808,"name":"Abductor M…
+Successfully loaded 215 exercises from Airtable
+3:24:10 AM [express] GET /api/exercises/categories 304 in 2053ms :: []
+Successfully loaded 215 exercises from Airtable
+3:24:10 AM [express] GET /api/exercises 304 in 2061ms :: [{"id":2093634808,"name":"Abductor Machine"…
+Successfully loaded 215 exercises from Airtable
+3:24:10 AM [express] GET /api/exercises/muscle-groups 304 in 2095ms :: ["Accessory","Back","Biceps",…
+3:24:11 AM [express] POST /api/block-workout-sessions 201 in 172ms :: {"id":67,"userId":"guest-user-…
+3:24:12 AM [express] GET /api/block-workout-sessions/active 200 in 68ms :: {"id":67,"userId":"guest-…
+3:24:12 AM [express] GET /api/workout-sessions 200 in 8ms
+3:24:12 AM [express] GET /api/coaching/67 200 in 41ms :: {"id":111,"sessionId":67,"messages":[{"role…
+🎙️ Realtime client connected
+🔍 Timeline update check: {
+  sessionId: 67,
+  hadTimeline: false,
+  contextHasTimeline: true,
+  isMajorUpdate: true
+}
+📝 Updated session context (no instruction rebuild): 67
+🔍 Timeline update check: {
+  sessionId: 67,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 67
+✅ Connected to OpenAI Realtime API
+✅ Sent initial session config with workout timeline included: 67
+🔍 Timeline update check: {
+  sessionId: 67,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 67
+🔍 Timeline update check: {
+  sessionId: 67,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 67
+👋 Client disconnected
+🔌 OpenAI connection closed
+3:25:08 AM [express] POST /api/workout-sessions/67/complete 200 in 206ms :: {"id":67,"userId":"user1…
+3:25:09 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+3:25:09 AM [express] GET /api/workouts 401 in 1ms :: {"message":"Unauthorized"}
+3:25:09 AM [express] GET /api/supersets 401 in 1ms :: {"message":"Unauthorized"}
