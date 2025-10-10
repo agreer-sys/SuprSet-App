@@ -772,10 +772,8 @@ export default function WorkoutSessionPage() {
     
     const currentStep = executionTimeline.executionTimeline[currentStepIndex];
     
-    // Send user_ready event to AI
-    if (realtime.sendEvent) {
-      realtime.sendEvent('user_ready', {});
-    }
+    // Don't send user_ready to AI - causes redundant speech
+    // The AI already knows we're ready, just proceed to countdown
     
     // Finalize the active pause first (await_ready auto-paused)
     if (pauseStartMs.current) {
