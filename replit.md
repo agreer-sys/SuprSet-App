@@ -52,3 +52,20 @@ The application uses a client-server architecture with a React frontend and an E
 - **Replit Auth (OpenID Connect)**: User authentication and session management.
 - **OpenAI Realtime API (GPT-3.5-turbo)**: Powers the AI Workout Coach.
 - **LangChain**: Orchestrates AI coach conversations.
+
+## Recent Fixes (Oct 10, 2025)
+- **CRITICAL FIX: Timeline Loading Race Condition** (Session Instructions)
+  - **Root cause #1**: `updateSessionContext` checked `hasTimelineNow` AFTER merging context, comparing merged object to itself (always true)
+  - **Root cause #2**: Timeline arrives BEFORE OpenAI connects, so `openaiWs.readyState !== OPEN` prevents instruction update
+  - **Impact**: AI's instructions were never updated with workout timeline, resulting in empty/silent responses
+  - **Fix #1**: Check `contextHasTimeline` on incoming context BEFORE merging: `isMajorUpdate = contextHasTimeline && !hadTimeline`
+  - **Fix #2**: When OpenAI connects, check if timeline already exists and include it in initial session config
+  - **Result**: AI now properly receives workout timeline whether it arrives before or after OpenAI connection
+- **Redundant Speech Fix**: Removed `user_ready` from trigger events list
+  - **Problem**: Coach spoke at await_ready, then again at user_ready, then again at set_start (3 announcements for same exercise)
+  - **Fix**: User confirmation is now silent - just proceed to countdown beeps
+  - **Flow**: await_ready (coach asks) → user_ready (silent) → countdown beeps → set_start (coach announces exercise)
+  - **Trigger events now**: set_start, set_complete, await_ready, block_transition, workout_complete (5 total)
+- **Beep Timing Fix**: Added 600ms minimum gap between countdown beeps to prevent rapid-fire caused by interval drift (840-945ms)
+  - Prevents 3s and 2s beeps from playing 200-300ms apart when drift causes timeRemaining to skip values
+  - `lastBeepTimeRef` tracks last beep timestamp with `canBeep` guard on all beep triggers

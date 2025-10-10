@@ -63,6 +63,7 @@ function setupOpenAIConnection(session: RealtimeSession) {
   openaiWs.on('open', async () => {
     console.log('✅ Connected to OpenAI Realtime API');
 
+    // Build instructions - will include timeline if already loaded
     const instructions = await buildSessionInstructions(session);
 
     const sessionConfig = {
@@ -89,7 +90,12 @@ function setupOpenAIConnection(session: RealtimeSession) {
     };
 
     openaiWs.send(JSON.stringify(sessionConfig));
-    console.log('📝 Sent initial session config with instructions');
+    
+    if (session.coachingContext?.executionTimeline) {
+      console.log('✅ Sent initial session config with workout timeline included:', session.sessionId);
+    } else {
+      console.log('📝 Sent initial session config (no timeline yet):', session.sessionId);
+    }
 
     clientWs.send(JSON.stringify({
       type: 'session.ready',

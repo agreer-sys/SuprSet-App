@@ -249,11 +249,11 @@ export function useRealtimeVoice({
     const TRIGGER_EVENTS = [
       "set_start",          // announce exercise + cue
       "set_complete",       // ask weight/reps
-      "await_ready",        // ask readiness
-      "user_ready",         // acknowledge readiness
+      "await_ready",        // ask readiness (user_ready removed - silent confirmation)
       "block_transition",   // announce next block
       "workout_complete"    // session end
       // REMOVED: set_10s_remaining (beep handles this)
+      // REMOVED: user_ready (avoid redundant speech - just proceed to countdown)
       // REMOVED: rest_start (context-only, beeps handle countdown)
     ];
 
