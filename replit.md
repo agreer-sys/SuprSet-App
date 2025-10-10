@@ -66,13 +66,15 @@ The application uses a client-server architecture with a React frontend and an E
   - **Fix #1**: Check `contextHasTimeline` on incoming context BEFORE merging: `isMajorUpdate = contextHasTimeline && !hadTimeline`
   - **Fix #2**: When OpenAI connects, check if timeline already exists and include it in initial session config
   - **Result**: AI now properly receives workout timeline whether it arrives before or after OpenAI connection
-- **Redundant Speech Fix**: Removed `user_ready` event from AI communication entirely
-  - **Problem**: Coach spoke at await_ready, then again at user_ready, then again at set_start (3 announcements for same exercise)
-  - **Root cause**: Even as "context only" event, AI naturally responded to seeing "EVENT: user_ready" in conversation
-  - **Fix**: Don't send user_ready to AI at all - user confirmation only updates local state
-  - **Flow**: await_ready (coach asks) → user confirms (silent) → countdown beeps → set_start (coach announces exercise)
-  - **Events sent to AI**: set_start, set_complete, await_ready, block_transition, workout_complete, set_10s_remaining, rest_start, rest_complete
-  - **Trigger events** (AI responds): set_start, set_complete, await_ready, block_transition, workout_complete (5 total)
+- **New Voice Coach Flow** (Optimized for user who manually pressed start)
+  - **await_ready (INTRODUCTION)**: Coach announces exercise enthusiastically ("Let's go... burpees set 1")
+  - **set_start (WORK BEGIN)**: Silent (exercise already announced)
+  - **set_midpoint (WORK 50%)**: Encouragement ("Halfway there, finish strong") - only for sets ≥20s
+  - **set_10s_remaining**: Silent/context-only (save energy for completion)
+  - **set_complete**: Ask for weight/reps, record data
+  - **Flow**: await_ready (announce) → user confirms (silent) → countdown beeps → set_start (silent) → midpoint (encourage) → complete (ask data)
+  - **Events sent to AI**: await_ready, set_start, set_midpoint, set_complete, block_transition, workout_complete, set_10s_remaining, rest_start, rest_complete
+  - **Trigger events** (AI responds): await_ready, set_midpoint, set_complete, block_transition, workout_complete (5 total)
 - **Beep Timing Fix**: Added 600ms minimum gap between countdown beeps to prevent rapid-fire caused by interval drift (840-945ms)
   - Prevents 3s and 2s beeps from playing 200-300ms apart when drift causes timeRemaining to skip values
   - `lastBeepTimeRef` tracks last beep timestamp with `canBeep` guard on all beep triggers

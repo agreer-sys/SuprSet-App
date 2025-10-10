@@ -875,7 +875,7 @@ export default function WorkoutSessionPage() {
       // Find the next work step to get exercise details for the announcement
       const nextWorkStep = executionTimeline.executionTimeline
         .slice(currentStepIndex + 1)
-        .find(step => step.type === 'work');
+        .find((step: any) => step.type === 'work');
       
       realtime.sendEvent('await_ready', {
         next_exercise: currentStep.label || 'next exercise',
