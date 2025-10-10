@@ -259,6 +259,14 @@ Response Format:
 
 async function updateSessionContext(session: RealtimeSession, context: any) {
   const hadTimeline = !!session.coachingContext?.executionTimeline;
+  const contextHasTimeline = !!context.executionTimeline;
+  
+  console.log('🔍 Context update debug:', {
+    sessionId: session.sessionId,
+    hadTimeline,
+    contextHasTimeline,
+    contextKeys: Object.keys(context)
+  });
   
   // Deep merge new context with existing context to preserve workoutTemplate
   session.coachingContext = {
@@ -273,6 +281,8 @@ async function updateSessionContext(session: RealtimeSession, context: any) {
   // 2. NOT for step transitions (isAwaitingReady, currentStepIndex changes)
   const hasTimelineNow = !!session.coachingContext?.executionTimeline;
   const isMajorUpdate = hasTimelineNow && !hadTimeline;
+  
+  console.log('🔍 Major update check:', { hadTimeline, hasTimelineNow, isMajorUpdate });
   
   if (isMajorUpdate && session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
     const updatedInstructions = await buildSessionInstructions(session);

@@ -934,6 +934,7 @@ export default function WorkoutSessionPage() {
 
   // Countdown beeps for TIME-based workouts
   const beepsPlayedRef = useRef<Set<string>>(new Set()); // Track "step-second" combinations
+  const lastBeepTimeRef = useRef<number>(0); // Track last beep timestamp to prevent rapid-fire
   
   useEffect(() => {
     if (!isBlockWorkout || !executionTimeline || isPaused || isAwaitingReady || !workoutStartEpochMs) return;
@@ -951,10 +952,17 @@ export default function WorkoutSessionPage() {
     const stepDuration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
     const timeRemaining = stepDuration - Math.floor(elapsedMs / 1000) + Math.floor(currentStep.atMs / 1000);
     
+    // Prevent beeps within 600ms of each other (handles interval drift)
+    const now = Date.now();
+    const canBeep = now - lastBeepTimeRef.current > 600;
+    
     // Helper to check if beep already played
     const beepKey = (second: number) => `${currentStepIndex}-${second}`;
     const hasPlayed = (second: number) => beepsPlayedRef.current.has(beepKey(second));
-    const markPlayed = (second: number) => beepsPlayedRef.current.add(beepKey(second));
+    const markPlayed = (second: number) => {
+      beepsPlayedRef.current.add(beepKey(second));
+      lastBeepTimeRef.current = Date.now();
+    };
     
     // INSTRUCTION beeps (if WORK follows): 2 short beeps at 3s, 2s, then 1 long beep at 1s
     if (currentStep.type === 'instruction' && currentStep.preWorkout) {
@@ -964,13 +972,13 @@ export default function WorkoutSessionPage() {
       
       // Only beep if next step is WORK (time-based)
       if (nextStep?.type === 'work') {
-        if (timeRemaining === 3 && !hasPlayed(3)) {
+        if (timeRemaining === 3 && !hasPlayed(3) && canBeep) {
           playShortBeep();
           markPlayed(3);
-        } else if (timeRemaining === 2 && !hasPlayed(2)) {
+        } else if (timeRemaining === 2 && !hasPlayed(2) && canBeep) {
           playShortBeep();
           markPlayed(2);
-        } else if (timeRemaining === 1 && !hasPlayed(1)) {
+        } else if (timeRemaining === 1 && !hasPlayed(1) && canBeep) {
           playLongBeep();
           markPlayed(1);
         }
@@ -985,13 +993,13 @@ export default function WorkoutSessionPage() {
       
       // Only beep if next step is WORK (time-based)
       if (nextStep?.type === 'work') {
-        if (timeRemaining === 3 && !hasPlayed(3)) {
+        if (timeRemaining === 3 && !hasPlayed(3) && canBeep) {
           playShortBeep();
           markPlayed(3);
-        } else if (timeRemaining === 2 && !hasPlayed(2)) {
+        } else if (timeRemaining === 2 && !hasPlayed(2) && canBeep) {
           playShortBeep();
           markPlayed(2);
-        } else if (timeRemaining === 1 && !hasPlayed(1)) {
+        } else if (timeRemaining === 1 && !hasPlayed(1) && canBeep) {
           playLongBeep();
           markPlayed(1);
         }
@@ -1000,7 +1008,7 @@ export default function WorkoutSessionPage() {
     
     // WORK beeps: 1 long beep at 1s remaining (end of set signal)
     if (currentStep.type === 'work') {
-      if (timeRemaining === 1 && !hasPlayed(1)) {
+      if (timeRemaining === 1 && !hasPlayed(1) && canBeep) {
         playLongBeep();
         markPlayed(1);
       }
