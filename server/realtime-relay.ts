@@ -258,14 +258,16 @@ Response Format:
 }
 
 async function updateSessionContext(session: RealtimeSession, context: any) {
+  // Check BEFORE merging to detect first-time timeline load
   const hadTimeline = !!session.coachingContext?.executionTimeline;
   const contextHasTimeline = !!context.executionTimeline;
+  const isMajorUpdate = contextHasTimeline && !hadTimeline;
   
-  console.log('🔍 Context update debug:', {
+  console.log('🔍 Timeline update check:', {
     sessionId: session.sessionId,
     hadTimeline,
     contextHasTimeline,
-    contextKeys: Object.keys(context)
+    isMajorUpdate
   });
   
   // Deep merge new context with existing context to preserve workoutTemplate
@@ -279,11 +281,6 @@ async function updateSessionContext(session: RealtimeSession, context: any) {
   // Only send session.update for MAJOR changes:
   // 1. Workout timeline is loaded for the first time (workout start)
   // 2. NOT for step transitions (isAwaitingReady, currentStepIndex changes)
-  const hasTimelineNow = !!session.coachingContext?.executionTimeline;
-  const isMajorUpdate = hasTimelineNow && !hadTimeline;
-  
-  console.log('🔍 Major update check:', { hadTimeline, hasTimelineNow, isMajorUpdate });
-  
   if (isMajorUpdate && session.openaiWs && session.openaiWs.readyState === WebSocket.OPEN) {
     const updatedInstructions = await buildSessionInstructions(session);
     
@@ -293,7 +290,7 @@ async function updateSessionContext(session: RealtimeSession, context: any) {
         instructions: updatedInstructions,
       },
     }));
-    console.log('📝 Updated session instructions with workout timeline:', session.sessionId);
+    console.log('✅ Updated AI instructions with workout timeline:', session.sessionId);
   } else {
     console.log('📝 Updated session context (no instruction rebuild):', session.sessionId);
   }
