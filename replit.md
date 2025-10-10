@@ -87,3 +87,4 @@ The application uses a client-server architecture with a React frontend and an E
     4. Complete workout and navigate
   - **Implementation**: Promise-based callback system with 12s safety timeout (matches catastrophic guard)
   - **Error Recovery**: Includes retry logic via `isEndingWorkoutRef` guard with onError/catch reset paths
+  - **AI Instructions Update**: Changed workout_complete from "brief congratulations" to "SPEAK brief congratulations" with examples to ensure audio generation

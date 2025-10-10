@@ -235,7 +235,7 @@ Event Awareness:
 - rest_start: Rest period begins → stay silent unless user asks question
 - rest_complete: Rest ends → stay silent, ready for next set
 - block_transition: Moving between blocks → announce next block
-- workout_complete: Session ends → brief congratulations
+- workout_complete: Session ends → SPEAK brief congratulations ("Great work!" or "Nice job today!")
 
 ${knowledgeBase}${timelineContext}${workoutTemplateContext}${currentState}${currentStepContext}${exerciseContext}
 
