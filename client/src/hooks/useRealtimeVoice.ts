@@ -246,14 +246,15 @@ export function useRealtimeVoice({
   // Helper: decide if an event should trigger AI speech/output
   const shouldTriggerResponse = useCallback((eventName: string): boolean => {
     const TRIGGER_EVENTS = [
-      "set_start",          // announce exercise + cue
+      "await_ready",        // announce exercise enthusiastically ("Let's go... burpees set 1")
+      "set_midpoint",       // midpoint encouragement ("Halfway there, finish strong")
       "set_complete",       // ask weight/reps
-      "await_ready",        // ask readiness (user_ready removed - silent confirmation)
       "block_transition",   // announce next block
       "workout_complete"    // session end
-      // REMOVED: set_10s_remaining (beep handles this)
-      // REMOVED: user_ready (avoid redundant speech - just proceed to countdown)
-      // REMOVED: rest_start (context-only, beeps handle countdown)
+      // REMOVED: set_start (exercise already announced at await_ready)
+      // REMOVED: set_10s_remaining (stay silent to save energy for set completion)
+      // REMOVED: user_ready (avoid redundant speech)
+      // REMOVED: rest_start (context-only)
     ];
 
     return TRIGGER_EVENTS.includes(eventName);

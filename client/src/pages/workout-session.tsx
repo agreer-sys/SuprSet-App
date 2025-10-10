@@ -872,8 +872,16 @@ export default function WorkoutSessionPage() {
     
     // Send canonical events based on step type
     if (currentStep.type === 'await_ready') {
+      // Find the next work step to get exercise details for the announcement
+      const nextWorkStep = executionTimeline.executionTimeline
+        .slice(currentStepIndex + 1)
+        .find(step => step.type === 'work');
+      
       realtime.sendEvent('await_ready', {
         next_exercise: currentStep.label || 'next exercise',
+        exercise_id: nextWorkStep?.exercise?.id || 'unknown',
+        exercise_name: nextWorkStep?.exercise?.name || 'Exercise',
+        set_index: nextWorkStep?.set || 1,
       });
     } else if (currentStep.type === 'work') {
       const exerciseName = currentStep.exercise?.name || 'Exercise';
@@ -904,7 +912,8 @@ export default function WorkoutSessionPage() {
     hasSpokenForStepRef.current.add(currentStepIndex);
   }, [realtime.isConnected, realtime.sendEvent, realtime.sendText, isBlockWorkout, executionTimeline, currentStepIndex, workoutStartEpochMs, elapsedMs]);
 
-  // 10-second warning for work periods
+  // Midpoint encouragement and 10-second warning for work periods
+  const midpointStepRef = useRef<number | null>(null);
   const tenSecWarningStepRef = useRef<number | null>(null);
   
   useEffect(() => {
@@ -918,8 +927,20 @@ export default function WorkoutSessionPage() {
     
     const stepDuration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
     const timeRemaining = stepDuration - Math.floor(elapsedMs / 1000) + Math.floor(currentStep.atMs / 1000);
+    const elapsedInSet = stepDuration - timeRemaining;
     
-    // Trigger 10-second warning once per step
+    // Trigger midpoint encouragement at 50% of work duration (once per step)
+    const midpoint = Math.floor(stepDuration / 2);
+    if (elapsedInSet >= midpoint && midpointStepRef.current !== currentStepIndex && stepDuration >= 20) {
+      realtime.sendEvent('set_midpoint', {
+        exercise_id: currentStep.exercise?.id || 'unknown',
+        exercise_name: currentStep.exercise?.name || 'Exercise',
+        set_index: currentStep.set || 1,
+      });
+      midpointStepRef.current = currentStepIndex;
+    }
+    
+    // Trigger 10-second warning once per step (context only - no AI response)
     if (timeRemaining === 10 && tenSecWarningStepRef.current !== currentStepIndex) {
       realtime.sendEvent('set_10s_remaining', {
         exercise_id: currentStep.exercise?.id || 'unknown',
