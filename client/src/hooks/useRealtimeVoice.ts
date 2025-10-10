@@ -97,6 +97,7 @@ export function useRealtimeVoice({
 
         if (message.type === 'response.audio.done') {
           setState(prev => ({ ...prev, isSpeaking: false }));
+          console.log('✅ Response audio done, clearing active flag');
           activeResponseRef.current = false; // Reset flag when AI finishes responding
           
           // Clear grace period timeout to prevent stale timer from firing
@@ -105,13 +106,13 @@ export function useRealtimeVoice({
             graceTimeoutRef.current = null;
           }
           
-          // Process next queued event if any
+          // Process next queued event if any (only here, not in response.done to avoid duplicates)
           setTimeout(() => processQueuedEvent(), 100); // Small delay to ensure state is clean
         }
 
-        // Additional safeguard: clear flag on response completion
+        // Additional safeguard: clear flag on response completion (but don't process queue again)
         if (message.type === 'response.done' || message.type === 'response.completed') {
-          console.log('✅ Response completed, clearing active flag');
+          console.log(`✅ Response ${message.type} (safeguard only, no queue processing)`);
           activeResponseRef.current = false;
           
           // Clear grace period timeout to prevent stale timer from firing
@@ -119,9 +120,7 @@ export function useRealtimeVoice({
             clearTimeout(graceTimeoutRef.current);
             graceTimeoutRef.current = null;
           }
-          
-          // Process next queued event if any
-          setTimeout(() => processQueuedEvent(), 100);
+          // Don't process queue here - already handled by response.audio.done
         }
       };
 

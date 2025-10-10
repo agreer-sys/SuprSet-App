@@ -54,6 +54,11 @@ The application uses a client-server architecture with a React frontend and an E
 - **LangChain**: Orchestrates AI coach conversations.
 
 ## Recent Fixes (Oct 10, 2025)
+- **CRITICAL FIX: Duplicate Queue Processing** 
+  - **Root cause**: Both `response.audio.done` and `response.done` were calling `processQueuedEvent()` with 100ms delays
+  - **Impact**: Queue processed twice per response → duplicate AI responses/acknowledgments
+  - **Fix**: Only process queue in `response.audio.done`, use `response.done` as safeguard only
+  - **Result**: Single clean response per event instead of 2-3 duplicates
 - **CRITICAL FIX: Timeline Loading Race Condition** (Session Instructions)
   - **Root cause #1**: `updateSessionContext` checked `hasTimelineNow` AFTER merging context, comparing merged object to itself (always true)
   - **Root cause #2**: Timeline arrives BEFORE OpenAI connects, so `openaiWs.readyState !== OPEN` prevents instruction update
