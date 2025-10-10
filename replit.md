@@ -78,3 +78,12 @@ The application uses a client-server architecture with a React frontend and an E
 - **Beep Timing Fix**: Added 600ms minimum gap between countdown beeps to prevent rapid-fire caused by interval drift (840-945ms)
   - Prevents 3s and 2s beeps from playing 200-300ms apart when drift causes timeRemaining to skip values
   - `lastBeepTimeRef` tracks last beep timestamp with `canBeep` guard on all beep triggers
+- **Graceful Workout Completion** (Oct 10, 2025)
+  - **Issue**: WebSocket disconnected immediately when user clicked "End Workout", preventing AI farewell response
+  - **Solution**: Added graceful shutdown sequence:
+    1. Send `workout_complete` event to AI
+    2. Wait for AI audio response to finish (`waitForAudioDone()` with 12s timeout)
+    3. Gracefully disconnect WebSocket
+    4. Complete workout and navigate
+  - **Implementation**: Promise-based callback system with 12s safety timeout (matches catastrophic guard)
+  - **Error Recovery**: Includes retry logic via `isEndingWorkoutRef` guard with onError/catch reset paths
