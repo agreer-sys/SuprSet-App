@@ -272,6 +272,9 @@ export default function WorkoutSessionPage() {
     }
   });
 
+  // Graceful workout completion flag
+  const isEndingWorkoutRef = useRef(false);
+
   // Complete workout mutation
   const completeWorkoutMutation = useMutation({
     mutationFn: async (notes?: string) => {
@@ -280,8 +283,44 @@ export default function WorkoutSessionPage() {
     onSuccess: () => {
       // Navigate back to workouts page
       window.location.href = '/workouts';
+    },
+    onError: (error) => {
+      console.error('Failed to complete workout:', error);
+      // Reset flag to allow retry
+      isEndingWorkoutRef.current = false;
     }
   });
+
+  // Graceful workout completion handler
+  const handleEndWorkout = async () => {
+    if (completeWorkoutMutation.isPending || isEndingWorkoutRef.current) return;
+    isEndingWorkoutRef.current = true;
+    
+    try {
+      // 1. Send workout_complete event to AI for farewell
+      if (realtime.isConnected && isBlockWorkout && executionTimeline) {
+        const elapsedMs = Date.now() - (workoutStartEpochMs || Date.now());
+        realtime.sendEvent('workout_complete', {
+          total_duration_s: Math.floor(elapsedMs / 1000),
+        });
+        
+        // 2. Wait for AI audio to complete before navigating away
+        console.log('⏳ Waiting for coach farewell...');
+        await realtime.waitForAudioDone();
+        console.log('✅ Coach farewell complete');
+      }
+      
+      // 3. Gracefully disconnect from AI
+      await realtime.disconnect(true);
+      
+      // 4. Complete the workout and navigate
+      completeWorkoutMutation.mutate(undefined);
+    } catch (error) {
+      console.error('Error during workout completion:', error);
+      // Allow retry on error
+      isEndingWorkoutRef.current = false;
+    }
+  };
 
   // Send coaching message mutation with real workout context
   const sendCoachingMessageMutation = useMutation({
@@ -1149,7 +1188,7 @@ export default function WorkoutSessionPage() {
               )}
               <Button 
                 variant="destructive" 
-                onClick={() => completeWorkoutMutation.mutate(undefined)}
+                onClick={handleEndWorkout}
                 disabled={completeWorkoutMutation.isPending}
               >
                 {completeWorkoutMutation.isPending ? 'Ending...' : 'End Workout'}
@@ -1308,7 +1347,7 @@ export default function WorkoutSessionPage() {
           </div>
           <Button 
             variant="destructive" 
-            onClick={() => completeWorkoutMutation.mutate(undefined)}
+            onClick={handleEndWorkout}
             disabled={completeWorkoutMutation.isPending}
           >
             {completeWorkoutMutation.isPending ? 'Ending...' : 'End Workout'}

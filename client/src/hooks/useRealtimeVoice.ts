@@ -376,14 +376,15 @@ export function useRealtimeVoice({
       // Otherwise, register callback to be triggered when audio is done
       audioDoneCallbacksRef.current.push(resolve);
       
-      // Safety timeout: resolve after 5 seconds regardless
+      // Safety timeout: 12s to match catastrophic guard (ensures farewell completes)
       setTimeout(() => {
         const index = audioDoneCallbacksRef.current.indexOf(resolve);
         if (index > -1) {
           audioDoneCallbacksRef.current.splice(index, 1);
+          console.warn('⚠️ Audio wait timeout after 12s');
           resolve();
         }
-      }, 5000);
+      }, 12000);
     });
   }, []);
 
