@@ -67,11 +67,15 @@ The application uses a client-server architecture with a React frontend and an E
 - **Event Queue System with "Always Send / Conditional Respond" Pattern**: Ensures AI has full workout context
   - **ALL events sent to AI** for context (set_start, set_complete, rest_start, rest_complete, set_10s_remaining, await_ready, workout_complete)
   - `shouldTriggerResponse()` helper determines which events trigger AI speech:
-    - **Trigger events** (AI responds): set_start, set_10s_remaining, set_complete, rest_start, await_ready, user_ready, block_transition, workout_complete
-    - **Context-only events** (AI receives but doesn't respond): rest_complete
+    - **Trigger events** (AI responds): set_start, set_complete, await_ready, user_ready, block_transition, workout_complete
+    - **Context-only events** (AI receives but doesn't respond): set_10s_remaining (beeps handle this), rest_start (beeps handle countdown), rest_complete
   - FIFO event queue prevents response overlap - if AI is speaking, trigger events are queued
-  - On `response.audio.done`: reset flag, then `processQueuedEvent()` processes next queued event
+  - **Speech throttling safeguards**: 
+    - Primary: response.audio.done and response.done/response.completed listeners clear active flag
+    - Backup: 12s catastrophic timeout in case OpenAI never sends completion events (safety valve only)
+  - On `response.audio.done`: reset flag, clear timeout, then `processQueuedEvent()` processes next queued event
   - Queue cleared on disconnect to prevent stale events across sessions
+  - **Optimization (Oct 10)**: Trimmed trigger list from 8 to 6 events to prevent queue congestion - beeps now handle 10s warnings and rest countdowns
 - **Coach Timing Optimization**: Moved coach speech from WORK start to REST periods
   - Coach introduces NEXT exercise during REST, not at work start
   - `rest_start` event now includes `next_exercise` and `next_set` data for contextual introduction

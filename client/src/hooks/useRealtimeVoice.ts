@@ -36,6 +36,7 @@ export function useRealtimeVoice({
   const needsRestartRef = useRef(false);
   const activeResponseRef = useRef(false); // Track if AI is currently responding
   const eventQueueRef = useRef<Array<{eventName: string, data?: any}>>([]);
+  const graceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track grace period timeout
 
   const connect = useCallback(async () => {
     try {
@@ -98,6 +99,12 @@ export function useRealtimeVoice({
           setState(prev => ({ ...prev, isSpeaking: false }));
           activeResponseRef.current = false; // Reset flag when AI finishes responding
           
+          // Clear grace period timeout to prevent stale timer from firing
+          if (graceTimeoutRef.current) {
+            clearTimeout(graceTimeoutRef.current);
+            graceTimeoutRef.current = null;
+          }
+          
           // Process next queued event if any
           setTimeout(() => processQueuedEvent(), 100); // Small delay to ensure state is clean
         }
@@ -106,6 +113,12 @@ export function useRealtimeVoice({
         if (message.type === 'response.done' || message.type === 'response.completed') {
           console.log('✅ Response completed, clearing active flag');
           activeResponseRef.current = false;
+          
+          // Clear grace period timeout to prevent stale timer from firing
+          if (graceTimeoutRef.current) {
+            clearTimeout(graceTimeoutRef.current);
+            graceTimeoutRef.current = null;
+          }
           
           // Process next queued event if any
           setTimeout(() => processQueuedEvent(), 100);
@@ -328,10 +341,16 @@ export function useRealtimeVoice({
 
       activeResponseRef.current = true;
       
-      // Add 1.2s grace period to ensure AI finishes streaming
-      setTimeout(() => {
-        activeResponseRef.current = false;
-      }, 1200);
+      // Catastrophic timeout: only fires if OpenAI never sends completion events (12s backup)
+      // Normal responses complete via response.audio.done/response.done listeners
+      graceTimeoutRef.current = setTimeout(() => {
+        if (activeResponseRef.current) {
+          console.warn('⚠️ Catastrophic timeout - OpenAI completion events never arrived');
+          activeResponseRef.current = false;
+          graceTimeoutRef.current = null;
+          processQueuedEvent();
+        }
+      }, 12000); // 12s catastrophic backup - won't interfere with normal responses
       
       wsRef.current.send(
         JSON.stringify({
@@ -339,7 +358,7 @@ export function useRealtimeVoice({
         })
       );
     }
-  }, [shouldTriggerResponse]);
+  }, [shouldTriggerResponse, processQueuedEvent]);
 
   const disconnect = useCallback(() => {
     stopListening();
@@ -352,6 +371,12 @@ export function useRealtimeVoice({
     // Clear event queue to prevent stale events across sessions
     eventQueueRef.current = [];
     activeResponseRef.current = false;
+    
+    // Clear grace period timeout
+    if (graceTimeoutRef.current) {
+      clearTimeout(graceTimeoutRef.current);
+      graceTimeoutRef.current = null;
+    }
   }, [stopListening]);
 
   const playAudioQueue = async () => {
