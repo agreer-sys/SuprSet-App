@@ -107,6 +107,25 @@ function setupOpenAIConnection(session: RealtimeSession) {
     try {
       const message = JSON.parse(data.toString());
       
+      // Debug: log response creation and audio deltas
+      if (message.type === 'response.created') {
+        console.log('🎯 OpenAI response.created:', {
+          response_id: message.response?.id,
+          modalities: message.response?.modalities,
+          output: message.response?.output
+        });
+      }
+      if (message.type === 'response.audio.delta') {
+        console.log('🔊 Audio delta received (length:', message.delta?.length || 0, ')');
+      }
+      if (message.type === 'response.done') {
+        console.log('✅ OpenAI response.done:', {
+          response_id: message.response?.id,
+          status: message.response?.status,
+          output_count: message.response?.output?.length || 0
+        });
+      }
+      
       if (message.type === 'response.function_call_arguments.done') {
         handleFunctionCall(session, message);
       }
