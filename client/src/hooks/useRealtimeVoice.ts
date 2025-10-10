@@ -37,6 +37,7 @@ export function useRealtimeVoice({
   const activeResponseRef = useRef(false); // Track if AI is currently responding
   const eventQueueRef = useRef<Array<{eventName: string, data?: any}>>([]);
   const graceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track grace period timeout
+  const audioDoneCallbacksRef = useRef<Array<() => void>>([]); // Callbacks for audio completion
 
   const connect = useCallback(async () => {
     try {
@@ -105,6 +106,10 @@ export function useRealtimeVoice({
             clearTimeout(graceTimeoutRef.current);
             graceTimeoutRef.current = null;
           }
+          
+          // Trigger any pending audio done callbacks
+          audioDoneCallbacksRef.current.forEach(cb => cb());
+          audioDoneCallbacksRef.current = [];
           
           // Process next queued event if any (only here, not in response.done to avoid duplicates)
           setTimeout(() => processQueuedEvent(), 100); // Small delay to ensure state is clean
@@ -360,11 +365,39 @@ export function useRealtimeVoice({
     }
   }, [shouldTriggerResponse, processQueuedEvent]);
 
-  const disconnect = useCallback(() => {
+  const waitForAudioDone = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      // If no active response, resolve immediately
+      if (!activeResponseRef.current) {
+        resolve();
+        return;
+      }
+      
+      // Otherwise, register callback to be triggered when audio is done
+      audioDoneCallbacksRef.current.push(resolve);
+      
+      // Safety timeout: resolve after 5 seconds regardless
+      setTimeout(() => {
+        const index = audioDoneCallbacksRef.current.indexOf(resolve);
+        if (index > -1) {
+          audioDoneCallbacksRef.current.splice(index, 1);
+          resolve();
+        }
+      }, 5000);
+    });
+  }, []);
+
+  const disconnect = useCallback(async (graceful = false) => {
+    // If graceful disconnect, wait for any active response to complete
+    if (graceful && activeResponseRef.current) {
+      console.log('⏳ Waiting for AI response to complete before disconnect...');
+      await waitForAudioDone();
+    }
+    
     stopListening();
     
     if (wsRef.current) {
-      wsRef.current.close();
+      wsRef.current.close(1000, 'Graceful shutdown');
       wsRef.current = null;
     }
     
@@ -377,7 +410,9 @@ export function useRealtimeVoice({
       clearTimeout(graceTimeoutRef.current);
       graceTimeoutRef.current = null;
     }
-  }, [stopListening]);
+    
+    console.log('🔌 Disconnected from Realtime API');
+  }, [stopListening, waitForAudioDone]);
 
   const playAudioQueue = async () => {
     if (isPlayingRef.current || audioQueueRef.current.length === 0) {
@@ -473,6 +508,7 @@ export function useRealtimeVoice({
     ...state,
     connect,
     disconnect,
+    waitForAudioDone,
     startListening,
     stopListening,
     sendText,
