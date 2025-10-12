@@ -113,3 +113,11 @@ The application uses a client-server architecture with a React frontend and an E
     5. Use `src.onended` callback to handle completion and trigger next event
   - **Implementation**: Replaced `playAudioQueue` with `playPcmResponse` function in useRealtimeVoice.ts
   - **Result**: Coach now speaks at ALL events - introduction, midpoint encouragement, set completion, farewell
+- **CRITICAL FIX: "Length must be at least 1" Crash** (Oct 12, 2025)
+  - **Root cause**: `audioQueueRef.current = []` was being called at START of playPcmResponse, clearing the queue before buffer creation
+  - **Impact**: After merging chunks into Float32Array, queue was cleared, causing `merged.length === 0` which crashes Web Audio API's `createBuffer()`
+  - **ChatGPT's fix**:
+    1. Remove `audioQueueRef.current = []` from start of playPcmResponse
+    2. Add safety guard: `if (merged.length === 0) skip playback`
+    3. Only clear queue in `src.onended` callback AFTER playback finishes
+  - **Result**: Queue remains intact during buffer creation, prevents crashes on empty audio responses

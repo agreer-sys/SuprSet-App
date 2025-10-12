@@ -440,8 +440,12 @@ export function useRealtimeVoice({
       offset += chunk.length;
     }
 
-    // Reset for next response
-    audioQueueRef.current = [];
+    // ✅ Guard against empty audio and defer reset
+    if (!merged || merged.length === 0) {
+      console.warn("⚠️ No PCM data to play — skipping playback");
+      return;
+    }
+
     isPlayingRef.current = false;
 
     // Create NEW AudioBufferSourceNode every time (can only start once per node)
@@ -457,6 +461,8 @@ export function useRealtimeVoice({
 
     src.onended = () => {
       console.log("✅ PCM playback finished");
+      // ✅ Now safe to clear the queue
+      audioQueueRef.current = [];
       isPlayingRef.current = false;
       setState(prev => ({ ...prev, isSpeaking: false }));
       
