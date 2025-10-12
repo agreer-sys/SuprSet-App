@@ -88,10 +88,12 @@ The application uses a client-server architecture with a React frontend and an E
   - **Implementation**: Promise-based callback system with 12s safety timeout (matches catastrophic guard)
   - **Error Recovery**: Includes retry logic via `isEndingWorkoutRef` guard with onError/catch reset paths
   - **AI Instructions Update**: Changed workout_complete from "brief congratulations" to "SPEAK brief congratulations" with examples to ensure audio generation
-- **CRITICAL FIX: Response Queue Processing** (Oct 12, 2025)
-  - **Root cause #1**: Client only processed event queue on `response.audio.done`, but OpenAI doesn't always send this event, causing queued events (set_midpoint, set_complete) to never trigger
-  - **Root cause #2**: Introduction used session context for exercise name, but context update raced with await_ready event, so AI didn't know the exercise yet
-  - **Impact**: AI only spoke at introduction (first turn detection), then stayed silent for all subsequent events despite receiving them
-  - **Fix #1**: Process queue on BOTH `response.audio.done` AND `response.done` with flag to prevent double-processing
-  - **Fix #2**: Updated instructions to explicitly use exercise_name and set_index from await_ready EVENT DATA instead of session context
-  - **Result**: AI now reliably speaks for all triggered events and announces correct exercise at introduction
+- **CRITICAL FIX: Invalid Modalities Configuration** (Oct 12, 2025)
+  - **Root cause**: Session config used `modalities: ['audio']` which OpenAI rejects (only supports `['text']` or `['audio', 'text']`)
+  - **Cascading failures**:
+    1. Session update rejected → instructions NEVER reach model → AI uses default behavior ("our first topic")
+    2. `response.create` fails → `activeResponseRef` stuck true → event queue never processes → silence after intro
+    3. All instruction fixes (exercise_name from event data, etc.) ignored because model never receives them
+  - **Impact**: AI only spoke at introduction with generic text, then complete silence for all subsequent events
+  - **Fix**: Changed session config to `modalities: ['audio', 'text']` (OpenAI-compliant format)
+  - **Result**: Session instructions now reach the model, queue processes normally, AI speaks throughout workout with correct exercise names

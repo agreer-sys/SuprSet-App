@@ -69,7 +69,7 @@ function setupOpenAIConnection(session: RealtimeSession) {
     const sessionConfig = {
       type: 'session.update',
       session: {
-        modalities: ['audio'],
+        modalities: ['audio', 'text'],
         instructions,
         voice: 'alloy',
         input_audio_format: 'pcm16',
