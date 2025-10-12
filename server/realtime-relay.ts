@@ -77,12 +77,7 @@ function setupOpenAIConnection(session: RealtimeSession) {
         input_audio_transcription: {
           model: 'whisper-1'
         },
-        turn_detection: {
-          type: 'server_vad',
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500,
-        },
+        turn_detection: null, // Disabled - we use event-driven model, HOST controls timing
         tools: getWorkoutTools(),
         tool_choice: 'auto',
         temperature: 0.7,

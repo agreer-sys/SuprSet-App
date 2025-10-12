@@ -97,3 +97,8 @@ The application uses a client-server architecture with a React frontend and an E
   - **Impact**: AI only spoke at introduction with generic text, then complete silence for all subsequent events
   - **Fix**: Changed session config to `modalities: ['audio', 'text']` (OpenAI-compliant format)
   - **Result**: Session instructions now reach the model, queue processes normally, AI speaks throughout workout with correct exercise names
+- **CRITICAL FIX: Unwanted VAD Auto-Responses** (Oct 12, 2025)
+  - **Root cause**: Server VAD (Voice Activity Detection) was enabled with `turn_detection: { type: 'server_vad' }`
+  - **Impact**: After first response at await_ready, mic auto-resumed and VAD detected ambient noise, triggering unwanted second response ("Weight and reps?") at introduction instead of only at set_complete
+  - **Fix**: Disabled turn detection entirely (`turn_detection: null`) since we use event-driven model where HOST controls all timing, not VAD
+  - **Result**: AI responds ONLY to explicit events (await_ready, set_midpoint, set_complete), no unwanted follow-ups

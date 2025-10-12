@@ -1,0 +1,184 @@
+
+> rest-express@1.0.0 dev
+Airtable Service initialized with Base ID: apppI2s9...
+🎙️ OpenAI Realtime API relay configured on /realtime
+✅ Loaded 1 knowledge items from cache
+6:30:53 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 12 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+6:30:59 PM [express] GET /api/auth/user 401 in 3ms :: {"message":"Unauthorized"}
+6:30:59 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+📋 Serving 83 equipment items from catalog
+Search params: {
+  q: undefined,
+  category: undefined,
+  equipment: undefined,
+  muscleGroup: undefined
+}
+6:30:59 PM [express] GET /api/exercises/equipment 304 in 12ms :: ["Abductor Machine","Adductor Machi…
+Successfully loaded 215 exercises from Airtable
+6:30:59 PM [express] GET /api/exercises/muscle-groups 304 in 620ms :: ["Accessory","Back","Biceps","…
+Successfully loaded 215 exercises from Airtable
+6:30:59 PM [express] GET /api/exercises/categories 304 in 648ms :: []
+Successfully loaded 215 exercises from Airtable
+6:30:59 PM [express] GET /api/exercises 304 in 671ms :: [{"id":2093634808,"name":"Abductor Machine",…
+Successfully loaded 215 exercises from Airtable
+Returning 215 exercises
+6:30:59 PM [express] GET /api/exercises/search 304 in 725ms :: [{"id":2093634808,"name":"Abductor Ma…
+6:31:06 PM [express] GET /api/block-workouts 304 in 655ms :: [{"id":40,"name":"Superset workout","de…
+6:31:07 PM [express] POST /api/block-workout-sessions 201 in 206ms :: {"id":81,"userId":"guest-user-…
+6:31:07 PM [express] GET /api/block-workout-sessions/active 200 in 67ms :: {"id":81,"userId":"guest-…
+6:31:08 PM [express] GET /api/workout-sessions 200 in 6ms
+6:31:08 PM [express] GET /api/coaching/81 200 in 42ms :: {"id":59,"sessionId":81,"messages":[],"voic…
+🎙️ Realtime client connected
+🔍 Timeline update check: {
+  sessionId: 81,
+  hadTimeline: false,
+  contextHasTimeline: true,
+  isMajorUpdate: true
+}
+📝 Updated session context (no instruction rebuild): 81
+🔍 Timeline update check: {
+  sessionId: 81,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 81
+✅ Connected to OpenAI Realtime API
+✅ Sent initial session config with workout timeline included: 81
+🔍 Timeline update check: {
+  sessionId: 81,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 81
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPv8cKfnY6E1O4vr5QWtJ',
+  modalities: [ 'text', 'audio' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 41600 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPv8cKfnY6E1O4vr5QWtJ',
+  status: 'completed',
+  output_count: 1
+}
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPv8hdUazIKTNqQzmCdoY',
+  modalities: [ 'text', 'audio' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPv8hdUazIKTNqQzmCdoY',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 81,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 81
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPv91hI7dOvXLzTD2NWlQ',
+  modalities: [ 'text', 'audio' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 32000 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPv91hI7dOvXLzTD2NWlQ',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 81,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 81
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPv9Ggnq2EC2IKFkVqAQs',
+  modalities: [ 'text', 'audio' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 22400 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPv9Ggnq2EC2IKFkVqAQs',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 81,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 81
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPv9kv8JfpAtmrnTS0qwY',
+  modalities: [ 'text', 'audio' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 41600 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPv9kv8JfpAtmrnTS0qwY',
+  status: 'completed',
+  output_count: 1
+}
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPv9n7lNgmVSYu1GOJpye',
+  modalities: [ 'text', 'audio' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 19200 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPv9n7lNgmVSYu1GOJpye',
+  status: 'completed',
+  output_count: 1
+}
+👋 Client disconnected
+🔌 OpenAI connection closed
+6:32:28 PM [express] POST /api/workout-sessions/81/complete 200 in 199ms :: {"id":81,"userId":"user1…
+6:32:29 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+6:32:29 PM [express] GET /api/supersets 401 in 2ms :: {"message":"Unauthorized"}
+6:32:29 PM [express] GET /api/workouts 401 in 1ms :: {"message":"Unauthorized"}
