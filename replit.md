@@ -103,12 +103,13 @@ The application uses a client-server architecture with a React frontend and an E
   - **Fix**: Disabled turn detection entirely (`turn_detection: null`) since we use event-driven model where HOST controls all timing, not VAD
   - **Result**: AI responds ONLY to explicit events (await_ready, set_midpoint, set_complete), no unwanted follow-ups
 - **CRITICAL FIX: Multi-Response Audio Playback** (Oct 12, 2025)
-  - **Root cause**: Audio queue and playback state didn't reset between responses - only first response played, subsequent responses accumulated but never triggered playback
-  - **Diagnosis**: OpenAI sent all audio deltas successfully in PCM16 format, but `isPlayingRef` stayed true after first response, blocking subsequent playbacks
-  - **ChatGPT's suggestion**: Use `decodeAudioData()` with base64-to-ArrayBuffer conversion
-  - **Why it failed**: OpenAI sends raw PCM16 audio, not encoded audio. `decodeAudioData()` is for encoded formats (MP3/WAV) and threw decode errors on raw PCM
-  - **Actual fix**: 
-    1. Reset `audioQueueRef` on `response.created` event
-    2. Reset `isPlayingRef` to false on `response.created` to allow new playback
-    3. Keep existing Float32Array conversion (correct for PCM16)
+  - **Root cause**: AudioBufferSourceNode was being reused across responses - per WebAudio spec, a source node can only be started once, causing silent failures after first clip
+  - **Diagnosis**: OpenAI sent all audio deltas successfully in PCM16 format, but same source node was reused without creating a NEW node for each response
+  - **ChatGPT's fix**: 
+    1. Wait for complete response (`response.audio.done`) before playing instead of streaming chunks
+    2. Merge all Float32 chunks into single buffer
+    3. Create NEW `AudioBufferSourceNode` for each response (critical - can only call `.start()` once per node)
+    4. Reset queue and `isPlayingRef` at start of playback
+    5. Use `src.onended` callback to handle completion and trigger next event
+  - **Implementation**: Replaced `playAudioQueue` with `playPcmResponse` function in useRealtimeVoice.ts
   - **Result**: Coach now speaks at ALL events - introduction, midpoint encouragement, set completion, farewell

@@ -67,20 +67,24 @@ export function useRealtimeVoice({
           console.log('🎙️ Session ready');
         }
 
-        // Reset audio queue on new response to fix multi-response playback
+        // ChatGPT: Reset audio queue on new response
         if (message.type === 'response.created') {
-          audioQueueRef.current = [];
+          console.log(`🆕 New response started: ${message.response?.id || 'unknown'}`);
+          audioQueueRef.current = []; // clear old data
           isPlayingRef.current = false;
-          console.log('🎬 New response started, reset audio queue');
+          activeResponseRef.current = true;
         }
 
+        // ChatGPT: Accumulate PCM16 deltas as Float32
         if (message.type === 'response.audio.delta' && message.delta) {
           const audioData = base64ToFloat32Array(message.delta);
           audioQueueRef.current.push(audioData);
-          
-          if (!isPlayingRef.current) {
-            playAudioQueue();
-          }
+        }
+        
+        // ChatGPT: Play complete response when audio stream is done
+        if (message.type === 'response.audio.done') {
+          console.log("🎧 Response audio stream complete — starting playback");
+          playPcmResponse(); // plays the merged buffer
         }
 
         if (message.type === 'response.audio_transcript.delta' && message.delta) {
@@ -105,32 +109,10 @@ export function useRealtimeVoice({
           setState(prev => ({ ...prev, isListening: false }));
         }
 
-        if (message.type === 'response.audio.done') {
-          setState(prev => ({ ...prev, isSpeaking: false }));
-          console.log('✅ Response audio done, clearing active flag');
-          
-          // Only process if not already handled by response.done
-          if (activeResponseRef.current) {
-            activeResponseRef.current = false;
-            
-            // Clear grace period timeout
-            if (graceTimeoutRef.current) {
-              clearTimeout(graceTimeoutRef.current);
-              graceTimeoutRef.current = null;
-            }
-            
-            // Trigger any pending audio done callbacks
-            audioDoneCallbacksRef.current.forEach(cb => cb());
-            audioDoneCallbacksRef.current = [];
-            
-            // Process next queued event if any
-            setTimeout(() => processQueuedEvent(), 100);
-          }
-        }
-
-        // Process queue on response.done as well (OpenAI doesn't always send response.audio.done)
+        // ChatGPT: Handle response completion
         if (message.type === 'response.done' || message.type === 'response.completed') {
-          console.log(`✅ Response ${message.type}, clearing active flag`);
+          console.log("✅ Response fully completed");
+          setState(prev => ({ ...prev, isSpeaking: false }));
           
           // Only process if not already handled by response.audio.done
           if (activeResponseRef.current) {
@@ -438,64 +420,72 @@ export function useRealtimeVoice({
     console.log('🔌 Disconnected from Realtime API');
   }, [stopListening, waitForAudioDone]);
 
-  const playAudioQueue = async () => {
-    if (isPlayingRef.current || audioQueueRef.current.length === 0) {
-      return;
+  // ChatGPT: Play one completed PCM clip
+  const playPcmResponse = async () => {
+    // Ensure AudioContext is ready
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
+    if (audioContextRef.current.state === "suspended") {
+      await audioContextRef.current.resume();
+    }
+    const ctx = audioContextRef.current;
+
+    // Merge all queued chunks into one Float32 buffer
+    const totalLength = audioQueueRef.current.reduce((a, b) => a + b.length, 0);
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+    for (const chunk of audioQueueRef.current) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
     }
 
-    isPlayingRef.current = true;
-    micPausedForPlaybackRef.current = true; // Pause mic to prevent feedback
-    setState(prev => ({ ...prev, isSpeaking: true }));
-
-    const audioContext = new AudioContext({ sampleRate: 24000 });
-
-    while (audioQueueRef.current.length > 0) {
-      const audioData = audioQueueRef.current.shift();
-      if (!audioData) continue;
-
-      const audioBuffer = audioContext.createBuffer(1, audioData.length, 24000);
-      audioBuffer.getChannelData(0).set(audioData);
-
-      const source = audioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContext.destination);
-
-      await new Promise<void>((resolve) => {
-        source.onended = () => resolve();
-        source.start();
-      });
-    }
-
-    await audioContext.close();
+    // Reset for next response
+    audioQueueRef.current = [];
     isPlayingRef.current = false;
-    
-    // Add 500ms delay before resuming mic (allow for audio settling)
-    await new Promise(resolve => setTimeout(resolve, 500));
-    micPausedForPlaybackRef.current = false; // Resume mic after AI finishes
-    
-    setState(prev => ({ ...prev, isSpeaking: false }));
-    
-    // Continuous conversation: Check if mic needs restart or if it's already open
-    if (!processorRef.current) {
-      // Mic was stopped (e.g., during pause) - signal that we need to restart it
-      console.log('🎤 Mic needs restart after AI response...');
-      needsRestartRef.current = true;
-    } else {
-      console.log('🎤 Auto-resuming mic for follow-up conversation (8s window)...');
+
+    // Create NEW AudioBufferSourceNode every time (can only start once per node)
+    const src = ctx.createBufferSource();
+    const buffer = ctx.createBuffer(1, merged.length, ctx.sampleRate);
+    buffer.copyToChannel(merged, 0);
+    src.buffer = buffer;
+    src.connect(ctx.destination);
+
+    setState(prev => ({ ...prev, isSpeaking: true }));
+    src.start(0); // can only start once per node
+    console.log(`🔊 Playing PCM response (${merged.length} samples)`);
+
+    src.onended = () => {
+      console.log("✅ PCM playback finished");
+      isPlayingRef.current = false;
+      setState(prev => ({ ...prev, isSpeaking: false }));
       
-      // Clear any existing timeout
-      if (autoStopTimeoutRef.current) {
-        clearTimeout(autoStopTimeoutRef.current);
-      }
+      // Trigger any pending audio done callbacks
+      audioDoneCallbacksRef.current.forEach(cb => cb());
+      audioDoneCallbacksRef.current = [];
       
-      // Auto-stop mic after 8 seconds of continuous conversation window
-      autoStopTimeoutRef.current = setTimeout(() => {
-        if (processorRef.current && !isPlayingRef.current) {
-          console.log('⏱️ Auto-stopping mic after conversation timeout');
-          stopListening();
+      // Process next queued event if any
+      setTimeout(() => processQueuedEvent(), 100);
+      
+      // Continuous conversation: Check if mic needs restart or if it's already open
+      if (!processorRef.current) {
+        console.log('🎤 Mic needs restart after AI response...');
+        needsRestartRef.current = true;
+      } else {
+        console.log('🎤 Auto-resuming mic for follow-up conversation (8s window)...');
+        
+        if (autoStopTimeoutRef.current) {
+          clearTimeout(autoStopTimeoutRef.current);
         }
-      }, 8000);
-    }
+        
+        autoStopTimeoutRef.current = setTimeout(() => {
+          if (processorRef.current && !isPlayingRef.current) {
+            console.log('⏱️ Auto-stopping mic after conversation timeout');
+            stopListening();
+          }
+        }, 8000);
+      }
+    };
   };
 
   const cleanup = () => {

@@ -1,0 +1,103 @@
+// ------------------ PCM16 Playback Handler ------------------
+// Drop this into useRealtimeVoice.ts
+
+import { useRef } from "react";
+
+export function useRealtimeVoice() {
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioQueueRef = useRef<Float32Array[]>([]);
+  const isPlayingRef = useRef(false);
+  const activeResponseRef = useRef(false);
+
+  // helper to ensure AudioContext is active
+  async function ensureAudioContext() {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
+    if (audioContextRef.current.state === "suspended") {
+      await audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  }
+
+  // convert base64 PCM16 → Float32 samples
+  function base64ToFloat32Array(base64: string): Float32Array {
+    const binary = atob(base64);
+    const buffer = new ArrayBuffer(binary.length);
+    const view = new Uint8Array(buffer);
+    for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
+    const pcm16 = new Int16Array(buffer);
+    const f32 = new Float32Array(pcm16.length);
+    for (let i = 0; i < pcm16.length; i++) f32[i] = pcm16[i] / 32768;
+    return f32;
+  }
+
+  // play one completed PCM clip
+  async function playPcmResponse() {
+    const ctx = await ensureAudioContext();
+
+    // merge all queued chunks into one Float32 buffer
+    const totalLength = audioQueueRef.current.reduce((a, b) => a + b.length, 0);
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+    for (const chunk of audioQueueRef.current) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    // reset for next response
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+
+    // create NEW AudioBufferSourceNode every time
+    const src = ctx.createBufferSource();
+    const buffer = ctx.createBuffer(1, merged.length, ctx.sampleRate);
+    buffer.copyToChannel(merged, 0);
+    src.buffer = buffer;
+    src.connect(ctx.destination);
+
+    src.start(0); // can only start once per node
+    console.log(`🔊 Playing PCM response (${merged.length} samples)`);
+
+    src.onended = () => {
+      console.log("✅ PCM playback finished");
+      isPlayingRef.current = false;
+    };
+  }
+
+  // WebSocket message handler (Realtime API events)
+  function handleRealtimeMessage(event: MessageEvent) {
+    const msg = JSON.parse(event.data);
+
+    switch (msg.type) {
+      case "response.created":
+        console.log(`🆕 New response started: ${msg.response_id}`);
+        audioQueueRef.current = []; // clear old data
+        isPlayingRef.current = false;
+        activeResponseRef.current = true;
+        break;
+
+      case "response.output_audio.delta":
+        // accumulate PCM16 deltas as Float32
+        audioQueueRef.current.push(base64ToFloat32Array(msg.delta));
+        break;
+
+      case "response.output_audio.done":
+        console.log("🎧 Response audio stream complete — starting playback");
+        playPcmResponse(); // plays the merged buffer
+        break;
+
+      case "response.completed":
+      case "response.done":
+      case "response.error":
+        console.log("✅ Response fully completed");
+        activeResponseRef.current = false;
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  return { handleRealtimeMessage };
+}
