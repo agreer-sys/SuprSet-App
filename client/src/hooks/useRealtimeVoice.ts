@@ -38,6 +38,60 @@ export function useRealtimeVoice({
   const eventQueueRef = useRef<Array<{eventName: string, data?: any}>>([]);
   const graceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track grace period timeout
   const audioDoneCallbacksRef = useRef<Array<() => void>>([]); // Callbacks for audio completion
+  
+  // ChatGPT fix: Track base64 chunks per response for proper multi-response playback
+  const currentChunksRef = useRef<string[]>([]);
+  const responseCounterRef = useRef(0);
+
+  // Helper: Ensure AudioContext is ready
+  const ensureAudioContext = useCallback(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (audioContextRef.current.state === "suspended") {
+      audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  // Helper: Convert base64 to ArrayBuffer
+  const base64ToArrayBuffer = useCallback((base64: string): ArrayBuffer => {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }, []);
+
+  // Helper: Play accumulated audio chunks
+  const playAudioChunks = useCallback(async () => {
+    const ctx = ensureAudioContext();
+    
+    // Combine all base64 chunks into single ArrayBuffer
+    const allBytes = currentChunksRef.current
+      .map(b64 => base64ToArrayBuffer(b64))
+      .reduce((acc, buf) => {
+        const tmp = new Uint8Array(acc.byteLength + buf.byteLength);
+        tmp.set(new Uint8Array(acc), 0);
+        tmp.set(new Uint8Array(buf), acc.byteLength);
+        return tmp.buffer;
+      }, new ArrayBuffer(0));
+    
+    try {
+      const audioBuffer = await ctx.decodeAudioData(allBytes.slice(0));
+      const src = ctx.createBufferSource();
+      src.buffer = audioBuffer;
+      src.connect(ctx.destination);
+      src.start();
+      console.log(`🔊 Playing response #${++responseCounterRef.current}`);
+    } catch (err) {
+      console.error("⚠️ Audio decode error:", err);
+    } finally {
+      currentChunksRef.current = []; // Reset for next response
+    }
+  }, [ensureAudioContext, base64ToArrayBuffer]);
 
   const connect = useCallback(async () => {
     try {
@@ -65,7 +119,17 @@ export function useRealtimeVoice({
           console.log('🎙️ Session ready');
         }
 
+        // ChatGPT fix: Reset audio chunks on new response
+        if (message.type === 'response.created') {
+          currentChunksRef.current = [];
+          console.log('🎬 New response started, reset audio buffer');
+        }
+
         if (message.type === 'response.audio.delta' && message.delta) {
+          // ChatGPT fix: Accumulate base64 chunks instead of converting
+          currentChunksRef.current.push(message.delta);
+          
+          // Legacy: Also keep old Float32Array queue for backward compatibility
           const audioData = base64ToFloat32Array(message.delta);
           audioQueueRef.current.push(audioData);
           
@@ -99,6 +163,11 @@ export function useRealtimeVoice({
         if (message.type === 'response.audio.done') {
           setState(prev => ({ ...prev, isSpeaking: false }));
           console.log('✅ Response audio done, clearing active flag');
+          
+          // ChatGPT fix: Play accumulated chunks
+          if (currentChunksRef.current.length > 0) {
+            await playAudioChunks();
+          }
           
           // Only process if not already handled by response.done
           if (activeResponseRef.current) {

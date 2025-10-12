@@ -102,3 +102,14 @@ The application uses a client-server architecture with a React frontend and an E
   - **Impact**: After first response at await_ready, mic auto-resumed and VAD detected ambient noise, triggering unwanted second response ("Weight and reps?") at introduction instead of only at set_complete
   - **Fix**: Disabled turn detection entirely (`turn_detection: null`) since we use event-driven model where HOST controls all timing, not VAD
   - **Result**: AI responds ONLY to explicit events (await_ready, set_midpoint, set_complete), no unwanted follow-ups
+- **CRITICAL FIX: Multi-Response Audio Playback** (Oct 12, 2025)
+  - **Root cause**: AudioContext/Audio pipeline didn't reset between responses - only first response played, subsequent responses generated but not decoded/played
+  - **Diagnosis**: OpenAI sent all audio deltas successfully, but client reused AudioContext in finished state without reinitializing for next clip
+  - **Fix (ChatGPT)**: 
+    1. Added `currentChunksRef` to track base64 chunks per response
+    2. Reset chunks on `response.created` event
+    3. Accumulate base64 chunks on `response.audio.delta`
+    4. Decode and play all chunks as single AudioBuffer on `response.audio.done` with fresh BufferSource per response
+    5. Added `responseCounterRef` for debugging playback count
+  - **Implementation**: Helper functions `ensureAudioContext()`, `base64ToArrayBuffer()`, `playAudioChunks()` in useRealtimeVoice.ts
+  - **Result**: Coach now speaks at ALL events - introduction, midpoint encouragement, set completion, farewell - instead of only first response
