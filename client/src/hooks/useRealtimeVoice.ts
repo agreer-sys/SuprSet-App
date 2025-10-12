@@ -294,10 +294,13 @@ export function useRealtimeVoice({
       },
     }));
 
-    // Trigger response
+    // Trigger response - force audio-only modality
     activeResponseRef.current = true;
     wsRef.current.send(JSON.stringify({
       type: 'response.create',
+      response: {
+        modalities: ['audio']
+      }
     }));
   }, []);
 
@@ -360,6 +363,9 @@ export function useRealtimeVoice({
       wsRef.current.send(
         JSON.stringify({
           type: "response.create",
+          response: {
+            modalities: ['audio']
+          }
         })
       );
     }

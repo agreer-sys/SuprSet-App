@@ -1,0 +1,408 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+Airtable Service initialized with Base ID: apppI2s9...
+🎙️ OpenAI Realtime API relay configured on /realtime
+✅ Loaded 1 knowledge items from cache
+5:29:04 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 12 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+5:29:16 PM [express] GET /api/auth/user 401 in 4ms :: {"message":"Unauthorized"}
+5:29:16 PM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+Search params: {
+  q: undefined,
+  category: undefined,
+  equipment: undefined,
+  muscleGroup: undefined
+}
+📋 Serving 83 equipment items from catalog
+5:29:16 PM [express] GET /api/exercises/equipment 304 in 26ms :: ["Abductor Machine","Adductor Machi…
+Successfully loaded 215 exercises from Airtable
+5:29:25 PM [express] GET /api/exercises/muscle-groups 200 in 9038ms :: ["Accessory","Back","Biceps",…
+Successfully loaded 215 exercises from Airtable
+5:29:25 PM [express] GET /api/exercises/categories 304 in 9079ms :: []
+Successfully loaded 215 exercises from Airtable
+5:29:25 PM [express] GET /api/exercises 304 in 9088ms :: [{"id":2093634808,"name":"Abductor Machine"…
+Successfully loaded 215 exercises from Airtable
+Returning 215 exercises
+5:29:25 PM [express] GET /api/exercises/search 304 in 9138ms :: [{"id":2093634808,"name":"Abductor M…
+5:31:15 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+5:31:15 PM [express] GET /api/exercises 304 in 6ms :: [{"id":2093634808,"name":"Abductor Machine","a…
+5:31:15 PM [express] GET /api/auth/is-admin 304 in 1ms :: {"isAdmin":true}
+5:31:18 PM [express] GET /api/admin/block-workouts 200 in 890ms :: [{"id":35,"name":"Sets Workout 1"…
+5:31:21 PM [express] DELETE /api/admin/block-workouts/35 200 in 473ms :: {"message":"Workout deleted…
+5:31:27 PM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+5:31:27 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+5:31:27 PM [express] GET /api/exercises 304 in 6ms :: [{"id":2093634808,"name":"Abductor Machine","a…
+📋 Serving 83 equipment items from catalog
+5:31:27 PM [express] GET /api/exercises/equipment 304 in 3ms :: ["Abductor Machine","Adductor Machin…
+5:31:27 PM [express] GET /api/exercises/categories 304 in 1ms :: []
+5:31:27 PM [express] GET /api/exercises/muscle-groups 304 in 1ms :: ["Accessory","Back","Biceps","Ch…
+Search params: {
+  q: undefined,
+  category: undefined,
+  equipment: undefined,
+  muscleGroup: undefined
+}
+Returning 215 exercises
+5:31:27 PM [express] GET /api/exercises/search 304 in 5ms :: [{"id":2093634808,"name":"Abductor Mach…
+5:31:34 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+5:31:34 PM [express] GET /api/auth/is-admin 304 in 1ms :: {"isAdmin":true}
+5:31:34 PM [express] GET /api/exercises 304 in 8ms :: [{"id":2093634808,"name":"Abductor Machine","a…
+5:31:36 PM [express] GET /api/admin/block-workouts 304 in 237ms :: []
+🔧 Received workout data: {
+  name: 'Block 1 Workout',
+  blockCount: 1,
+  blocks: [
+    {
+      name: 'Block',
+      type: 'custom_sequence',
+      exerciseCount: 3,
+      exercises: [Array]
+    }
+  ]
+}
+🔧 Creating block: {
+  name: 'Block',
+  type: 'custom_sequence',
+  exerciseCount: 3,
+  exercises: [ 1797216603, 1999038937, 1597890932 ]
+}
+🔧 Creating block exercise: {
+  blockId: 43,
+  exerciseId: 1797216603,
+  exerciseName: 'Curtsy Lunge',
+  orderIndex: 0
+}
+🔧 Creating block exercise: {
+  blockId: 43,
+  exerciseId: 1999038937,
+  exerciseName: 'Incline Barbell Bench Press',
+  orderIndex: 1
+}
+🔧 Creating block exercise: {
+  blockId: 43,
+  exerciseId: 1597890932,
+  exerciseName: 'Machine Assisted Pull Up',
+  orderIndex: 2
+}
+🔧 Created block IDs: [ 43 ]
+🔧 Fetched exercises for block: {
+  blockId: 43,
+  blockName: 'Block',
+  exerciseCount: 3,
+  exercises: [
+    { id: 1797216603, name: 'Curtsy Lunge' },
+    { id: 1999038937, name: 'Incline Barbell Bench Press' },
+    { id: 1597890932, name: 'Machine Assisted Pull Up' }
+  ]
+}
+🔧 Compiler received block: {
+  name: 'Block',
+  type: 'custom_sequence',
+  pattern: 'straight_sets',
+  params: {
+    pattern: 'straight_sets',
+    restSec: 15,
+    workSec: 30,
+    roundRestSec: 0,
+    transitionSec: 0,
+    setsPerExercise: 3
+  }
+}
+5:33:07 PM [express] POST /api/admin/block-workouts 201 in 3163ms :: {"id":36,"name":"Block 1 Workou…
+5:33:16 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+5:33:16 PM [express] GET /api/exercises/muscle-groups 304 in 1ms :: ["Accessory","Back","Biceps","Ch…
+5:33:16 PM [express] GET /api/exercises/categories 304 in 2ms :: []
+📋 Serving 83 equipment items from catalog
+5:33:16 PM [express] GET /api/exercises/equipment 304 in 4ms :: ["Abductor Machine","Adductor Machin…
+5:33:16 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+Search params: {
+  q: undefined,
+  category: undefined,
+  equipment: undefined,
+  muscleGroup: undefined
+}
+Returning 215 exercises
+5:33:16 PM [express] GET /api/exercises/search 304 in 4ms :: [{"id":2093634808,"name":"Abductor Mach…
+5:33:16 PM [express] GET /api/exercises 304 in 4ms :: [{"id":2093634808,"name":"Abductor Machine","a…
+5:33:32 PM [express] GET /api/block-workouts 200 in 164ms :: [{"id":36,"name":"Block 1 Workout","des…
+5:33:34 PM [express] POST /api/block-workout-sessions 201 in 172ms :: {"id":73,"userId":"guest-user-…
+5:33:34 PM [express] GET /api/block-workout-sessions/active 200 in 77ms :: {"id":73,"userId":"guest-…
+5:33:34 PM [express] GET /api/workout-sessions 200 in 7ms
+5:33:34 PM [express] GET /api/coaching/73 200 in 44ms :: {"id":117,"sessionId":73,"messages":[{"role…
+🎙️ Realtime client connected
+🔍 Timeline update check: {
+  sessionId: 73,
+  hadTimeline: false,
+  contextHasTimeline: true,
+  isMajorUpdate: true
+}
+📝 Updated session context (no instruction rebuild): 73
+🔍 Timeline update check: {
+  sessionId: 73,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 73
+✅ Connected to OpenAI Realtime API
+✅ Sent initial session config with workout timeline included: 73
+🔍 Timeline update check: {
+  sessionId: 73,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 73
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPuEwP1YQZhGkzCLel7Lt',
+  modalities: [ 'audio', 'text' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 41600 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPuEwP1YQZhGkzCLel7Lt',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 73,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 73
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPuFLE6xeuSVkRDbMMJ8V',
+  modalities: [ 'audio', 'text' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 32000 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPuFLE6xeuSVkRDbMMJ8V',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 73,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 73
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPuFabzD5OvxNUS9pJMZv',
+  modalities: [ 'audio', 'text' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 38400 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPuFabzD5OvxNUS9pJMZv',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 73,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 73
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPuG4Syn2AoF0L5iv3NQC',
+  modalities: [ 'audio', 'text' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 44800 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPuG4Syn2AoF0L5iv3NQC',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 73,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 73
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPuGJje2oBjBwlbIqJVlt',
+  modalities: [ 'audio', 'text' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 32000 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPuGJje2oBjBwlbIqJVlt',
+  status: 'completed',
+  output_count: 1
+}
+🎯 OpenAI response.created: {
+  response_id: 'resp_CPuGRIpINViuWZqM6Ldhw',
+  modalities: [ 'audio', 'text' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 38400 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CPuGRIpINViuWZqM6Ldhw',
+  status: 'completed',
+  output_count: 1
+}
+👋 Client disconnected
+🔌 OpenAI connection closed
+5:35:18 PM [express] POST /api/workout-sessions/73/complete 200 in 613ms :: {"id":73,"userId":"user1…
+5:35:19 PM [express] GET /api/auth/user 401 in 7ms :: {"message":"Unauthorized"}
+5:35:19 PM [express] GET /api/supersets 401 in 1ms :: {"message":"Unauthorized"}
+5:35:19 PM [express] GET /api/workouts 401 in 1ms :: {"message":"Unauthorized"}

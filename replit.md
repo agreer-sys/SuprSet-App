@@ -88,3 +88,9 @@ The application uses a client-server architecture with a React frontend and an E
   - **Implementation**: Promise-based callback system with 12s safety timeout (matches catastrophic guard)
   - **Error Recovery**: Includes retry logic via `isEndingWorkoutRef` guard with onError/catch reset paths
   - **AI Instructions Update**: Changed workout_complete from "brief congratulations" to "SPEAK brief congratulations" with examples to ensure audio generation
+- **CRITICAL FIX: Audio-Only Response Enforcement** (Oct 12, 2025)
+  - **Root cause**: `response.create` requests didn't specify modalities, so OpenAI chose `['audio', 'text']` and often responded with silent text
+  - **Impact**: AI only spoke at introduction, then went silent for rest of workout despite receiving all events
+  - **Fix**: Force audio-only in both `response.create` locations: `response: { modalities: ['audio'] }`
+  - **Debug findings**: Session config `modalities: ['audio']` only sets availability, actual response modality determined by `response.create`
+  - **Result**: AI now forced to speak for every triggered event (await_ready, set_midpoint, set_complete, etc.)
