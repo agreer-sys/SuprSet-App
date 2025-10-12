@@ -450,7 +450,8 @@ export function useRealtimeVoice({
 
     // Create NEW AudioBufferSourceNode every time (can only start once per node)
     const src = ctx.createBufferSource();
-    const buffer = ctx.createBuffer(1, merged.length, ctx.sampleRate);
+    // OpenAI sends audio at 24kHz - must match exactly to avoid speed/pitch issues
+    const buffer = ctx.createBuffer(1, merged.length, 24000);
     buffer.copyToChannel(merged, 0);
     src.buffer = buffer;
     src.connect(ctx.destination);

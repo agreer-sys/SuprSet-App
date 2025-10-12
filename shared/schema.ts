@@ -161,7 +161,8 @@ export const setLogs = pgTable("set_logs", {
 // Coaching Sessions - LLM interaction tracking
 export const coachingSessions = pgTable("coaching_sessions", {
   id: serial("id").primaryKey(),
-  sessionId: integer("session_id").references(() => workoutSessionsNew.id).notNull(),
+  sessionId: integer("session_id").references(() => workoutSessionsNew.id),
+  blockWorkoutSessionId: integer("block_workout_session_id").references(() => blockWorkoutSessions.id),
   messages: jsonb("messages").$type<Array<{
     role: 'user' | 'assistant' | 'system';
     content: string;

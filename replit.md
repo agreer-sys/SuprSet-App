@@ -121,3 +121,17 @@ The application uses a client-server architecture with a React frontend and an E
     2. Add safety guard: `if (merged.length === 0) skip playback`
     3. Only clear queue in `src.onended` callback AFTER playback finishes
   - **Result**: Queue remains intact during buffer creation, prevents crashes on empty audio responses
+- **CRITICAL FIX: Audio Speed-Up on Mobile** (Oct 12, 2025)
+  - **Root cause**: `createBuffer()` used `ctx.sampleRate` (48kHz on mobile) instead of OpenAI's 24kHz, causing 2x playback speed
+  - **Impact**: AI coach voice was speeded up and chipmunk-like on mobile browsers
+  - **Fix**: Explicitly set buffer sample rate to 24000 to match OpenAI's audio format
+  - **Result**: Audio plays at correct speed/pitch on both desktop and mobile
+- **CRITICAL FIX: Database Foreign Key Error** (Oct 12, 2025)
+  - **Root cause**: `coaching_sessions` table only referenced `workout_sessions_new`, but block workouts use `block_workout_sessions`
+  - **Impact**: "Error Starting Workout" - foreign key constraint violation when creating coaching sessions for block workouts
+  - **Fix**: 
+    1. Added `blockWorkoutSessionId` field to `coaching_sessions` table (nullable)
+    2. Made `sessionId` field nullable to support both session types
+    3. Updated `getCoachingSession()` to query with `or(eq(sessionId), eq(blockWorkoutSessionId))`
+    4. Updated `startBlockWorkoutSession()` to use `blockWorkoutSessionId` instead of `sessionId`
+  - **Result**: Block workout sessions can now create coaching sessions without foreign key errors

@@ -53,7 +53,7 @@ import {
 } from "@shared/schema";
 import { airtableService } from "./airtable";
 import { db } from "./db";
-import { eq, and, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, or, sql, desc, inArray } from "drizzle-orm";
 import { compileBlockToTimeline, compileWorkoutTimeline, type ExecutionTimeline, type TimelineStep } from "./timeline-compiler";
 
 export interface IStorage {
@@ -955,7 +955,10 @@ export class DatabaseStorage implements IStorage {
     const [coaching] = await db
       .select()
       .from(coachingSessions)
-      .where(eq(coachingSessions.sessionId, sessionId))
+      .where(or(
+        eq(coachingSessions.sessionId, sessionId),
+        eq(coachingSessions.blockWorkoutSessionId, sessionId)
+      ))
       .limit(1);
     
     return coaching;
@@ -1578,7 +1581,7 @@ export class DatabaseStorage implements IStorage {
     
     // Create coaching session for AI support
     await this.createCoachingSession({
-      sessionId: session.id,
+      blockWorkoutSessionId: session.id,
       messages: [{
         role: 'system',
         content: 'You are a motivating fitness coach guiding this workout. Be encouraging and supportive.',
