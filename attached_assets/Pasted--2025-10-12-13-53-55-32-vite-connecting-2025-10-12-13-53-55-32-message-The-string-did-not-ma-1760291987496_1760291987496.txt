@@ -1,0 +1,263 @@
+
+2025-10-12 13:53:55.32
+[vite] connecting...
+2025-10-12 13:53:55.32
+{message: "The string did not match the expected pattern.", stack: "WebSocket@[native code] setupWebSocket@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:536:32 fallback@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:509:30 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:555:25 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:552:46"}
+2025-10-12 13:53:55.79
+Roboflow integration:
+Enabled
+2025-10-12 13:54:07.84
+[vite] connecting...
+2025-10-12 13:54:09.58
+{message: "The string did not match the expected pattern.", stack: "WebSocket@[native code] setupWebSocket@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:536:32 fallback@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:509:30 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:555:25 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:552:46"}
+2025-10-12 13:54:10.49
+Roboflow integration:
+Enabled
+2025-10-12 13:54:50.25
+[vite] connecting...
+2025-10-12 13:54:50.51
+{message: "The string did not match the expected pattern.", stack: "WebSocket@[native code] setupWebSocket@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:536:32 fallback@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:509:30 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:555:25 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:552:46"}
+2025-10-12 13:54:50.96
+Roboflow integration:
+Enabled
+2025-10-12 13:57:50.64
+[vite] connecting...
+2025-10-12 13:57:50.85
+{message: "The string did not match the expected pattern.", stack: "WebSocket@[native code] setupWebSocket@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:536:32 fallback@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:509:30 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:555:25 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:552:46"}
+2025-10-12 13:57:51.47
+Roboflow integration:
+Enabled
+2025-10-12 13:58:05.24
+AudioContext resumed successfully, state:
+running
+2025-10-12 13:58:05.24
+🚀 Workout started at
+2025-10-12T17:58:04.948Z
+2025-10-12 13:58:05.24
+🎙️ Auto-connecting AI Coach...
+2025-10-12 13:58:05.24
+✅ AI Coach connected - ready for voice interaction
+2025-10-12 13:58:05.24
+✅ Connected to Realtime API
+2025-10-12 13:58:05.24
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 0, isAwaitingReady: false, isPaused: false}
+2025-10-12 13:58:05.24
+📡 Sending event to AI (will trigger response):
+EVENT: await_ready {"next_exercise":"Get organized and connect with your coach","exercise_id":211209459,"exercise_name":"Assault Bike","set_index":1}
+2025-10-12 13:58:05.24
+⏸️ Reached await_ready step at 0s - waiting for user confirmation
+2025-10-12 13:58:05.24
+⏸️ Workout paused at
+0
+seconds
+2025-10-12 13:58:05.24
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 0, isAwaitingReady: true, isPaused: true}
+2025-10-12 13:58:06.12
+🎤 Auto-activating microphone...
+2025-10-12 13:58:06.94
+🎙️ Session ready
+2025-10-12 13:58:06.94
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "session.modalities", event_id: null}
+2025-10-12 13:58:06.94
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "session.modalities", event_id: null}
+2025-10-12 13:58:06.94
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "session.modalities", event_id: null}
+2025-10-12 13:58:06.94
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "session.modalities", event_id: null}
+2025-10-12 13:58:08.05
+🎤 Started listening
+2025-10-12 13:58:11.59
+⏸️ Finalizing await_ready pause: 6s (total paused: 6s)
+2025-10-12 13:58:11.59
+✅ Ready confirmed! Re-anchoring timeline from 1760291884948 to 1760291885071
+2025-10-12 13:58:11.59
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 1, isAwaitingReady: false, isPaused: false}
+2025-10-12 13:58:11.59
+⚠️ Interval drift detected: 6255ms (tolerance: ±250ms)
+2025-10-12 13:58:12.98
+✅ Response audio done, clearing active flag
+2025-10-12 13:58:12.98
+✅ Response response.done (safeguard only, no queue processing)
+2025-10-12 13:58:16.56
+🎤 Auto-resuming mic for follow-up conversation (8s window)...
+2025-10-12 13:58:18.52
+Short beep played at
+1:58:18 PM
+2025-10-12 13:58:19.49
+Short beep played at
+1:58:19 PM
+2025-10-12 13:58:20.54
+Long beep played at
+1:58:20 PM
+2025-10-12 13:58:21.49
+📍 Step transition: 1 → 2 at 10s
+2025-10-12 13:58:21.49
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 2, isAwaitingReady: false, isPaused: false}
+2025-10-12 13:58:21.49
+📡 Sending event to AI (context only):
+EVENT: set_start {"exercise_id":211209459,"exercise_name":"Assault Bike","set_index":1,"work_s":30}
+2025-10-12 13:58:24.56
+⏱️ Auto-stopping mic after conversation timeout
+2025-10-12 13:58:24.56
+🔇 Stopped listening
+2025-10-12 13:58:26.49
+⏰ Resync validated at 15s - step 2 correct
+2025-10-12 13:58:36.50
+📡 Sending event to AI (will trigger response):
+EVENT: set_midpoint {"exercise_id":211209459,"exercise_name":"Assault Bike","set_index":1}
+2025-10-12 13:58:36.62
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:58:36.62
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:58:36.62
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:58:36.62
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:58:41.53
+⏰ Resync validated at 30s - step 2 correct
+2025-10-12 13:58:41.53
+📡 Sending event to AI (context only):
+EVENT: set_10s_remaining {"exercise_id":211209459,"exercise_name":"Assault Bike","set_index":1}
+2025-10-12 13:58:48.50
+⚠️ Catastrophic timeout - OpenAI completion events never arrived
+2025-10-12 13:58:50.47
+Long beep played at
+1:58:50 PM
+2025-10-12 13:58:51.52
+📍 Step transition: 2 → 3 at 40s
+2025-10-12 13:58:51.52
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 3, isAwaitingReady: false, isPaused: false}
+2025-10-12 13:58:51.52
+📡 Sending event to AI (will trigger response):
+EVENT: set_complete {"exercise_id":211209459,"exercise_name":"Assault Bike","set_index":1}
+2025-10-12 13:58:51.52
+📡 Sending event to AI (context only):
+EVENT: rest_start {"duration_s":15,"next_exercise":"Assault Bike","next_set":2}
+2025-10-12 13:58:51.65
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:58:51.65
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:58:51.65
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:58:51.65
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:58:56.62
+⏰ Resync validated at 45s - step 3 correct
+2025-10-12 13:59:03.52
+Short beep played at
+1:59:03 PM
+2025-10-12 13:59:03.52
+⚠️ Catastrophic timeout - OpenAI completion events never arrived
+2025-10-12 13:59:04.52
+Short beep played at
+1:59:04 PM
+2025-10-12 13:59:05.47
+Long beep played at
+1:59:05 PM
+2025-10-12 13:59:06.50
+📍 Step transition: 3 → 4 at 55s
+2025-10-12 13:59:06.50
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 4, isAwaitingReady: false, isPaused: false}
+2025-10-12 13:59:06.50
+📡 Sending event to AI (context only):
+EVENT: rest_complete
+2025-10-12 13:59:06.50
+📡 Sending event to AI (context only):
+EVENT: set_start {"exercise_id":211209459,"exercise_name":"Assault Bike","set_index":2,"work_s":30}
+2025-10-12 13:59:11.72
+⏰ Resync validated at 60s - step 4 correct
+2025-10-12 13:59:17.23
+📡 Sending event to AI (will trigger response):
+EVENT: workout_complete {"total_duration_s":71}
+2025-10-12 13:59:17.23
+⏳ Waiting for coach farewell...
+2025-10-12 13:59:17.35
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:59:17.35
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:59:17.35
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:59:17.35
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:59:21.55
+📡 Sending event to AI (will trigger response):
+EVENT: set_midpoint {"exercise_id":211209459,"exercise_name":"Assault Bike","set_index":2}
+2025-10-12 13:59:21.55
+🔄 Queuing response-triggering event:
+set_midpoint
+2025-10-12 13:59:26.55
+📡 Sending event to AI (context only):
+EVENT: set_10s_remaining {"exercise_id":211209459,"exercise_name":"Assault Bike","set_index":2}
+2025-10-12 13:59:26.75
+⏰ Resync validated at 75s - step 4 correct
+2025-10-12 13:59:29.23
+⚠️ Catastrophic timeout - OpenAI completion events never arrived
+2025-10-12 13:59:29.23
+📡 Processing queued event:
+EVENT: set_midpoint {"exercise_id":211209459,"exercise_name":"Assault Bike","set_index":2}
+2025-10-12 13:59:29.23
+⚠️ Audio wait timeout after 12s
+2025-10-12 13:59:29.23
+✅ Coach farewell complete
+2025-10-12 13:59:29.23
+⏳ Waiting for AI response to complete before disconnect...
+2025-10-12 13:59:29.35
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:59:29.35
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:59:29.35
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:59:29.35
+Realtime API error:
+{type: "invalid_request_error", code: "invalid_value", message: "Invalid modalities: ['audio']. Supported combinations are: ['text'] and ['audio', 'text'].", param: "response.modalities", event_id: null}
+2025-10-12 13:59:31.70
+⏸️ Workout paused at
+80
+seconds
+2025-10-12 13:59:31.70
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 4, isAwaitingReady: false, isPaused: true}
+2025-10-12 13:59:33.69
+▶️ Workout resumed after 1s pause (total paused: 8s)
+2025-10-12 13:59:33.69
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 4, isAwaitingReady: false, isPaused: false}
+2025-10-12 13:59:33.69
+⚠️ Interval drift detected: 1912ms (tolerance: ±250ms)
+2025-10-12 13:59:37.34
+Long beep played at
+1:59:37 PM
+2025-10-12 13:59:38.37
+📡 Sending event to AI (will trigger response):
+EVENT: set_complete {"exercise_id":211209459,"exercise_name":"Assault Bike","set_index":2}
+2025-10-12 13:59:38.37
+🔄 Queuing response-triggering event:
+set_complete
+2025-10-12 13:59:38.37
+📡 Sending event to AI (context only):
+EVENT: rest_start {"duration_s":15,"next_exercise":"Assault Bike","next_set":3}

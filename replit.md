@@ -88,9 +88,10 @@ The application uses a client-server architecture with a React frontend and an E
   - **Implementation**: Promise-based callback system with 12s safety timeout (matches catastrophic guard)
   - **Error Recovery**: Includes retry logic via `isEndingWorkoutRef` guard with onError/catch reset paths
   - **AI Instructions Update**: Changed workout_complete from "brief congratulations" to "SPEAK brief congratulations" with examples to ensure audio generation
-- **CRITICAL FIX: Audio-Only Response Enforcement** (Oct 12, 2025)
-  - **Root cause**: `response.create` requests didn't specify modalities, so OpenAI chose `['audio', 'text']` and often responded with silent text
-  - **Impact**: AI only spoke at introduction, then went silent for rest of workout despite receiving all events
-  - **Fix**: Force audio-only in both `response.create` locations: `response: { modalities: ['audio'] }`
-  - **Debug findings**: Session config `modalities: ['audio']` only sets availability, actual response modality determined by `response.create`
-  - **Result**: AI now forced to speak for every triggered event (await_ready, set_midpoint, set_complete, etc.)
+- **CRITICAL FIX: Response Queue Processing** (Oct 12, 2025)
+  - **Root cause #1**: Client only processed event queue on `response.audio.done`, but OpenAI doesn't always send this event, causing queued events (set_midpoint, set_complete) to never trigger
+  - **Root cause #2**: Introduction used session context for exercise name, but context update raced with await_ready event, so AI didn't know the exercise yet
+  - **Impact**: AI only spoke at introduction (first turn detection), then stayed silent for all subsequent events despite receiving them
+  - **Fix #1**: Process queue on BOTH `response.audio.done` AND `response.done` with flag to prevent double-processing
+  - **Fix #2**: Updated instructions to explicitly use exercise_name and set_index from await_ready EVENT DATA instead of session context
+  - **Result**: AI now reliably speaks for all triggered events and announces correct exercise at introduction

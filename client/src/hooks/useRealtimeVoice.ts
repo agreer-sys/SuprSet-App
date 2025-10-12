@@ -99,33 +99,47 @@ export function useRealtimeVoice({
         if (message.type === 'response.audio.done') {
           setState(prev => ({ ...prev, isSpeaking: false }));
           console.log('✅ Response audio done, clearing active flag');
-          activeResponseRef.current = false; // Reset flag when AI finishes responding
           
-          // Clear grace period timeout to prevent stale timer from firing
-          if (graceTimeoutRef.current) {
-            clearTimeout(graceTimeoutRef.current);
-            graceTimeoutRef.current = null;
+          // Only process if not already handled by response.done
+          if (activeResponseRef.current) {
+            activeResponseRef.current = false;
+            
+            // Clear grace period timeout
+            if (graceTimeoutRef.current) {
+              clearTimeout(graceTimeoutRef.current);
+              graceTimeoutRef.current = null;
+            }
+            
+            // Trigger any pending audio done callbacks
+            audioDoneCallbacksRef.current.forEach(cb => cb());
+            audioDoneCallbacksRef.current = [];
+            
+            // Process next queued event if any
+            setTimeout(() => processQueuedEvent(), 100);
           }
-          
-          // Trigger any pending audio done callbacks
-          audioDoneCallbacksRef.current.forEach(cb => cb());
-          audioDoneCallbacksRef.current = [];
-          
-          // Process next queued event if any (only here, not in response.done to avoid duplicates)
-          setTimeout(() => processQueuedEvent(), 100); // Small delay to ensure state is clean
         }
 
-        // Additional safeguard: clear flag on response completion (but don't process queue again)
+        // Process queue on response.done as well (OpenAI doesn't always send response.audio.done)
         if (message.type === 'response.done' || message.type === 'response.completed') {
-          console.log(`✅ Response ${message.type} (safeguard only, no queue processing)`);
-          activeResponseRef.current = false;
+          console.log(`✅ Response ${message.type}, clearing active flag`);
           
-          // Clear grace period timeout to prevent stale timer from firing
-          if (graceTimeoutRef.current) {
-            clearTimeout(graceTimeoutRef.current);
-            graceTimeoutRef.current = null;
+          // Only process if not already handled by response.audio.done
+          if (activeResponseRef.current) {
+            activeResponseRef.current = false;
+            
+            // Clear grace period timeout
+            if (graceTimeoutRef.current) {
+              clearTimeout(graceTimeoutRef.current);
+              graceTimeoutRef.current = null;
+            }
+            
+            // Trigger any pending audio done callbacks
+            audioDoneCallbacksRef.current.forEach(cb => cb());
+            audioDoneCallbacksRef.current = [];
+            
+            // Process next queued event if any
+            setTimeout(() => processQueuedEvent(), 100);
           }
-          // Don't process queue here - already handled by response.audio.done
         }
       };
 
@@ -294,13 +308,10 @@ export function useRealtimeVoice({
       },
     }));
 
-    // Trigger response - force audio-only modality
+    // Trigger response
     activeResponseRef.current = true;
     wsRef.current.send(JSON.stringify({
       type: 'response.create',
-      response: {
-        modalities: ['audio']
-      }
     }));
   }, []);
 
@@ -363,9 +374,6 @@ export function useRealtimeVoice({
       wsRef.current.send(
         JSON.stringify({
           type: "response.create",
-          response: {
-            modalities: ['audio']
-          }
         })
       );
     }
