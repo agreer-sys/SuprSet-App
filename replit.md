@@ -103,13 +103,12 @@ The application uses a client-server architecture with a React frontend and an E
   - **Fix**: Disabled turn detection entirely (`turn_detection: null`) since we use event-driven model where HOST controls all timing, not VAD
   - **Result**: AI responds ONLY to explicit events (await_ready, set_midpoint, set_complete), no unwanted follow-ups
 - **CRITICAL FIX: Multi-Response Audio Playback** (Oct 12, 2025)
-  - **Root cause**: AudioContext/Audio pipeline didn't reset between responses - only first response played, subsequent responses generated but not decoded/played
-  - **Diagnosis**: OpenAI sent all audio deltas successfully, but client reused AudioContext in finished state without reinitializing for next clip
-  - **Fix (ChatGPT)**: 
-    1. Added `currentChunksRef` to track base64 chunks per response
-    2. Reset chunks on `response.created` event
-    3. Accumulate base64 chunks on `response.audio.delta`
-    4. Decode and play all chunks as single AudioBuffer on `response.audio.done` with fresh BufferSource per response
-    5. Added `responseCounterRef` for debugging playback count
-  - **Implementation**: Helper functions `ensureAudioContext()`, `base64ToArrayBuffer()`, `playAudioChunks()` in useRealtimeVoice.ts
-  - **Result**: Coach now speaks at ALL events - introduction, midpoint encouragement, set completion, farewell - instead of only first response
+  - **Root cause**: Audio queue and playback state didn't reset between responses - only first response played, subsequent responses accumulated but never triggered playback
+  - **Diagnosis**: OpenAI sent all audio deltas successfully in PCM16 format, but `isPlayingRef` stayed true after first response, blocking subsequent playbacks
+  - **ChatGPT's suggestion**: Use `decodeAudioData()` with base64-to-ArrayBuffer conversion
+  - **Why it failed**: OpenAI sends raw PCM16 audio, not encoded audio. `decodeAudioData()` is for encoded formats (MP3/WAV) and threw decode errors on raw PCM
+  - **Actual fix**: 
+    1. Reset `audioQueueRef` on `response.created` event
+    2. Reset `isPlayingRef` to false on `response.created` to allow new playback
+    3. Keep existing Float32Array conversion (correct for PCM16)
+  - **Result**: Coach now speaks at ALL events - introduction, midpoint encouragement, set completion, farewell
