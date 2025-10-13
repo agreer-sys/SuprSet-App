@@ -4,7 +4,7 @@
  * Phase 2: Overlapping playback test (queue handling)
  */
 
-import { AudioContext } from "standardized-audio-context-mock";
+import { AudioContext } from "standardized-audio-context";
 
 async function playPcm(merged: Float32Array, ctx: AudioContext, label: string) {
   if (!merged || merged.length === 0) {
@@ -21,10 +21,12 @@ async function playPcm(merged: Float32Array, ctx: AudioContext, label: string) {
   console.log(`🔊 Playing PCM response (${merged.length} samples) → ${label}`);
   src.start();
 
-  // Simulate playback duration in mock environment
-  const durationMs = (merged.length / ctx.sampleRate) * 1000;
-  await new Promise((r) => setTimeout(r, Math.min(durationMs, 100))); // Cap at 100ms for testing
-  console.log(`✅ Finished: ${label}\n`);
+  return new Promise<void>((resolve) => {
+    src.onended = () => {
+      console.log(`✅ Finished: ${label}\n`);
+      resolve();
+    };
+  });
 }
 
 function makePcmChunk(freq: number, ctx: AudioContext): Float32Array {
@@ -88,7 +90,7 @@ async function runTests() {
   console.log("⏱️ Triggering first overlapping event...");
   playPcm(mergedA, ctx, overlappingEvents[0].name);
 
-  await new Promise((r) => setTimeout(r, 50)); // Reduced overlap for testing (mock plays fast)
+  await new Promise((r) => setTimeout(r, 500)); // overlap by 0.5s
 
   console.log("⚡ Triggering second overlapping event (while first plays)...");
   await playPcm(mergedB, ctx, overlappingEvents[1].name);
