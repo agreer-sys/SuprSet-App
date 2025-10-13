@@ -31,7 +31,12 @@ The application uses a client-server architecture with a React frontend and an E
 - **Adaptive Ready System (`await_ready`)**: The timeline automatically pauses at strategic points for flexibility, allowing users to signal readiness via voice or UI.
 - **Voice Prompts System**: Automatic AI coach announcements at key workout moments.
 - **Admin Authentication System**: `isAdmin` boolean field in the users table with dedicated middleware restricts access to `/api/admin/*` endpoints.
-- **Voice Playback Pipeline Validation (Oct 13, 2025)**: Comprehensive PCM16 → Float32Array pipeline validated end-to-end with mock tests. Includes sequential playback (5 critical events) and overlapping event simulation confirming queue logic handles concurrent responses. Startup log: "🎧 Voice pipeline initialized (PCM16 Float32 path active)"
+- **Voice Playback Pipeline (v1.0-voice-stable, Oct 13, 2025)**: Production-ready PCM16 → Float32Array pipeline with comprehensive validation. Features include:
+  - **Audio Sanity Ping**: 1-second 220Hz tone validates AudioContext playback before first AI message
+  - **Automated Test Suite**: Sequential and overlapping event validation with 6/6 events passing, 0 errors
+  - **Mic Persistence**: Single MediaStream reused throughout workout, no permission popups
+  - **Startup Logging**: Console confirms "🎧 Voice pipeline initialized (PCM16 Float32 path active)"
+  - **Test Results**: All playback events passed sequential and overlap validation
 
 **Data Integration**
 - **Airtable Service**: Handles API calls and data transformation for exercise data.
