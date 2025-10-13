@@ -41,6 +41,32 @@ export function useRealtimeVoice({
   
   const responseCounterRef = useRef(0);
 
+  // --- PCM Sanity Ping ---
+  function runAudioSanityPing(audioCtx: AudioContext) {
+    try {
+      const durationSec = 1;
+      const sampleRate = audioCtx.sampleRate;
+      const length = sampleRate * durationSec;
+      const buffer = audioCtx.createBuffer(1, length, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      // Generate a quick sine tone (220Hz) for audible confirmation
+      const freq = 220;
+      for (let i = 0; i < length; i++) {
+        data[i] = Math.sin((2 * Math.PI * freq * i) / sampleRate) * 0.25;
+      }
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      source.start();
+
+      console.log("✅ Audio sanity ping played successfully (1s tone)");
+    } catch (err) {
+      console.error("❌ Audio sanity ping failed:", err);
+    }
+  }
+
   const connect = useCallback(async () => {
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -445,6 +471,7 @@ export function useRealtimeVoice({
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContext();
       console.log("🎧 Voice pipeline initialized (PCM16 Float32 path active)");
+      runAudioSanityPing(audioContextRef.current);
     }
     if (audioContextRef.current.state === "suspended") {
       await audioContextRef.current.resume();
