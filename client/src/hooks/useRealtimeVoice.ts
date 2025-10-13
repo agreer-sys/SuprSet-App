@@ -444,6 +444,7 @@ export function useRealtimeVoice({
     // Ensure AudioContext is ready
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContext();
+      console.log("🎧 Voice pipeline initialized (PCM16 Float32 path active)");
     }
     if (audioContextRef.current.state === "suspended") {
       await audioContextRef.current.resume();
