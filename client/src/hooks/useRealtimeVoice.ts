@@ -155,43 +155,62 @@ export function useRealtimeVoice({
 
   const startListening = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        } 
-      });
-      
-      mediaStreamRef.current = stream;
-
-      const audioContext = new AudioContext({ sampleRate: 24000 });
-      audioContextRef.current = audioContext;
-
-      const source = audioContext.createMediaStreamSource(stream);
-      const processor = audioContext.createScriptProcessor(4096, 1, 1);
-      processorRef.current = processor;
-
-      processor.onaudioprocess = (e) => {
-        // Don't capture mic input while AI is speaking (prevents feedback loop)
-        if (micPausedForPlaybackRef.current) {
-          return;
-        }
+      // CRITICAL FIX: Only request getUserMedia if we don't already have a stream
+      // Re-requesting on mobile triggers permission popup again
+      if (!mediaStreamRef.current) {
+        console.log('🎤 Requesting microphone access...');
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          } 
+        });
         
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-          const inputData = e.inputBuffer.getChannelData(0);
-          const pcm16 = float32ToPCM16(inputData);
-          const base64Audio = arrayBufferToBase64(pcm16);
+        mediaStreamRef.current = stream;
+      } else {
+        console.log('🎤 Reusing existing microphone stream');
+      }
 
-          wsRef.current.send(JSON.stringify({
-            type: 'input_audio_buffer.append',
-            audio: base64Audio,
-          }));
-        }
-      };
+      // Only create audio context if we don't have one
+      if (!audioContextRef.current) {
+        const audioContext = new AudioContext({ sampleRate: 24000 });
+        audioContextRef.current = audioContext;
+      }
 
-      source.connect(processor);
-      processor.connect(audioContext.destination);
+      // Resume audio context if it was suspended (iOS auto-suspends)
+      if (audioContextRef.current.state === 'suspended') {
+        console.log('🔄 Resuming suspended audio context');
+        await audioContextRef.current.resume();
+      }
+
+      // Only create processor if we don't have one
+      if (!processorRef.current) {
+        const source = audioContextRef.current.createMediaStreamSource(mediaStreamRef.current);
+        const processor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+        processorRef.current = processor;
+
+        processor.onaudioprocess = (e) => {
+          // Don't capture mic input while AI is speaking (prevents feedback loop)
+          if (micPausedForPlaybackRef.current) {
+            return;
+          }
+          
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            const inputData = e.inputBuffer.getChannelData(0);
+            const pcm16 = float32ToPCM16(inputData);
+            const base64Audio = arrayBufferToBase64(pcm16);
+
+            wsRef.current.send(JSON.stringify({
+              type: 'input_audio_buffer.append',
+              audio: base64Audio,
+            }));
+          }
+        };
+
+        source.connect(processor);
+        processor.connect(audioContextRef.current.destination);
+      }
 
       setState(prev => ({ ...prev, isListening: true }));
       console.log('🎤 Started listening');
@@ -460,12 +479,22 @@ export function useRealtimeVoice({
     src.start(0); // can only start once per node
     console.log(`🔊 Playing PCM response (${merged.length} samples)`);
 
-    src.onended = () => {
+    src.onended = async () => {
       console.log("✅ PCM playback finished");
       // ✅ Now safe to clear the queue
       audioQueueRef.current = [];
       isPlayingRef.current = false;
       setState(prev => ({ ...prev, isSpeaking: false }));
+      
+      // CRITICAL FIX: Resume audio context after playback (iOS auto-suspends)
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        console.log('🔄 Resuming audio context after playback (iOS)');
+        try {
+          await audioContextRef.current.resume();
+        } catch (err) {
+          console.error('Failed to resume audio context:', err);
+        }
+      }
       
       // Trigger any pending audio done callbacks
       audioDoneCallbacksRef.current.forEach(cb => cb());
@@ -474,23 +503,14 @@ export function useRealtimeVoice({
       // Process next queued event if any
       setTimeout(() => processQueuedEvent(), 100);
       
-      // Continuous conversation: Check if mic needs restart or if it's already open
+      // CRITICAL FIX: Never auto-stop mic during workout - keep stream alive
+      // Just ensure processor exists (already handled by startListening reuse logic)
       if (!processorRef.current) {
         console.log('🎤 Mic needs restart after AI response...');
         needsRestartRef.current = true;
       } else {
-        console.log('🎤 Auto-resuming mic for follow-up conversation (8s window)...');
-        
-        if (autoStopTimeoutRef.current) {
-          clearTimeout(autoStopTimeoutRef.current);
-        }
-        
-        autoStopTimeoutRef.current = setTimeout(() => {
-          if (processorRef.current && !isPlayingRef.current) {
-            console.log('⏱️ Auto-stopping mic after conversation timeout');
-            stopListening();
-          }
-        }, 8000);
+        console.log('🎤 Mic already active, continuing...');
+        // No auto-stop timeout - keep mic alive for entire workout
       }
     };
   };

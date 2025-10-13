@@ -33,6 +33,7 @@ import {
   type InsertWorkout,
   type WorkoutSuperSet,
   type InsertWorkoutSuperSet,
+  type BlockWorkoutSession,
   type WorkoutSessionNew,
   type InsertWorkoutSessionNew,
   type SetLog,
@@ -101,6 +102,7 @@ export interface IStorage {
   getActiveWorkoutSession(userId: string): Promise<any>;
   updateWorkoutSession(id: number, updates: Partial<InsertWorkoutSessionNew>): Promise<WorkoutSessionNew>;
   completeWorkoutSession(id: number, notes?: string): Promise<WorkoutSessionNew>;
+  completeBlockWorkoutSession(id: number): Promise<BlockWorkoutSession>;
 
   // Set Logging methods
   logSet(setLog: InsertSetLog): Promise<SetLog>;
@@ -909,6 +911,33 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(workoutSessionsNew.id, id))
       .returning();
+    
+    return updatedSession;
+  }
+
+  async completeBlockWorkoutSession(id: number): Promise<BlockWorkoutSession> {
+    const completedAt = new Date();
+    const session = await db
+      .select()
+      .from(blockWorkoutSessions)
+      .where(eq(blockWorkoutSessions.id, id))
+      .limit(1);
+
+    if (!session[0]) throw new Error("Block workout session not found");
+
+    const [updatedSession] = await db
+      .update(blockWorkoutSessions)
+      .set({
+        status: "completed",
+        completedAt
+      })
+      .where(eq(blockWorkoutSessions.id, id))
+      .returning();
+    
+    // Delete associated coaching session
+    await db
+      .delete(coachingSessions)
+      .where(eq(coachingSessions.blockWorkoutSessionId, id));
     
     return updatedSession;
   }

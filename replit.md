@@ -135,3 +135,21 @@ The application uses a client-server architecture with a React frontend and an E
     3. Updated `getCoachingSession()` to query with `or(eq(sessionId), eq(blockWorkoutSessionId))`
     4. Updated `startBlockWorkoutSession()` to use `blockWorkoutSessionId` instead of `sessionId`
   - **Result**: Block workout sessions can now create coaching sessions without foreign key errors
+- **CRITICAL FIX: Microphone Permission Re-Request (3min disconnect)** (Oct 13, 2025)
+  - **Root cause**: `startListening()` called `getUserMedia()` every time, and auto-stop timeout triggered restart cycles causing mobile to re-request permissions
+  - **Impact**: At ~3 minutes, microphone permission popup appeared on mobile; if user didn't accept, coach was lost for remainder of workout
+  - **Fix**:
+    1. Only call `getUserMedia()` once on first connect, reuse stream for entire workout
+    2. Check if `mediaStreamRef`, `audioContextRef`, and `processorRef` exist before creating new ones
+    3. Resume suspended AudioContext (iOS auto-suspends) instead of creating new ones
+    4. Removed auto-stop timeout that was calling `stopListening()` after 8 seconds
+    5. Added AudioContext resume after playback for iOS compatibility
+  - **Result**: Single persistent microphone stream for entire workout, no mid-workout permission prompts
+- **CRITICAL FIX: Stop Workout Button Not Working** (Oct 13, 2025)
+  - **Root cause**: `/api/workout-sessions/:id/complete` only looked in `workoutSessionsNew` table, but block workouts are in `blockWorkoutSessions` table
+  - **Impact**: "Session not found" error when trying to end block workout sessions
+  - **Fix**:
+    1. Added `completeBlockWorkoutSession()` function to storage that updates block workout sessions
+    2. Updated completion route to try block workout completion first, then fall back to regular sessions
+    3. Deletes associated coaching session when completing block workout
+  - **Result**: Stop Workout button works for both regular and block workout sessions

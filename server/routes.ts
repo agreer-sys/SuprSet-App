@@ -1757,8 +1757,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const { notes } = req.body;
       
-      const session = await storage.completeWorkoutSession(id, notes);
-      res.json(session);
+      // CRITICAL FIX: Check if this is a block workout session first
+      // Block sessions are in blockWorkoutSessions table, not workoutSessionsNew
+      try {
+        const blockSession = await storage.completeBlockWorkoutSession(id);
+        return res.json(blockSession);
+      } catch (blockError: any) {
+        // Not a block session, try regular workout session
+        if (blockError.message === "Block workout session not found") {
+          try {
+            const regularSession = await storage.completeWorkoutSession(id, notes);
+            return res.json(regularSession);
+          } catch (regularError: any) {
+            // Not found in either table
+            console.error("Error completing workout session:", regularError);
+            return res.status(404).json({ message: "Session not found" });
+          }
+        }
+        // Other error from block completion
+        throw blockError;
+      }
     } catch (error: any) {
       console.error("Error completing workout session:", error);
       res.status(500).json({ message: "Failed to complete workout session" });
