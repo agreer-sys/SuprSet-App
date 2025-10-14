@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, Save, Eye, GripVertical, ArrowUp, ArrowDown, Edit, Copy, Power, PowerOff, Clock } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Eye, GripVertical, ArrowUp, ArrowDown, Edit, Copy, Power, PowerOff, Clock, BookOpen } from "lucide-react";
 import type { Exercise } from "@shared/schema";
 import { TimelinePreview } from "@/components/TimelinePreview";
 
@@ -707,12 +707,20 @@ export default function AdminPanel() {
               Create flexible block-based workouts with parameter-driven timing
             </p>
           </div>
-          <Link href="/">
-            <Button variant="outline" data-testid="button-back">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/workout-structure-docs">
+              <Button variant="outline" data-testid="button-docs">
+                <BookOpen className="mr-2 h-4 w-4" />
+                Structure Docs
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button variant="outline" data-testid="button-back">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
