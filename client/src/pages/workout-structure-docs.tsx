@@ -148,7 +148,9 @@ This tells the coach WHAT TO SAY and WHEN TO SPEAK.
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Workout Structure Documentation</h1>
+            <h1 className="text-3xl font-bold">
+              Workout Structure Documentation
+            </h1>
             <p className="text-muted-foreground mt-2">
               Technical reference for SuprSet's block-based workout architecture
             </p>
@@ -171,11 +173,13 @@ This tells the coach WHAT TO SAY and WHEN TO SPEAK.
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(`Block Types:
+                onClick={() =>
+                  copyToClipboard(`Block Types:
 • custom_sequence → Main type for strength/cardio work (supports all patterns)
 • transition → Rest/movement between blocks
 • amrap_loop → AMRAP workouts
-• emom_window → EMOM workouts`)}
+• emom_window → EMOM workouts`)
+                }
                 data-testid="button-copy-block-system"
               >
                 <Copy className="w-3 h-3" />
@@ -184,12 +188,23 @@ This tells the coach WHAT TO SAY and WHEN TO SPEAK.
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="font-mono text-sm bg-muted p-4 rounded-lg">
-              <p className="font-semibold mb-2">Database: <code>blocks</code> table</p>
+              <p className="font-semibold mb-2">
+                Database: <code>blocks</code> table
+              </p>
               <ul className="space-y-1 ml-4">
-                <li>• <code>custom_sequence</code> → Main type for strength/cardio work (supports all patterns)</li>
-                <li>• <code>transition</code> → Rest/movement between blocks</li>
-                <li>• <code>amrap_loop</code> → AMRAP workouts</li>
-                <li>• <code>emom_window</code> → EMOM workouts</li>
+                <li>
+                  • <code>custom_sequence</code> → Main type for strength/cardio
+                  work (supports all patterns)
+                </li>
+                <li>
+                  • <code>transition</code> → Rest/movement between blocks
+                </li>
+                <li>
+                  • <code>amrap_loop</code> → AMRAP workouts
+                </li>
+                <li>
+                  • <code>emom_window</code> → EMOM workouts
+                </li>
               </ul>
             </div>
           </CardContent>
@@ -203,11 +218,13 @@ This tells the coach WHAT TO SAY and WHEN TO SPEAK.
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(`Pattern Types:
+                onClick={() =>
+                  copyToClipboard(`Pattern Types:
 Superset: A1→A2→Rest → Repeat (Short restSec, no roundRestSec)
 Straight Sets: A1→Rest→A1→Rest→A2→Rest→A2 (Standard restSec between all sets)
 Circuit: A1→A2→A3→Round Rest → Repeat (Short restSec, longer roundRestSec)
-Custom: User-defined (Fully flexible params)`)}
+Custom: User-defined (Fully flexible params)`)
+                }
                 data-testid="button-copy-patterns"
               >
                 <Copy className="w-3 h-3" />
@@ -259,8 +276,10 @@ Custom: User-defined (Fully flexible params)`)}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(`TIME-BASED: { workSec: 30, restSec: 15, setsPerExercise: 3 }
-REP-BASED: { targetReps: "8-12", restSec: 90, setsPerExercise: 4 }`)}
+                onClick={() =>
+                  copyToClipboard(`TIME-BASED: { workSec: 30, restSec: 15, setsPerExercise: 3 }
+REP-BASED: { targetReps: "8-12", restSec: 90, setsPerExercise: 4 }`)
+                }
                 data-testid="button-copy-time-reps"
               >
                 <Copy className="w-3 h-3" />
@@ -269,9 +288,11 @@ REP-BASED: { targetReps: "8-12", restSec: 90, setsPerExercise: 4 }`)}
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h3 className="font-semibold mb-2">TIME-BASED (HIIT, AMRAP, EMOM)</h3>
+              <h3 className="font-semibold mb-2">
+                TIME-BASED (HIIT, AMRAP, EMOM)
+              </h3>
               <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto">
-{`{
+                {`{
   workSec: 30,        // 30 seconds of work
   restSec: 15,        // 15 seconds rest
   setsPerExercise: 3
@@ -279,9 +300,11 @@ REP-BASED: { targetReps: "8-12", restSec: 90, setsPerExercise: 4 }`)}
               </pre>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">REP-BASED (Traditional Strength)</h3>
+              <h3 className="font-semibold mb-2">
+                REP-BASED (Traditional Strength)
+              </h3>
               <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto">
-{`{
+                {`{
   targetReps: "8-12", // Rep range goal
   restSec: 90,        // Rest between sets (still timed)
   setsPerExercise: 4
@@ -299,7 +322,8 @@ REP-BASED: { targetReps: "8-12", restSec: 90, setsPerExercise: 4 }`)}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(`blocks table:
+                onClick={() =>
+                  copyToClipboard(`blocks table:
 - id, name, description
 - type: custom_sequence | transition | amrap_loop | emom_window
 - params (JSONB): { pattern, workSec/targetReps, restSec, roundRestSec, setsPerExercise }
@@ -307,7 +331,8 @@ REP-BASED: { targetReps: "8-12", restSec: 90, setsPerExercise: 4 }`)}
 block_exercises (junction):
 - block_id → blocks.id
 - exercise_id → exercises.id
-- position`)}
+- position`)
+                }
                 data-testid="button-copy-db-structure"
               >
                 <Copy className="w-3 h-3" />
@@ -316,7 +341,7 @@ block_exercises (junction):
           </CardHeader>
           <CardContent>
             <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto">
-{`blocks
+              {`blocks
   ├── id, name, description
   ├── type (custom_sequence, transition, etc.)
   └── params (JSONB) {
@@ -344,14 +369,16 @@ block_exercises (junction table)
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(`Block Params:
+                onClick={() =>
+                  copyToClipboard(`Block Params:
 • setsPerExercise - Sets per exercise
 • workSec - Work duration (time-based)
 • targetReps - Rep goal (rep-based)
 • restSec - Rest between exercises/sets
 • roundRestSec - Rest between circuit rounds
 • pattern - "superset"|"straight_sets"|"circuit"|"custom"
-• awaitReadyBeforeStart - Wait for user readiness`)}
+• awaitReadyBeforeStart - Wait for user readiness`)
+                }
                 data-testid="button-copy-params"
               >
                 <Copy className="w-3 h-3" />
@@ -361,24 +388,51 @@ block_exercises (junction table)
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h3 className="font-semibold mb-2">Common Block Parameters (params object)</h3>
+                <h3 className="font-semibold mb-2">
+                  Common Block Parameters (params object)
+                </h3>
                 <ul className="space-y-1 text-sm font-mono ml-4">
-                  <li>• <code>setsPerExercise</code>: number - Sets per exercise</li>
-                  <li>• <code>workSec</code>: number - Work duration (time-based)</li>
-                  <li>• <code>targetReps</code>: string - Rep goal (rep-based)</li>
-                  <li>• <code>restSec</code>: number - Rest between exercises/sets</li>
-                  <li>• <code>roundRestSec</code>: number - Rest between circuit rounds</li>
-                  <li>• <code>transitionSec</code>: number - Transition duration</li>
-                  <li>• <code>durationSec</code>: number - Total block duration</li>
-                  <li>• <code>awaitReadyBeforeStart</code>: boolean - Wait for user readiness</li>
-                  <li>• <code>pattern</code>: string - "superset"|"straight_sets"|"circuit"|"custom"</li>
+                  <li>
+                    • <code>setsPerExercise</code>: number - Sets per exercise
+                  </li>
+                  <li>
+                    • <code>workSec</code>: number - Work duration (time-based)
+                  </li>
+                  <li>
+                    • <code>targetReps</code>: string - Rep goal (rep-based)
+                  </li>
+                  <li>
+                    • <code>restSec</code>: number - Rest between exercises/sets
+                  </li>
+                  <li>
+                    • <code>roundRestSec</code>: number - Rest between circuit
+                    rounds
+                  </li>
+                  <li>
+                    • <code>transitionSec</code>: number - Transition duration
+                  </li>
+                  <li>
+                    • <code>durationSec</code>: number - Total block duration
+                  </li>
+                  <li>
+                    • <code>awaitReadyBeforeStart</code>: boolean - Wait for
+                    user readiness
+                  </li>
+                  <li>
+                    • <code>pattern</code>: string -
+                    "superset"|"straight_sets"|"circuit"|"custom"
+                  </li>
                 </ul>
               </div>
               <div>
                 <h3 className="font-semibold mb-2">EMOM/AMRAP Specific</h3>
                 <ul className="space-y-1 text-sm font-mono ml-4">
-                  <li>• <code>minuteMarks</code>: number[] - EMOM minute markers</li>
-                  <li>• <code>maxDuration</code>: number - AMRAP max duration</li>
+                  <li>
+                    • <code>minuteMarks</code>: number[] - EMOM minute markers
+                  </li>
+                  <li>
+                    • <code>maxDuration</code>: number - AMRAP max duration
+                  </li>
                 </ul>
               </div>
             </div>
@@ -393,12 +447,14 @@ block_exercises (junction table)
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(`Coach Detection Points:
+                onClick={() =>
+                  copyToClipboard(`Coach Detection Points:
 1. params.pattern → superset/straight/circuit
 2. params.workSec vs params.targetReps → time vs reps
 3. Current step context → first set, final set, transition
 
-This tells the coach WHAT TO SAY and WHEN TO SPEAK.`)}
+This tells the coach WHAT TO SAY and WHEN TO SPEAK.`)
+                }
                 data-testid="button-copy-coach-logic"
               >
                 <Copy className="w-3 h-3" />
@@ -407,13 +463,37 @@ This tells the coach WHAT TO SAY and WHEN TO SPEAK.`)}
           </CardHeader>
           <CardContent>
             <div className="bg-muted p-4 rounded-lg">
-              <p className="font-semibold mb-3">The AI coach needs to detect:</p>
+              <p className="font-semibold mb-3">
+                The AI coach needs to detect:
+              </p>
               <ol className="space-y-2 text-sm ml-4">
-                <li>1. <code className="bg-background px-2 py-0.5 rounded">params.pattern</code> → superset/straight/circuit</li>
-                <li>2. <code className="bg-background px-2 py-0.5 rounded">params.workSec</code> vs <code className="bg-background px-2 py-0.5 rounded">params.targetReps</code> → time vs reps</li>
-                <li>3. Current step context → first set, final set, transition</li>
+                <li>
+                  1.{" "}
+                  <code className="bg-background px-2 py-0.5 rounded">
+                    params.pattern
+                  </code>{" "}
+                  → superset/straight/circuit
+                </li>
+                <li>
+                  2.{" "}
+                  <code className="bg-background px-2 py-0.5 rounded">
+                    params.workSec
+                  </code>{" "}
+                  vs{" "}
+                  <code className="bg-background px-2 py-0.5 rounded">
+                    params.targetReps
+                  </code>{" "}
+                  → time vs reps
+                </li>
+                <li>
+                  3. Current step context → first set, final set, transition
+                </li>
               </ol>
-              <p className="mt-4 text-sm font-semibold">This tells the coach <span className="text-primary">WHAT TO SAY</span> and <span className="text-primary">WHEN TO SPEAK</span>.</p>
+              <p className="mt-4 text-sm font-semibold">
+                This tells the coach{" "}
+                <span className="text-primary">WHAT TO SAY</span> and{" "}
+                <span className="text-primary">WHEN TO SPEAK</span>.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -425,7 +505,7 @@ This tells the coach WHAT TO SAY and WHEN TO SPEAK.`)}
           </CardHeader>
           <CardContent>
             <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto">
-{`Block (params) → Compiler → ExecutionTimeline (flat steps)
+              {`Block (params) → Compiler → ExecutionTimeline (flat steps)
                               ↓
                          [await_ready, work, rest, work, rest...]
                               ↓
