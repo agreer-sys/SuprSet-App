@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 import { useRealtimeVoice } from '@/hooks/useRealtimeVoice';
 import type { WorkoutSessionNew, SetLog, CoachingSession } from "@shared/schema";
+import { onEvent } from '@/coach/observer';
+import { seedResponses } from '@/coach/responseService';
+import { PreflightWeightsSheet } from '@/components/PreflightWeightsSheet';
+import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
 
 export default function WorkoutSessionPage() {
   const [currentExercise, setCurrentExercise] = useState<'A' | 'B'>('A');
@@ -49,6 +53,11 @@ export default function WorkoutSessionPage() {
   const pauseStartMs = useRef<number | null>(null);
   const totalPausedMs = useRef(0);
   const lastUpdateWallClockMs = useRef<number>(0);
+
+  // NEW: Coach system setup
+  const [chatterLevel] = useState<ChatterLevel>('minimal');
+  const [plannedLoads, setPlannedLoads] = useState<Record<string, number|undefined>>({});
+  const [showPreflight, setShowPreflight] = useState(false); // Only show for block workouts
 
   // Fetch active workout session - try block workout first, then fall back to template
   const { data: blockSession, isLoading: isLoadingBlock } = useQuery<any>({
@@ -105,6 +114,69 @@ export default function WorkoutSessionPage() {
     queryKey: [`/api/coaching/${session?.id}`],
     enabled: !!session?.id,
   });
+
+  // NEW: Extract exercises from timeline for coach context
+  const exercises = useMemo(() => {
+    if (!executionTimeline) return [];
+    const exerciseMap = new Map();
+    executionTimeline.executionTimeline?.forEach((step: any) => {
+      if (step.exercise) {
+        exerciseMap.set(step.exercise.id.toString(), {
+          id: step.exercise.id.toString(),
+          name: step.exercise.name
+        });
+      }
+    });
+    return Array.from(exerciseMap.values());
+  }, [executionTimeline]);
+
+  // NEW: Auto-show preflight when block workout is detected
+  useEffect(() => {
+    if (isBlockWorkout && exercises.length > 0 && !showPreflight) {
+      setShowPreflight(true);
+    }
+  }, [isBlockWorkout, exercises.length, showPreflight]);
+
+  // NEW: Build TimelineContext for the observer
+  const coachContext = useMemo<TimelineContext>(() => ({
+    workoutId: session?.id?.toString() || 'unknown',
+    pattern: 'superset', // TODO: Extract from workout metadata
+    mode: 'reps' as const, // TODO: Extract from workout metadata
+    chatterLevel,
+    prefs: { preflightLoadIntake: true, strictEMOM: true, allowAutoExtendRest: false, rpeLabels: 'words' },
+    plannedLoads,
+    nowMs: () => Date.now(),
+    getExerciseName: (id) => exercises.find(e => e.id === id)?.name || 'Exercise',
+    getNextExerciseName: () => undefined,
+    showReadyModal: () => new Promise<void>(res => { if (window.confirm('Ready?')) res(); }),
+    speak: (text) => {
+      // Integrate with existing chat system
+      setChatMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: text, 
+        timestamp: new Date().toISOString() 
+      }]);
+    },
+    caption: (text) => console.log('[COACH CAPTION]', text),
+    haptic: () => {}
+  }), [session?.id, chatterLevel, plannedLoads, exercises]);
+
+  // NEW: Seed coach responses on mount
+  useEffect(() => {
+    seedResponses([
+      { id:1,event_type:'pre_block',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Block starting — set up now.',priority:4,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
+      { id:2,event_type:'work_start',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Go — one clean form cue.',priority:5,cooldown_sec:15,active:true,usage_count:0,last_used_at:null },
+      { id:3,event_type:'work_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Nice work — breathe.',priority:5,cooldown_sec:15,active:true,usage_count:0,last_used_at:null },
+      { id:4,event_type:'rest_start',pattern:'any',mode:'reps',chatter_level:'minimal',locale:'en-US',text_template:'Rest — log reps & load; tap "Use last values" if unchanged.',priority:5,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
+      { id:5,event_type:'rest_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Rest complete.',priority:4,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
+      { id:6,event_type:'workout_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Workout complete — great job today!',priority:10,cooldown_sec:0,active:true,usage_count:0,last_used_at:null }
+    ] as any);
+  }, []);
+
+  // NEW: Event emitter function
+  const emitCoachEvent = useCallback((event: Event) => {
+    onEvent(coachContext, event);
+  }, [coachContext]);
 
   // OpenAI Realtime API for voice interaction
   const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
@@ -1115,6 +1187,26 @@ export default function WorkoutSessionPage() {
   const totalSets = 6; // Default for superset demo
   const completedSets = setLogs?.length || 0;
   const progressPercentage = (completedSets / totalSets) * 100;
+
+  // NEW: Show Preflight Weights Sheet for block workouts before starting
+  if (isBlockWorkout && showPreflight && exercises.length > 0) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
+        <PreflightWeightsSheet
+          exercises={exercises}
+          lastLoads={{}} // TODO: Fetch from previous session
+          onSave={(loads) => {
+            setPlannedLoads(loads);
+            setShowPreflight(false);
+          }}
+          onCancel={() => {
+            // Allow skipping preflight
+            setShowPreflight(false);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
