@@ -24,8 +24,11 @@ function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
     case 'EV_WORK_START': return 'Go — one clean form cue.';
     case 'EV_WORK_END': return 'Nice work — breathe.';
     case 'EV_REST_START': return 'Rest — log your set.';
+    case 'EV_REST_END': return 'Rest complete.';
     case 'EV_ROUND_REST_START': return 'Round rest — reset and get set.';
+    case 'EV_ROUND_REST_END': return 'Round rest complete.';
     case 'EV_BLOCK_END': return 'Block complete — next block up.';
+    case 'EV_WORKOUT_END': return 'Workout complete — great job today!';
     default: return null;
   }
 }
