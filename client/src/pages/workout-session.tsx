@@ -175,15 +175,33 @@ export default function WorkoutSessionPage() {
     haptic: () => {}
   }), [session?.id, chatterLevel, plannedLoads, exercises]);
 
-  // NEW: Seed coach responses on mount
+  // NEW: Seed coach responses on mount (SMART varied responses to demonstrate the system)
   useEffect(() => {
     seedResponses([
-      { id:1,event_type:'pre_block',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Block starting — set up now.',priority:4,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
-      { id:2,event_type:'work_start',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Go — one clean form cue.',priority:5,cooldown_sec:15,active:true,usage_count:0,last_used_at:null },
-      { id:3,event_type:'work_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Nice work — breathe.',priority:5,cooldown_sec:15,active:true,usage_count:0,last_used_at:null },
-      { id:4,event_type:'rest_start',pattern:'any',mode:'reps',chatter_level:'minimal',locale:'en-US',text_template:'Rest — log reps & load; tap "Use last values" if unchanged.',priority:5,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
-      { id:5,event_type:'rest_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Rest complete.',priority:4,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
-      { id:6,event_type:'workout_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Workout complete — great job today!',priority:10,cooldown_sec:0,active:true,usage_count:0,last_used_at:null }
+      // Pre-block
+      { id:1,event_type:'pre_block',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Get ready. Weights set?',priority:5,cooldown_sec:20,active:true,usage_count:0,last_used_at:null },
+      { id:2,event_type:'pre_block',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Block starting. Check your setup.',priority:4,cooldown_sec:20,active:true,usage_count:0,last_used_at:null },
+      
+      // Work start - varied cues
+      { id:3,event_type:'work_start',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Go. Control the weight.',priority:5,cooldown_sec:30,active:true,usage_count:0,last_used_at:null },
+      { id:4,event_type:'work_start',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Push now. Stay tight.',priority:5,cooldown_sec:30,active:true,usage_count:0,last_used_at:null },
+      { id:5,event_type:'work_start',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Work. Own each rep.',priority:4,cooldown_sec:30,active:true,usage_count:0,last_used_at:null },
+      
+      // Work end - varied recovery cues
+      { id:6,event_type:'work_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Good set. Shake it out.',priority:5,cooldown_sec:25,active:true,usage_count:0,last_used_at:null },
+      { id:7,event_type:'work_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Strong work. Recover now.',priority:5,cooldown_sec:25,active:true,usage_count:0,last_used_at:null },
+      { id:8,event_type:'work_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Set done. Deep breath.',priority:4,cooldown_sec:25,active:true,usage_count:0,last_used_at:null },
+      
+      // Rest start
+      { id:9,event_type:'rest_start',pattern:'any',mode:'reps',chatter_level:'minimal',locale:'en-US',text_template:'Rest. Log your numbers.',priority:5,cooldown_sec:20,active:true,usage_count:0,last_used_at:null },
+      { id:10,event_type:'rest_start',pattern:'any',mode:'reps',chatter_level:'minimal',locale:'en-US',text_template:'Breathe. Record your set.',priority:4,cooldown_sec:20,active:true,usage_count:0,last_used_at:null },
+      
+      // Rest end
+      { id:11,event_type:'rest_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Time. Get back to it.',priority:5,cooldown_sec:20,active:true,usage_count:0,last_used_at:null },
+      { id:12,event_type:'rest_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Rest over. Lock in.',priority:4,cooldown_sec:20,active:true,usage_count:0,last_used_at:null },
+      
+      // Workout end
+      { id:13,event_type:'workout_end',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Done. Strong session today.',priority:10,cooldown_sec:0,active:true,usage_count:0,last_used_at:null }
     ] as any);
   }, []);
 
