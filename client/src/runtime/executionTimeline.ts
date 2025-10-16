@@ -22,13 +22,33 @@ export class ExecutionTimeline {
 
   resumeAfterReady(blockId: string){
     this.emit({ type:'EV_COUNTDOWN', sec:3 });
+    
+    // Countdown complete → start first exercise
     setTimeout(() => {
       this.emit({ type:'EV_WORK_START', exerciseId:'ex-1' });
+      
+      // After 5 seconds → end work, start rest
       setTimeout(() => {
         this.emit({ type:'EV_WORK_END', exerciseId:'ex-1' });
         this.emit({ type:'EV_REST_START', sec:90, reason:'between_sets' });
-        // …continue emitting events per your compiled timeline
-      }, 3000);
+        
+        // After 3 seconds → end rest, start round rest
+        setTimeout(() => {
+          this.emit({ type:'EV_REST_END' });
+          this.emit({ type:'EV_ROUND_REST_START', sec:60 });
+          
+          // After 3 seconds → end round rest, end block
+          setTimeout(() => {
+            this.emit({ type:'EV_ROUND_REST_END' });
+            this.emit({ type:'EV_BLOCK_END', blockId });
+            
+            // After 2 seconds → workout complete
+            setTimeout(() => {
+              this.emit({ type:'EV_WORKOUT_END' });
+            }, 2000);
+          }, 3000);
+        }, 3000);
+      }, 5000);
     }, 3000);
   }
 }
