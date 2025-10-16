@@ -3,13 +3,7 @@ import { onEvent } from '@/coach/observer';
 import { seedResponses } from '@/coach/responseService';
 import { PreflightWeightsSheet } from '@/components/PreflightWeightsSheet';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
-
-// TODO: Replace with your actual ExecutionTimeline implementation
-// This is a placeholder type for the wiring demo
-type ExecutionTimeline = {
-  subscribe: (handler: (ev: Event) => void) => () => void;
-  start: (blocks: any[], opts: any) => void;
-};
+import { ExecutionTimeline } from '@/runtime/executionTimeline';
 
 export function WorkoutPlayer({ workout, blocks, exercises, lastLoads }:{
   workout: { id: string };
@@ -51,12 +45,11 @@ export function WorkoutPlayer({ workout, blocks, exercises, lastLoads }:{
   const tlRef = useRef<ExecutionTimeline | null>(null);
   useEffect(() => {
     if (stage !== 'playing') return;
-    // TODO: Replace with your actual ExecutionTimeline instantiation
-    // const tl = new ExecutionTimeline();
-    // tlRef.current = tl;
-    // const unsub = tl.subscribe((ev: Event) => onEvent(ctx, ev));
-    // tl.start(blocks, { strictEMOM: true });
-    // return () => unsub();
+    const tl = new ExecutionTimeline();
+    tlRef.current = tl;
+    const unsub = tl.subscribe((ev: Event) => onEvent(ctx, ev));
+    tl.start(blocks, { strictEMOM: true });
+    return unsub;
   }, [stage, ctx, blocks]);
 
   if (stage === 'preflight') {
