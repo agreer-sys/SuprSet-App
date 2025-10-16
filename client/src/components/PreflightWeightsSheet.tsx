@@ -4,6 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 type ExerciseRow = { id: string; name: string };
+type WeightUnit = 'lbs' | 'kg';
+
+const KG_TO_LBS = 2.20462;
+const LBS_TO_KG = 1 / KG_TO_LBS;
 
 export function PreflightWeightsSheet({
   exercises,
@@ -16,9 +20,26 @@ export function PreflightWeightsSheet({
   onSave: (planned: Record<string, number | undefined>) => void;
   onCancel?: () => void;
 }) {
+  const [unit, setUnit] = useState<WeightUnit>('lbs');
   const [planned, setPlanned] = useState<Record<string, number | undefined>>(() => ({ ...lastLoads }));
 
   const rows = useMemo(() => exercises, [exercises]);
+
+  const toggleUnit = () => {
+    const newUnit = unit === 'lbs' ? 'kg' : 'lbs';
+    const conversion = unit === 'lbs' ? LBS_TO_KG : KG_TO_LBS;
+    
+    // Convert all existing values
+    const converted: Record<string, number | undefined> = {};
+    for (const [id, val] of Object.entries(planned)) {
+      if (val !== undefined) {
+        converted[id] = Math.round(val * conversion * 10) / 10; // Round to 1 decimal
+      }
+    }
+    
+    setPlanned(converted);
+    setUnit(newUnit);
+  };
 
   const setLoad = (id: string, v: string) => {
     const n = v === '' ? undefined : Number(v);
@@ -30,7 +51,17 @@ export function PreflightWeightsSheet({
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader>
-        <CardTitle>Set your working weights</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Set your working weights</CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleUnit}
+            data-testid="toggle-weight-unit"
+          >
+            {unit === 'lbs' ? 'Switch to kg' : 'Switch to lbs'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {rows.map(r => (
@@ -40,18 +71,26 @@ export function PreflightWeightsSheet({
               <Input
                 inputMode="decimal"
                 value={planned[r.id] ?? ''}
-                placeholder={lastLoads[r.id] ? String(lastLoads[r.id]) : 'kg'}
+                placeholder={lastLoads[r.id] ? String(lastLoads[r.id]) : unit}
                 onChange={e => setLoad(r.id, e.target.value)}
+                data-testid={`input-weight-${r.id}`}
               />
             </div>
             <div className="col-span-3 flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => useLast(r.id)}>Use last</Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => useLast(r.id)}
+                data-testid={`button-use-last-${r.id}`}
+              >
+                Use last
+              </Button>
             </div>
           </div>
         ))}
         <div className="flex justify-end gap-2 pt-4">
-          {onCancel && <Button variant="ghost" onClick={onCancel}>Cancel</Button>}
-          <Button onClick={() => onSave(planned)}>Save & Continue</Button>
+          {onCancel && <Button variant="ghost" onClick={onCancel} data-testid="button-cancel">Cancel</Button>}
+          <Button onClick={() => onSave(planned)} data-testid="button-save-continue">Save & Continue</Button>
         </div>
       </CardContent>
     </Card>
