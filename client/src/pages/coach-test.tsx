@@ -1,37 +1,39 @@
 import { WorkoutPlayer } from '@/player/WorkoutPlayer';
+import { useQuery } from '@tanstack/react-query';
 
 export default function CoachTest() {
-  // Mock workout data for testing
-  const mockWorkout = { id: 'test-workout-1' };
-  
-  const mockBlocks = [
-    {
-      id: 'block-1',
-      params: {
-        pattern: 'superset' as const,
-        mode: 'reps' as const,
-        awaitReadyBeforeStart: false // Auto-start for testing
-      }
-    }
-  ];
-  
-  const mockExercises = [
-    { id: 'ex-1', name: 'Barbell Bench Press' },
-    { id: 'ex-2', name: 'Dumbbell Row' }
-  ];
-  
-  const mockLastLoads = {
-    'ex-1': 80,
-    'ex-2': 35
-  };
+  // Fetch a real block workout from the server
+  const { data: workouts, isLoading } = useQuery<Array<{
+    id: number;
+    name: string;
+    executionTimeline?: any;
+  }>>({
+    queryKey: ['/api/block-workouts'],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-lg">Loading workouts...</div>
+      </div>
+    );
+  }
+
+  if (!workouts || workouts.length === 0) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-lg">No workouts found. Create one in the admin panel first.</div>
+      </div>
+    );
+  }
+
+  // Use the first available workout
+  const workout = workouts[0];
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <WorkoutPlayer
-        workout={mockWorkout}
-        blocks={mockBlocks}
-        exercises={mockExercises}
-        lastLoads={mockLastLoads}
+        workout={workout}
       />
     </div>
   );

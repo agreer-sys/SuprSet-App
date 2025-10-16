@@ -3,23 +3,45 @@ import { onEvent } from '@/coach/observer';
 import { seedResponses } from '@/coach/responseService';
 import { PreflightWeightsSheet } from '@/components/PreflightWeightsSheet';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
-import { ExecutionTimeline } from '@/runtime/executionTimeline';
+import { TimelinePlayer } from '@/runtime/TimelinePlayer';
 
-export function WorkoutPlayer({ workout, blocks, exercises, lastLoads }:{
-  workout: { id: string };
-  blocks: Array<{ id: string; params: { pattern:'superset'|'straight_sets'|'circuit'|'custom'; mode:'time'|'reps'; awaitReadyBeforeStart?: boolean } }>;
-  exercises: Array<{ id: string; name: string }>;
-  lastLoads: Record<string, number|undefined>;
-}) {
+interface WorkoutPlayerProps {
+  workout: {
+    id: number;
+    name: string;
+    executionTimeline?: any; // Compiled timeline from server
+  };
+}
+
+export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
   const [planned, setPlanned] = useState<Record<string, number|undefined>>({});
-  const [stage, setStage] = useState<'preflight'|'playing'>('preflight');
+  const [stage, setStage] = useState<'loading'|'preflight'|'playing'>('loading');
   const chatterLevel: ChatterLevel = 'minimal';
+
+  // Extract exercises from the compiled timeline
+  const exercises = useMemo(() => {
+    if (!workout.executionTimeline) return [];
+    const exerciseMap = new Map();
+    workout.executionTimeline.executionTimeline.forEach((step: any) => {
+      if (step.exercise) {
+        exerciseMap.set(step.exercise.id.toString(), {
+          id: step.exercise.id.toString(),
+          name: step.exercise.name
+        });
+      }
+    });
+    return Array.from(exerciseMap.values());
+  }, [workout.executionTimeline]);
+
+  // Determine pattern and mode from the compiled timeline
+  const pattern = 'superset'; // Default, could extract from workout metadata
+  const mode = 'reps' as const; // Default, could extract from workout metadata
 
   // Build a TimelineContext the observer can use
   const ctx = useMemo<TimelineContext>(() => ({
-    workoutId: workout.id,
-    pattern: blocks[0]?.params.pattern ?? 'straight_sets',
-    mode: blocks[0]?.params.mode ?? 'reps',
+    workoutId: workout.id.toString(),
+    pattern,
+    mode,
     chatterLevel,
     prefs: { preflightLoadIntake: true, strictEMOM: true, allowAutoExtendRest: false, rpeLabels: 'words' },
     plannedLoads: planned,
@@ -31,9 +53,9 @@ export function WorkoutPlayer({ workout, blocks, exercises, lastLoads }:{
     speak: (t) => console.log('[COACH]', t),
     caption: (t) => console.log('[CAPTION]', t),
     haptic: () => {}
-  }), [workout.id, blocks, planned, exercises, chatterLevel]);
+  }), [workout.id, pattern, mode, planned, exercises, chatterLevel]);
 
-  // (Optional) seed a couple response lines (Tier‑2) so you see variety immediately
+  // Seed response lines
   useEffect(() => {
     seedResponses([
       { id:1,event_type:'pre_block',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Block starting — set up now.',priority:4,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
@@ -42,25 +64,55 @@ export function WorkoutPlayer({ workout, blocks, exercises, lastLoads }:{
     ] as any);
   }, []);
 
-  // Wire the timeline emitter → observer
-  const tlRef = useRef<ExecutionTimeline | null>(null);
+  // Check if workout has a compiled timeline
   useEffect(() => {
-    if (stage !== 'playing') return;
-    const tl = new ExecutionTimeline();
-    tlRef.current = tl;
-    const unsub = tl.subscribe((ev: Event) => onEvent(ctx, ev));
-    tl.start(blocks, { strictEMOM: true });
-    return unsub;
-  }, [stage, ctx, blocks]);
+    if (workout.executionTimeline) {
+      setStage('preflight');
+    }
+  }, [workout.executionTimeline]);
+
+  // Wire the real timeline player → observer
+  const playerRef = useRef<TimelinePlayer | null>(null);
+  useEffect(() => {
+    if (stage !== 'playing' || !workout.executionTimeline) return;
+    
+    const player = new TimelinePlayer();
+    playerRef.current = player;
+    const unsub = player.subscribe((ev: Event) => onEvent(ctx, ev));
+    
+    console.log('🎬 Starting compiled timeline:', workout.executionTimeline);
+    player.start(workout.executionTimeline);
+    
+    return () => {
+      player.stop();
+      unsub();
+    };
+  }, [stage, ctx, workout.executionTimeline]);
+
+  if (stage === 'loading') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-lg">Loading workout timeline...</div>
+      </div>
+    );
+  }
 
   if (stage === 'preflight') {
     return (
       <PreflightWeightsSheet
         exercises={exercises}
-        lastLoads={lastLoads}
+        lastLoads={{}} // No previous loads for testing
         onSave={(p) => { setPlanned(p); setStage('playing'); }}
       />
     );
   }
-  return <div>▶️ Workout running… (see console for Coach output)</div>;
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="text-center">
+        <div className="text-2xl font-bold mb-2">▶️ {workout.name}</div>
+        <div className="text-lg text-muted-foreground">Workout running… (see console for Coach output)</div>
+      </div>
+    </div>
+  );
 }
