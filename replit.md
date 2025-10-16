@@ -17,6 +17,9 @@ The application uses a client-server architecture with a React frontend and an E
 - **UI**: Shadcn/ui with Tailwind CSS for a responsive, mobile-first interface.
 - **Computer Vision**: Integrates MediaPipe BlazePose for human pose detection and COCO-SSD for object detection, with spatial mapping and Roboflow API integration.
 - **Contribution System**: Supports image contributions with quality control and crowdsourced labeling.
+- **Timeline Player**: `TimelinePlayer.ts` converts server-compiled ExecutionTimeline objects into coach events, mapping work/rest/await_ready steps to the event system.
+- **Workout Player**: Fetches real block workouts with compiled timelines from `/api/block-workouts` endpoint and executes them with coach integration.
+- **Preflight Weights**: kg/lbs toggle with auto-conversion (default: lbs). Converts all entered weights when switching units, rounded to 1 decimal place.
 
 **Backend (Express + Node.js)**
 - **Server**: Express.js with TypeScript.
@@ -24,8 +27,9 @@ The application uses a client-server architecture with a React frontend and an E
 - **Storage**: PostgreSQL database for persistent data, user management, and AI training data.
 - **Authentication**: Replit Auth with OpenID Connect.
 - **AI Training Pipeline**: Supports image compression and a PostgreSQL schema for AI training optimization.
-- **AI Workout Coach (Event-Driven Observer)**: Real-time OpenAI API for conversational voice interaction. The host controls timing, and the AI observes via canonical events. Server-side relay injects RAG knowledge base context. Includes a minimal-chatter prompt, a `record_set` tool, and a beep system for precise timing.
-  - **Canonical Events**: `set_start`, `set_10s_remaining`, `set_complete`, `rest_start`, `rest_complete`, `await_ready`, `user_ready`, `workout_complete`.
+- **AI Workout Coach (Event-Driven Observer)**: Real-time OpenAI API for conversational voice interaction. The host controls timing, and the AI observes via canonical events. Server-side relay injects RAG knowledge base context. Includes pattern-aware, mode-aware response system with cooldown pooling.
+  - **Canonical Events**: `EV_BLOCK_START`, `EV_COUNTDOWN`, `EV_WORK_START`, `EV_WORK_END`, `EV_REST_START`, `EV_REST_END`, `EV_ROUND_REST_START`, `EV_ROUND_REST_END`, `EV_BLOCK_END`, `EV_WORKOUT_END`, `EV_AWAIT_READY`.
+  - **Response System**: Database-backed coach responses with filtering by event_type, pattern, mode, and chatter_level. Uses cooldown system and priority-based selection. Currently using in-memory seed data, designed for database swap.
 - **Block-Based Workout Architecture**: Workouts are built from parameter-driven Blocks that compile into ExecutionTimelines with absolute timestamps, allowing for universal workout parameterization.
 - **Drift-Free Timeline Execution**: Uses an absolute timestamp system with drift detection and resync validation, including robust pause/resume functionality.
 - **Adaptive Ready System (`await_ready`)**: The timeline automatically pauses at strategic points for flexibility, allowing users to signal readiness via voice or UI.
@@ -47,6 +51,9 @@ The application uses a client-server architecture with a React frontend and an E
 - **Trainer Mode**: Binary pass/fail filtering based on strict criteria.
 - **Pairing Logic**: Two-tier system combining curated exact pairings with exercise type antagonist pairing.
 - **Block Format Conversion**: API endpoints (`/api/recommendations/preview-block`, `/api/recommendations/create-block`) convert superset recommendations to the Block format for the compiler pipeline, including Airtable exercise snapshots.
+
+## Known Issues
+- **Stallwart Ping Errors**: Console shows "stallwart: failed ping" errors from Replit's build infrastructure. These are non-critical and do not affect workout functionality.
 
 ## External Dependencies
 - **Airtable**: Primary database for exercise data.
