@@ -1,0 +1,58 @@
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Toggle } from '@/components/ui/toggle';
+
+export function RestQuickLogCard({
+  exerciseName,
+  defaultReps,
+  defaultLoad,
+  defaultRPE = 'Moderate',
+  defaultPain = false,
+  onUseLast,
+  onSubmit
+}: {
+  exerciseName: string;
+  defaultReps?: number;
+  defaultLoad?: number;
+  defaultRPE?: 'Easy'|'Moderate'|'Hard';
+  defaultPain?: boolean;
+  onUseLast: () => void;
+  onSubmit: (payload: { reps?: number; load?: number; rpe: 'Easy'|'Moderate'|'Hard'; pain: boolean }) => void;
+}) {
+  const [reps, setReps] = useState<number | undefined>(defaultReps);
+  const [load, setLoad] = useState<number | undefined>(defaultLoad);
+  const [rpe, setRpe] = useState<'Easy'|'Moderate'|'Hard'>(defaultRPE);
+  const [pain, setPain] = useState<boolean>(defaultPain);
+
+  return (
+    <Card className="w-full">
+      <CardContent className="space-y-3 pt-4">
+        <div className="text-sm text-muted-foreground">{exerciseName}</div>
+        <div className="grid grid-cols-12 gap-2 items-center">
+          <div className="col-span-3">
+            <Input inputMode="numeric" placeholder="Reps" value={reps ?? ''} onChange={e => setReps(e.target.value ? Number(e.target.value) : undefined)} />
+          </div>
+          <div className="col-span-3">
+            <Input inputMode="decimal" placeholder="Load (kg)" value={load ?? ''} onChange={e => setLoad(e.target.value ? Number(e.target.value) : undefined)} />
+          </div>
+          <div className="col-span-4 flex gap-1">
+            {(['Easy','Moderate','Hard'] as const).map(level => (
+              <Button key={level} variant={rpe===level? 'default':'outline'} size="sm" onClick={() => setRpe(level)}>
+                {level}
+              </Button>
+            ))}
+          </div>
+          <div className="col-span-2 flex justify-end">
+            <Toggle pressed={pain} onPressedChange={setPain}>Pain</Toggle>
+          </div>
+        </div>
+        <div className="flex justify-between pt-2">
+          <Button variant="ghost" onClick={onUseLast}>Use last set values</Button>
+          <Button onClick={() => onSubmit({ reps, load, rpe, pain })}>Save</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
