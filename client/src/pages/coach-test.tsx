@@ -10,7 +10,7 @@ export default function CoachTest() {
       params: {
         pattern: 'superset' as const,
         mode: 'reps' as const,
-        awaitReadyBeforeStart: true
+        awaitReadyBeforeStart: false // Auto-start for testing
       }
     }
   ];

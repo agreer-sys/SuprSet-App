@@ -1,0 +1,45 @@
+[Log] [CAPTION] – "Block starting — set up now." (injected.js, line 27)
+[Log] [COACH] – "Block starting — set up now." (injected.js, line 27)
+[Log] stallwart: failed ping 1 (stallwart.build.js, line 1)
+[Log] stallwart: failed ping 2 (stallwart.build.js, line 1)
+[Log] stallwart: failed ping 3 (stallwart.build.js, line 1)
+[Error] Unable to post message to https://staging.replit.com. Recipient has origin https://replit.com.
+
+	postMessage
+	postMessageToWorkspace (workspace_iframe.html:43)
+	(anonymous function) (workspace_iframe.html:62)
+[Error] Unable to post message to https://firewalledreplit.com. Recipient has origin https://replit.com.
+
+	postMessage
+	postMessageToWorkspace (workspace_iframe.html:44)
+	(anonymous function) (workspace_iframe.html:62)
+[Error] Unable to post message to https://staging.firewalledreplit.com. Recipient has origin https://replit.com.
+
+	postMessage
+	postMessageToWorkspace (workspace_iframe.html:45)
+	(anonymous function) (workspace_iframe.html:62)
+[Error] Unable to post message to http://localhost:3000. Recipient has origin https://replit.com.
+
+	postMessage
+	postMessageToWorkspace (workspace_iframe.html:46)
+	(anonymous function) (workspace_iframe.html:62)
+[Error] Unable to post message to https://staging.replit.com. Recipient has origin https://replit.com.
+
+	postMessage
+	postMessageToWorkspace (workspace_iframe.html:43)
+	(anonymous function) (workspace_iframe.html:62)
+[Error] Unable to post message to https://firewalledreplit.com. Recipient has origin https://replit.com.
+
+	postMessage
+	postMessageToWorkspace (workspace_iframe.html:44)
+	(anonymous function) (workspace_iframe.html:62)
+[Error] Unable to post message to https://staging.firewalledreplit.com. Recipient has origin https://replit.com.
+
+	postMessage
+	postMessageToWorkspace (workspace_iframe.html:45)
+	(anonymous function) (workspace_iframe.html:62)
+[Error] Unable to post message to http://localhost:3000. Recipient has origin https://replit.com.
+
+	postMessage
+	postMessageToWorkspace (workspace_iframe.html:46)
+	(anonymous function) (workspace_iframe.html:62)
