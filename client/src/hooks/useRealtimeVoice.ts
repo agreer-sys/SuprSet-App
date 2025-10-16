@@ -295,7 +295,7 @@ export function useRealtimeVoice({
       wsRef.current.send(JSON.stringify({
         type: 'response.create',
         response: {
-          modalities: ['audio'],
+          modalities: ['audio', 'text'],
           instructions: `Say exactly: "${text}". Use a motivating, coaching tone. Be brief.`
         }
       }));
