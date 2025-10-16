@@ -58,6 +58,7 @@ export default function WorkoutSessionPage() {
   const [chatterLevel] = useState<ChatterLevel>('minimal');
   const [plannedLoads, setPlannedLoads] = useState<Record<string, number|undefined>>({});
   const [showPreflight, setShowPreflight] = useState(false); // Only show for block workouts
+  const [preflightCompleted, setPreflightCompleted] = useState(false); // Track if preflight was completed
 
   // Fetch active workout session - try block workout first, then fall back to template
   const { data: blockSession, isLoading: isLoadingBlock } = useQuery<any>({
@@ -94,6 +95,19 @@ export default function WorkoutSessionPage() {
   const session = blockSession || templateSession;
   const isBlockWorkout = !!blockSession;
   const executionTimeline = blockSession?.executionTimelineSnapshot || blockSession?.blockWorkout?.executionTimeline;
+  
+  // DEBUG: Log the session and timeline data
+  useEffect(() => {
+    if (blockSession) {
+      console.log('🔍 Block session data:', {
+        id: blockSession.id,
+        hasSnapshot: !!blockSession.executionTimelineSnapshot,
+        hasBlockWorkout: !!blockSession.blockWorkout,
+        hasBlockWorkoutTimeline: !!blockSession.blockWorkout?.executionTimeline,
+        executionTimeline: executionTimeline ? 'LOADED' : 'MISSING'
+      });
+    }
+  }, [blockSession, executionTimeline]);
 
 
   // Memoize templateExercises to prevent infinite loop - only recreate when session data changes
@@ -130,12 +144,12 @@ export default function WorkoutSessionPage() {
     return Array.from(exerciseMap.values());
   }, [executionTimeline]);
 
-  // NEW: Auto-show preflight when block workout is detected
+  // NEW: Auto-show preflight when block workout is detected (only once)
   useEffect(() => {
-    if (isBlockWorkout && exercises.length > 0 && !showPreflight) {
+    if (isBlockWorkout && exercises.length > 0 && !preflightCompleted && !showPreflight) {
       setShowPreflight(true);
     }
-  }, [isBlockWorkout, exercises.length, showPreflight]);
+  }, [isBlockWorkout, exercises.length, preflightCompleted, showPreflight]);
 
   // NEW: Build TimelineContext for the observer
   const coachContext = useMemo<TimelineContext>(() => ({
@@ -1217,10 +1231,12 @@ export default function WorkoutSessionPage() {
           lastLoads={{}} // TODO: Fetch from previous session
           onSave={(loads) => {
             setPlannedLoads(loads);
+            setPreflightCompleted(true);
             setShowPreflight(false);
           }}
           onCancel={() => {
             // Allow skipping preflight
+            setPreflightCompleted(true);
             setShowPreflight(false);
           }}
         />
