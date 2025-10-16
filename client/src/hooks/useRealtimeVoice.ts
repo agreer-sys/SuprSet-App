@@ -289,6 +289,19 @@ export function useRealtimeVoice({
     }
   }, []);
 
+  const speakDirectly = useCallback((text: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('🎯 NEW Coach TTS:', text);
+      wsRef.current.send(JSON.stringify({
+        type: 'response.create',
+        response: {
+          modalities: ['audio'],
+          instructions: `Say exactly: "${text}". Use a motivating, coaching tone. Be brief.`
+        }
+      }));
+    }
+  }, []);
+
   const updateContext = useCallback((context: any) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
@@ -299,20 +312,9 @@ export function useRealtimeVoice({
   }, []);
 
   // Helper: decide if an event should trigger AI speech/output
+  // DISABLED: NEW coach system handles all responses now via speakDirectly
   const shouldTriggerResponse = useCallback((eventName: string): boolean => {
-    const TRIGGER_EVENTS = [
-      "await_ready",        // announce exercise enthusiastically ("Let's go... burpees set 1")
-      "set_midpoint",       // midpoint encouragement ("Halfway there, finish strong")
-      "set_complete",       // ask weight/reps
-      "block_transition",   // announce next block
-      "workout_complete"    // session end
-      // REMOVED: set_start (exercise already announced at await_ready)
-      // REMOVED: set_10s_remaining (stay silent to save energy for set completion)
-      // REMOVED: user_ready (avoid redundant speech)
-      // REMOVED: rest_start (context-only)
-    ];
-
-    return TRIGGER_EVENTS.includes(eventName);
+    return false; // Disable legacy event-triggered responses
   }, []);
 
   const processQueuedEvent = useCallback(() => {
@@ -583,6 +585,7 @@ export function useRealtimeVoice({
     sendText,
     sendEvent,
     updateContext,
+    speakDirectly,
   };
 }
 

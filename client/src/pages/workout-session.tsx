@@ -151,6 +151,28 @@ export default function WorkoutSessionPage() {
     }
   }, [isBlockWorkout, exercises.length, preflightCompleted, showPreflight]);
 
+  // OpenAI Realtime API setup (needs to be before coachContext)
+  const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
+    setCoachingMessage(transcript);
+    if (isFinal && transcript.trim()) {
+      setChatMessages(prev => [...prev, {
+        role: 'user',
+        content: transcript,
+        timestamp: new Date().toISOString()
+      }]);
+    }
+  }, []);
+
+  const handleRealtimeError = useCallback((error: string) => {
+    console.error('Realtime API error:', error);
+  }, []);
+
+  const realtime = useRealtimeVoice({
+    sessionId: session?.id || 0,
+    onTranscript: handleTranscript,
+    onError: handleRealtimeError,
+  });
+
   // NEW: Build TimelineContext for the observer
   const coachContext = useMemo<TimelineContext>(() => ({
     workoutId: session?.id?.toString() || 'unknown',
@@ -164,7 +186,9 @@ export default function WorkoutSessionPage() {
     getNextExerciseName: () => undefined,
     showReadyModal: () => new Promise<void>(res => { if (window.confirm('Ready?')) res(); }),
     speak: (text) => {
-      // Integrate with existing chat system
+      // NEW: Route to Realtime TTS instead of console
+      realtime.speakDirectly(text);
+      // Also add to chat for visual feedback
       setChatMessages(prev => [...prev, { 
         role: 'assistant', 
         content: text, 
@@ -173,7 +197,7 @@ export default function WorkoutSessionPage() {
     },
     caption: (text) => console.log('[COACH CAPTION]', text),
     haptic: () => {}
-  }), [session?.id, chatterLevel, plannedLoads, exercises]);
+  }), [session?.id, chatterLevel, plannedLoads, exercises, realtime]);
 
   // NEW: Seed coach responses on mount (SMART varied responses to demonstrate the system)
   useEffect(() => {
@@ -209,28 +233,6 @@ export default function WorkoutSessionPage() {
   const emitCoachEvent = useCallback((event: Event) => {
     onEvent(coachContext, event);
   }, [coachContext]);
-
-  // OpenAI Realtime API for voice interaction
-  const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
-    setCoachingMessage(transcript);
-    if (isFinal && transcript.trim()) {
-      setChatMessages(prev => [...prev, {
-        role: 'user',
-        content: transcript,
-        timestamp: new Date().toISOString()
-      }]);
-    }
-  }, []);
-
-  const handleRealtimeError = useCallback((error: string) => {
-    console.error('Realtime API error:', error);
-  }, []);
-
-  const realtime = useRealtimeVoice({
-    sessionId: session?.id || 0,
-    onTranscript: handleTranscript,
-    onError: handleRealtimeError,
-  });
 
   // Adapter layer - maps old speech recognition variables to Realtime API
   const listening = realtime.isListening;
