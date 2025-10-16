@@ -950,6 +950,7 @@ export default function WorkoutSessionPage() {
       realtime.sendEvent('workout_complete', {
         total_duration_s: Math.floor(elapsedMs / 1000),
       });
+      emitCoachEvent({ type: 'EV_WORKOUT_END' });
       hasSpokenForStepRef.current.add('workout_complete');
       return;
     }
@@ -969,9 +970,14 @@ export default function WorkoutSessionPage() {
           exercise_name: previousStep.exercise?.name || 'Exercise',
           set_index: previousStep.set || 1,
         });
+        emitCoachEvent({ 
+          type: 'EV_WORK_END', 
+          exerciseId: previousStep.exercise?.id?.toString() || 'unknown' 
+        });
         hasSpokenForStepRef.current.add(`complete-${previousStepIndexRef.current}`);
       } else if (previousStep.type === 'rest' && !hasSpokenForStepRef.current.has(`rest_complete-${previousStepIndexRef.current}`)) {
         realtime.sendEvent('rest_complete');
+        emitCoachEvent({ type: 'EV_REST_END' });
         hasSpokenForStepRef.current.add(`rest_complete-${previousStepIndexRef.current}`);
       }
     }
@@ -994,6 +1000,10 @@ export default function WorkoutSessionPage() {
         exercise_name: nextWorkStep?.exercise?.name || 'Exercise',
         set_index: nextWorkStep?.set || 1,
       });
+      emitCoachEvent({ 
+        type: 'EV_AWAIT_READY', 
+        blockId: session?.id?.toString() || 'block-1' 
+      });
     } else if (currentStep.type === 'work') {
       const exerciseName = currentStep.exercise?.name || 'Exercise';
       const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
@@ -1002,6 +1012,10 @@ export default function WorkoutSessionPage() {
         exercise_name: exerciseName,
         set_index: currentStep.set || 1,
         work_s: duration,
+      });
+      emitCoachEvent({ 
+        type: 'EV_WORK_START', 
+        exerciseId: currentStep.exercise?.id?.toString() || 'unknown' 
       });
     } else if (currentStep.type === 'rest') {
       const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
@@ -1014,6 +1028,11 @@ export default function WorkoutSessionPage() {
         duration_s: duration,
         next_exercise: nextStep?.exercise?.name || null,
         next_set: nextStep?.set || null,
+      });
+      emitCoachEvent({ 
+        type: 'EV_REST_START', 
+        sec: duration,
+        reason: nextStep?.exercise?.name ? `before ${nextStep.exercise.name}` : undefined 
       });
     } else if (currentStep.type === 'instruction' && currentStep.preWorkout) {
       // Workout intro - not a canonical event, use sendText
@@ -1048,6 +1067,7 @@ export default function WorkoutSessionPage() {
         exercise_name: currentStep.exercise?.name || 'Exercise',
         set_index: currentStep.set || 1,
       });
+      // Note: No canonical coach event for midpoint - realtime API only
       midpointStepRef.current = currentStepIndex;
     }
     
