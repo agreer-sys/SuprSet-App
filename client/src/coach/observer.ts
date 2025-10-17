@@ -1,19 +1,45 @@
 import { TimelineContext, Event } from '@/types/coach';
 import { selectResponse } from '@/coach/responseService';
 
-function passesChatterGate(ctx: TimelineContext): boolean {
-  return ctx.chatterLevel !== 'silent';
+// Speech queue to prevent overlapping TTS calls
+let pendingWorkEndTimer: ReturnType<typeof setTimeout> | null = null;
+let speaking = false;
+const speakQueue: Array<{text: string}> = [];
+
+function enqueueSpeak(ctx: TimelineContext, text: string) {
+  speakQueue.push({ text });
+  processSpeakQueue(ctx);
 }
 
-function speakOrSignal(ctx: TimelineContext, line: string) {
+function processSpeakQueue(ctx: TimelineContext) {
+  if (speaking || speakQueue.length === 0) return;
+  speaking = true;
+  const { text } = speakQueue.shift()!;
+  
+  // Always caption
+  ctx.caption?.(text);
+  
+  // Send to TTS
+  ctx.speak?.(text);
+  
+  // Release lock after ~1.5s (average TTS duration)
+  setTimeout(() => {
+    speaking = false;
+    processSpeakQueue(ctx);
+  }, 1500);
+}
+
+function say(ctx: TimelineContext, line: string) {
   if (ctx.chatterLevel === 'signals') {
-    // minimal audio cues only
     ctx.caption?.(line);
     ctx.haptic?.('light');
     return;
   }
-  ctx.caption?.(line);
-  ctx.speak?.(line);
+  enqueueSpeak(ctx, line);
+}
+
+function passesChatterGate(ctx: TimelineContext): boolean {
+  return ctx.chatterLevel !== 'silent';
 }
 
 function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
@@ -24,7 +50,7 @@ function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
     case 'EV_WORK_START': return 'Go — one clean form cue.';
     case 'EV_WORK_END': return 'Nice work — breathe.';
     case 'EV_REST_START': return 'Rest — log your set.';
-    case 'EV_REST_END': return 'Rest complete.';
+    case 'EV_REST_END': return 'Rest over. Lock in.';
     case 'EV_ROUND_REST_START': return 'Round rest — reset and get set.';
     case 'EV_ROUND_REST_END': return 'Round rest complete.';
     case 'EV_BLOCK_END': return 'Block complete — next block up.';
@@ -43,15 +69,34 @@ export function onEvent(ctx: TimelineContext, ev: Event) {
   // EMOM strictness is enforced by the timeline builder; observer keeps cues tight
   if (!passesChatterGate(ctx)) return;
 
+  // Coalesce: prefer REST_START over WORK_END if both fire together
+  if (ev.type === 'EV_WORK_END') {
+    const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
+    if (!line) return;
+    // Delay slightly; if REST_START arrives, we'll cancel this
+    pendingWorkEndTimer = setTimeout(() => {
+      say(ctx, line);
+      pendingWorkEndTimer = null;
+    }, 120);
+    return;
+  }
+
+  if (ev.type === 'EV_REST_START') {
+    if (pendingWorkEndTimer) {
+      clearTimeout(pendingWorkEndTimer);
+      pendingWorkEndTimer = null; // suppress work_end cue
+    }
+    const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
+    if (line) say(ctx, line);
+    // Open logging UI at rest start
+    if (ctx.openRestQuickLog && ctx.mode === 'reps') {
+      // In rep‑mode we log during rest
+    }
+    return;
+  }
+
+  // Normal path for all other events
   const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
   if (!line) return;
-  // throttle policy can live here if needed (e.g., 1 cue / 5s)
-  speakOrSignal(ctx, line);
-
-  // Open logging UI at rest start
-  if (ev.type === 'EV_REST_START' && ctx.openRestQuickLog && (ctx.mode === 'reps')) {
-    // In rep‑mode we log during rest
-    // If partnerAlt is used, caller will pass the active exerciseId in a separate event or context
-    // Here we assume EV_WORK_END carried it previously; app can store it on ctx
-  }
+  say(ctx, line);
 }
