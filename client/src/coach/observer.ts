@@ -3,6 +3,7 @@ import { selectResponse } from '@/coach/responseService';
 
 // Speech queue to prevent overlapping TTS calls
 let pendingWorkEndTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingRestEndTimer: ReturnType<typeof setTimeout> | null = null;
 let speaking = false;
 const speakQueue: Array<{text: string}> = [];
 
@@ -69,7 +70,7 @@ export function onEvent(ctx: TimelineContext, ev: Event) {
   // EMOM strictness is enforced by the timeline builder; observer keeps cues tight
   if (!passesChatterGate(ctx)) return;
 
-  // Coalesce: prefer REST_START over WORK_END if both fire together
+  // Coalesce #1: prefer REST_START over WORK_END if both fire together
   if (ev.type === 'EV_WORK_END') {
     const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
     if (!line) return;
@@ -92,6 +93,28 @@ export function onEvent(ctx: TimelineContext, ev: Event) {
     if (ctx.openRestQuickLog && ctx.mode === 'reps') {
       // In rep‑mode we log during rest
     }
+    return;
+  }
+
+  // Coalesce #2: prefer WORK_START over REST_END if both fire together
+  if (ev.type === 'EV_REST_END') {
+    const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
+    if (!line) return;
+    // Delay slightly; if WORK_START arrives, we'll cancel this
+    pendingRestEndTimer = setTimeout(() => {
+      say(ctx, line);
+      pendingRestEndTimer = null;
+    }, 120);
+    return;
+  }
+
+  if (ev.type === 'EV_WORK_START') {
+    if (pendingRestEndTimer) {
+      clearTimeout(pendingRestEndTimer);
+      pendingRestEndTimer = null; // suppress rest_end cue
+    }
+    const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
+    if (line) say(ctx, line);
     return;
   }
 
