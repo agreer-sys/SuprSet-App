@@ -3,6 +3,32 @@
 ## Overview
 SuprSet is a React-based web application providing intelligent exercise superset recommendations for strength training. It aims to build a community-driven AI system for real-time computer vision-based exercise analysis, enabling intelligent recommendations and user contributions for a proprietary dataset. Key capabilities include dual-mode recommendations (Trainer/Standard), real-time computer vision with pose and object detection, a community contribution system with quality controls, user authentication, and an AI training pipeline. The business vision is to create a competitive moat through proprietary datasets and a community-driven AI model.
 
+## Core Architectural Principles
+
+### AI Coach Responsibility Split (CRITICAL - DO NOT DRIFT)
+**Local (Replit App) Handles:**
+- ⏱️ **All timing**: Work/rest timers, countdown, drift detection, resync
+- 🔔 **All beeps**: Short beeps (3-2-1), long beeps (start/end of sets)
+- 🧠 **All coaching intelligence**: Response selection, cooldown tracking, priority ranking, speech queue, coalescing logic
+- 🎯 **Workout execution**: Step transitions, event firing, pause/resume, timeline control
+
+**Remote (OpenAI Realtime API) Handles:**
+- 🎙️ **Voice synthesis ONLY**: Receives text string → returns speech audio
+- ❌ **NO workout logic**: Does not control timing, does not select what to say, does not manage state
+
+**Why This Matters:**
+- ✅ **Bulletproof reliability**: Workout never stalls if API or connection drops
+- ✅ **Security isolation**: AI has zero access to database, algorithms, or sensitive data
+- ✅ **Graceful degradation**: If API fails, workout continues with beeps/UI (silent coach)
+
+**Data Flow to AI:**
+The AI receives pre-compiled workout timeline context including:
+- Exercise names, IDs, coaching cues (bullet points), equipment, muscle groups
+- Timing information (work/rest durations), set/round numbers, workout structure
+- ❌ Does NOT receive: Raw database access, superset algorithm, pairing logic, user personal data
+
+**Analogy**: Replit App = Director + Scriptwriter + Timekeeper | OpenAI API = Voice actor reading the script
+
 ## User Preferences
 - **Development Process**: Maintain master TODO.md list - add all discussed/suggested features to this central roadmap
 - **Feedback Style**: Continue challenging assumptions and providing counterpoints on pairing logic and design decisions
