@@ -16,4 +16,7 @@ CREATE TABLE IF NOT EXISTS coach_responses (
 INSERT INTO coach_responses (event_type, pattern, mode, chatter_level, text_template, priority) VALUES
 ('pre_block','any','reps','minimal','Superset: {{exercise}} then {{next}} — {{sets}} sets, {{restSec}}s rest. Set 1 in {{count}}…',4),
 ('last5s','any','time','minimal','Last five — finish clean, breathe.',3),
-('rest_start','any','reps','minimal','Nice set. Log reps & load; tap "Use last values" if unchanged.',5);
+('rest_start','any','reps','minimal','Nice set. Log reps & load; tap "Use last values" if unchanged.',5),
+('work_start','any','time','minimal','{{exercise}} — {{cue}}',4),
+('last5s','any','time','minimal','Last five — {{tempoCue}}',4),
+('rest_end','any','any','minimal','Time. Back to {{exercise}}—lock in.',4);
