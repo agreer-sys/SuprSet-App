@@ -325,7 +325,7 @@ export default function WorkoutSessionPage() {
       oscillator.type = 'sine';
       
       const now = audioContext.currentTime;
-      gainNode.gain.setValueAtTime(0.5, now);
+      gainNode.gain.setValueAtTime(1.0, now);
       gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
       
       oscillator.start(now);
@@ -356,7 +356,7 @@ export default function WorkoutSessionPage() {
       oscillator.type = 'sine';
       
       const now = audioContext.currentTime;
-      gainNode.gain.setValueAtTime(0.5, now);
+      gainNode.gain.setValueAtTime(1.0, now);
       gainNode.gain.exponentialRampToValueAtTime(0.01, now + 1.0);
       
       oscillator.start(now);
@@ -1020,7 +1020,11 @@ export default function WorkoutSessionPage() {
         hasSpokenForStepRef.current.add(`complete-${previousStepIndexRef.current}`);
       } else if (previousStep.type === 'rest' && !hasSpokenForStepRef.current.has(`rest_complete-${previousStepIndexRef.current}`)) {
         realtime.sendEvent('rest_complete');
-        emitCoachEvent({ type: 'EV_REST_END' });
+        // Pass the NEXT exercise (current step after rest)
+        emitCoachEvent({ 
+          type: 'EV_REST_END',
+          exerciseId: currentStep.exercise?.id?.toString() || 'unknown'
+        });
         hasSpokenForStepRef.current.add(`rest_complete-${previousStepIndexRef.current}`);
       }
     }

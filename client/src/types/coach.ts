@@ -31,7 +31,7 @@ export type Event =
   | { type:'EV_WORK_START'; exerciseId:string; setIndex?: number; totalSets?: number }
   | { type:'EV_WORK_END'; exerciseId:string }
   | { type:'EV_REST_START'; sec:number; reason?:string; previousExerciseId?: string }
-  | { type:'EV_REST_END' }
+  | { type:'EV_REST_END'; exerciseId?: string }
   | { type:'EV_ROUND_REST_START'; sec:number }
   | { type:'EV_ROUND_REST_END' }
   | { type:'EV_BLOCK_END'; blockId:string }

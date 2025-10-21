@@ -6,6 +6,7 @@ const ALLOW_VOICE_OVER_BEEP = true; // voice may overlap beeps if true
 let speaking = false;
 const speakQueue: Array<{ text: string }> = [];
 let pendingWorkEndTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingRestEndTimer: ReturnType<typeof setTimeout> | null = null;
 
 function passesChatterGate(ctx: TimelineContext): boolean { return ctx.chatterLevel !== 'silent'; }
 function scheduleAt(secFromNow: number, fn: ()=>void){ if (secFromNow <= 0) return fn(); setTimeout(fn, secFromNow * 1000); }
@@ -62,7 +63,7 @@ export function onEvent(ctx: TimelineContext, ev: Event) {
 
   if (!passesChatterGate(ctx)) return; // silent mode
 
-  // Coalesce: prefer REST_START over WORK_END when both arrive together
+  // Coalesce #1: prefer REST_START over WORK_END when both arrive together
   if (ev.type === 'EV_WORK_END') {
     const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
     if (!line) return;
@@ -71,6 +72,20 @@ export function onEvent(ctx: TimelineContext, ev: Event) {
   }
   if (ev.type === 'EV_REST_START') {
     if (pendingWorkEndTimer) { clearTimeout(pendingWorkEndTimer); pendingWorkEndTimer = null; }
+    const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
+    if (line) say(ctx, line);
+    return;
+  }
+
+  // Coalesce #2: prefer WORK_START over REST_END when both arrive together
+  if (ev.type === 'EV_REST_END') {
+    const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
+    if (!line) return;
+    pendingRestEndTimer = setTimeout(() => { say(ctx, line); pendingRestEndTimer = null; }, 120);
+    return;
+  }
+  if (ev.type === 'EV_WORK_START') {
+    if (pendingRestEndTimer) { clearTimeout(pendingRestEndTimer); pendingRestEndTimer = null; }
     const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
     if (line) say(ctx, line);
     return;
