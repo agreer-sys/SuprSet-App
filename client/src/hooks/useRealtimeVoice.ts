@@ -292,12 +292,25 @@ export function useRealtimeVoice({
   const speakDirectly = useCallback((text: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('🎯 NEW Coach TTS:', text);
+      
+      // Step 1: Add coach cue to conversation
+      wsRef.current.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text: `[COACH_CUE] ${text}`,
+            },
+          ],
+        },
+      }));
+
+      // Step 2: Trigger response (session config handles modalities & voice)
       wsRef.current.send(JSON.stringify({
         type: 'response.create',
-        response: {
-          modalities: ['audio', 'text'],
-          instructions: `Say exactly: "${text}". Use a motivating, coaching tone. Be brief.`
-        }
       }));
     }
   }, []);
