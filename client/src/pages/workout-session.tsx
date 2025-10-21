@@ -137,7 +137,13 @@ export default function WorkoutSessionPage() {
       if (step.exercise) {
         exerciseMap.set(step.exercise.id.toString(), {
           id: step.exercise.id.toString(),
-          name: step.exercise.name
+          name: step.exercise.name,
+          cues: step.exercise.cues || [],
+          equipment: step.exercise.equipment || [],
+          muscleGroup: step.exercise.muscleGroup || '',
+          videoUrl: step.exercise.videoUrl,
+          imageUrl: step.exercise.imageUrl,
+          estimatedTimeSec: step.exercise.estimatedTimeSec || 45
         });
       }
     });
@@ -184,6 +190,12 @@ export default function WorkoutSessionPage() {
     nowMs: () => Date.now(),
     getExerciseName: (id) => exercises.find(e => e.id === id)?.name || 'Exercise',
     getNextExerciseName: () => undefined,
+    getExerciseMeta: (id) => {
+      const e = exercises.find(x => x.id === id) as any;
+      return e
+        ? { id: e.id, name: e.name, cues: e.cues||[], equipment: e.equipment||[], muscleGroup: e.muscleGroup||'', estimatedTimeSec: e.estimatedTimeSec }
+        : { id, name: 'Exercise', cues: [], equipment: [], muscleGroup: '', estimatedTimeSec: 45 };
+    },
     showReadyModal: () => new Promise<void>(res => { if (window.confirm('Ready?')) res(); }),
     speak: (text) => {
       // NEW: Route to Realtime TTS instead of console
