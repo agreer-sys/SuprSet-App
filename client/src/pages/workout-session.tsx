@@ -756,15 +756,11 @@ export default function WorkoutSessionPage() {
     }
   };
 
-  // Automatic coach message sender for timer events
+  // DISABLED: Old automatic coach system - replaced by observer pattern
   const sendAutomaticCoachMessage = (message: string) => {
-    if (!session?.id) return;
-    
-    // Add message directly to chat as assistant message (no AI processing)
-    // The useEffect will handle speaking it automatically
-    setChatMessages(prev => [...prev, 
-      { role: 'assistant', content: message, timestamp: new Date().toISOString() }
-    ]);
+    // Disabled to prevent overlap with new observer-based coach system
+    console.log('[OLD COACH - DISABLED]', message);
+    return;
   };
 
   const handleSendCoachingMessage = async () => {
