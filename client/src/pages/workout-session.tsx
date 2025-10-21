@@ -921,8 +921,11 @@ export default function WorkoutSessionPage() {
   }, [isBlockWorkout, executionTimeline, workoutStartEpochMs, isPaused, currentStepIndex, elapsedMs, isAwaitingReady]);
 
   // Handler for confirming readiness - re-anchors timeline
-  const handleReadyConfirmed = () => {
+  const handleReadyConfirmed = async () => {
     if (!isAwaitingReady || !executionTimeline || currentStepIndex >= executionTimeline.executionTimeline.length) return;
+    
+    // CRITICAL: Resume AudioContext for beeps on mobile
+    await resumeAudioContext();
     
     const currentStep = executionTimeline.executionTimeline[currentStepIndex];
     
