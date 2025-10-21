@@ -1,0 +1,63 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+export type RpeWord = 'Easy'|'Moderate'|'Hard';
+
+export function BlockSummaryLogger({
+  exercises,
+  defaults,
+  mode, // 'time' | 'reps'
+  onUseLastAll,
+  onSubmit
+}: {
+  exercises: Array<{ id:string; name:string }>;
+  defaults: Record<string, { reps?: number; load?: number; rpe?: RpeWord; pain?: boolean }>;
+  mode: 'time'|'reps';
+  onUseLastAll?: () => void;
+  onSubmit: (vals: Record<string, { reps?: number; load?: number; rpe: RpeWord; pain: boolean }>) => void;
+}){
+  const [vals, setVals] = useState<Record<string, { reps?: number; load?: number; rpe: RpeWord; pain: boolean }>>(
+    () => Object.fromEntries(exercises.map(e => [e.id, { reps: defaults[e.id]?.reps, load: defaults[e.id]?.load, rpe: defaults[e.id]?.rpe ?? 'Moderate', pain: defaults[e.id]?.pain ?? false }]))
+  );
+
+  return (
+    <Card className="w-full max-w-2xl">
+      <CardHeader>
+        <CardTitle>Block Summary</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {exercises.map(e => (
+          <div key={e.id} className="grid grid-cols-12 items-center gap-2">
+            <div className="col-span-4 truncate font-medium">{e.name}</div>
+            <div className="col-span-3">
+              <Input inputMode="decimal" placeholder="Load (kg)" value={vals[e.id]?.load ?? ''}
+                onChange={ev => setVals(v => ({ ...v, [e.id]: { ...v[e.id], load: ev.target.value ? Number(ev.target.value) : undefined }}))} />
+            </div>
+            <div className="col-span-2">
+              {mode==='reps' && (
+                <Input inputMode="numeric" placeholder="Reps" value={vals[e.id]?.reps ?? ''}
+                  onChange={ev => setVals(v => ({ ...v, [e.id]: { ...v[e.id], reps: ev.target.value ? Number(ev.target.value) : undefined }}))} />
+              )}
+            </div>
+            <div className="col-span-2 flex gap-1">
+              {(['Easy','Moderate','Hard'] as const).map(r => (
+                <Button key={r} size="sm" variant={vals[e.id]?.rpe===r?'default':'outline'} onClick={()=>setVals(v=>({ ...v, [e.id]: { ...v[e.id], rpe: r }}))}>{r}</Button>
+              ))}
+            </div>
+            <div className="col-span-1 text-right">
+              <Button variant="ghost" size="sm" onClick={()=>setVals(v=>({ ...v, [e.id]: { ...v[e.id], pain: !v[e.id]?.pain }}))}>
+                {vals[e.id]?.pain ? 'Pain ✓' : 'Pain'}
+              </Button>
+            </div>
+          </div>
+        ))}
+        <div className="flex justify-between pt-2">
+          <Button variant="ghost" onClick={onUseLastAll}>Use last values</Button>
+          <Button onClick={() => onSubmit(vals)}>Save & Continue</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
