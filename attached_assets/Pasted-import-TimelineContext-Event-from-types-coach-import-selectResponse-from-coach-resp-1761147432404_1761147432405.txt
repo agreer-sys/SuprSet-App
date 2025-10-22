@@ -1,0 +1,69 @@
+import { TimelineContext, Event } from '@/types/coach';
+import { selectResponse } from '@/coach/responseService';
+
+const ALLOW_COUNTDOWN_VOICE_AT_MINIMAL = false;
+const SPEAK_MIN_GAP_MS = 5000;
+
+let lastSpeakAt = 0;
+
+function passesChatterGate(ctx: TimelineContext): boolean {
+  return ctx.chatterLevel !== 'silent';
+}
+
+function speakOrSignal(ctx: TimelineContext, line: string) {
+  ctx.caption?.(line);
+  if (ctx.chatterLevel === 'signals') {
+    ctx.haptic?.('light');
+    return;
+  }
+  ctx.speak?.(line);
+}
+
+function shouldSpeak(): boolean {
+  const now = Date.now();
+  if (now - lastSpeakAt < SPEAK_MIN_GAP_MS) return false;
+  lastSpeakAt = now;
+  return true;
+}
+
+function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
+  switch (ev.type) {
+    case 'EV_BLOCK_START': return 'Block starting — set up now.';
+    case 'EV_WORK_PREVIEW': {
+      // Name + set/round in the pool; fallback:
+      const name = ctx.getExerciseName((ev as any).exerciseId);
+      const si = (ev as any).setIndex; const ri = (ev as any).roundIndex;
+      if (typeof si === 'number') return `Set ${si+1} — ${name} coming up.`;
+      if (typeof ri === 'number') return `Round ${ri+1} — ${name} next.`;
+      return `${name} coming up.`;
+    }
+    case 'EV_WORK_START': return 'Go — focus on one clean cue.';
+    case 'EV_WORK_END': return 'Nice work — breathe.';
+    case 'EV_REST_START': return 'Rest — log your set.';
+    case 'EV_ROUND_REST_START': return 'Round rest — reset and get set.';
+    case 'EV_BLOCK_END': return 'Block complete — log your weights.';
+    default: return null;
+  }
+}
+
+export function onEvent(ctx: TimelineContext, ev: Event) {
+  // Ready gate
+  if (ev.type === 'EV_AWAIT_READY') { ctx.showReadyModal?.(); return; }
+
+  // Countdown voice policy
+  if (ev.type === 'EV_COUNTDOWN') {
+    if (ctx.chatterLevel === 'minimal' && !ALLOW_COUNTDOWN_VOICE_AT_MINIMAL) {
+      // captions OK; voice off
+      ctx.caption?.(`Start in ${(ev.sec ?? 3)}…`);
+      return;
+    }
+  }
+
+  if (!passesChatterGate(ctx)) return;
+
+  const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
+  if (!line) return;
+
+  if (!shouldSpeak()) return;
+  speakOrSignal(ctx, line);
+}
