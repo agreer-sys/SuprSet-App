@@ -1,0 +1,92 @@
+Coach Lab (test harness you and Replit can iterate in)
+A dedicated page (or dev route) that lets you simulate blocks and hear/see the coach without touching the main workout flow.
+What the Coach Lab lets you do
+Scenario presets:
+Time-based 30/30 × 3 stations (3 rounds)
+Rep-based Straight Sets and Superset (with round timer, e.g., 3:00)
+EMOM/AMRAP quick demos
+Live timeline rail: Visual scrubber showing the next 60–180s with markers for:
+EV_WORK_PREVIEW (your new callout moment)
+countdown beeps (3-2-1)
+work start/end, rest start/end, round rest
+Chatter controls (runtime toggles): Silent / Signals / Minimal (default) / Standard / High
+Beep policy: allow/don’t allow voice over beeps (switch), volume test, quick “play beep” buttons
+Lead time knobs:
+Preview lead auto rules (15s, 10s, skip <20s) as defaults
+A slider to test alt leads (e.g., 7s for circuits)
+Response pool editor (hot reload):
+Separate tabs for work_preview (name-only), work_start (cue-only), last5s (tempo/breath)
+Live token preview: shows how {{exercise}}, {{cue}}, {{tempoCue}} render for a chosen exercise
+Cooldown/usage counters visible, with a Reset cooldowns button
+Anti-repeat inspector: Recent lines per exercise/event (so you can see why a line didn’t fire)
+Pacing overlay (rep-rounds): Visual of how estimatedTimeSec divides a 3-min round across 2–5 exercises
+Partner overlay: Toggle partnerAlt and simulate A/B swaps
+Data capture shim: Fake quick-log cards to test end-of-block capture flow, “Use last values,” etc.
+Export/Import config: Save a JSON of pools + lab settings to share with testers
+Result: anyone on the team can tweak pools, timings, chatter levels, then hit Play and immediately hear the new behavior.
+Behavior decisions locked (we’ll implement)
+Adopt EV_WORK_PREVIEW (new event).
+Fires near the end of rest, not at the start.
+Content: “Set/round + exercise name” (no cues).
+Preview lead (defaults)
+If restSec ≥ 45: preview at T–15s
+If 20 ≤ restSec < 45: preview at T–10s
+If restSec < 20: skip preview
+EMOM: preview at t=55s of each minute
+Circuits with short handoffs: T–7s
+(All adjustable in Coach Lab.)
+Announce set/round always in preview.
+Rep mode: “Set {{setNum}} — {{exercise}} coming up.”
+Time mode/circuits: “Round {{roundNum}} — {{exercise}} next.”
+Countdown voice OFF by default.
+Minimal=beeps only. (Standard/High can optionally add a soft “ready” line if you ever want it.)
+Start line = cue-only.
+On the long “GO” beep + ~200–400 ms: “Go — {{cue}}.”
+No exercise name here (we already said it in preview).
+Last-5s line = tempo/breath cue only.
+“Last five — {{tempoCue}}.”
+Anti-overlap rules
+Coalesce work_end vs rest_start (prefer rest_start speech).
+Throttle: ≤1 coach line / 5s.
+Anti-repeat: per-exercise rolling window (don’t reuse same cue for the last 3 starts).
+What changes next (no code here, just the to-do)
+Types: add EV_WORK_PREVIEW to Event; add setIndex/totalSets/roundIndex to preview payload.
+Timeline: schedule EV_WORK_PREVIEW according to the lead rule when emitting each rest.
+Observer:
+Map EV_WORK_PREVIEW → name-only line with set/round.
+EV_WORK_START → cue-only line (delayed a hair after the GO beep).
+Gate EV_COUNTDOWN voice off at Minimal.
+Response pools:
+New work_preview templates (name/round only).
+Existing work_start templates changed to cue-only.
+Ensure last5s uses {{tempoCue}}.
+Coach Lab page (MVP):
+Scenario presets, timeline rail, knobs, pool editor with live preview, cooldown inspector, export/import.
+How testing will feel for you
+Open Coach Lab → pick “Rep Superset, 3:00 rounds, 4 sets.”
+Drag preview lead slider (e.g., from 10s to 12s); hit Play; immediately hear the new cadence.
+Toggle Minimal → Signals to hear the difference (voice vs beeps only).
+Edit a start cue in the pool editor, save → replay right away.
+Click Show pacing overlay to see how Curtsy Lunges got a bigger window (unilateral).
+Default copy patterns (starting set)
+Preview (rep):
+“Set {{setNum}} — {{exercise}} coming up.”
+“Next: {{exercise}}. Set {{setNum}}.”
+“Up next — {{exercise}}.”
+Preview (time/circuit):
+“Round {{roundNum}} — {{exercise}} next.”
+“Next station: {{exercise}}.”
+Start (all): (cue-only)
+“Go — {{cue}}.” / “Drive — {{cue}}.” / “Move — {{cue}}.”
+Last-5s (all): (tempo/breath)
+“Last five — {{tempoCue}}.” / “Finish clean — {{tempoCue}}.”
+Rollout suggestion
+Ship Coach Lab first so you and testers can tune pools quickly.
+Wire EV_WORK_PREVIEW + observer behavior into the main player.
+Seed the minimal response pools (preview/start/last-5s) and start gathering feedback.
+Add lightweight analytics in the Lab (heartrate of the UX): overlaps avoided, cooldown hits, repeat distance, missed previews due to short rests.
+If you’re good with this plan, I’ll package the next code drop as:
+Types/events update (adds EV_WORK_PREVIEW)
+Observer scheduling and gating
+Seeded pools split (preview vs start vs last-5s)
+Coach Lab page scaffold (with the knobs above)
