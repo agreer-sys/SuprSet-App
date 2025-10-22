@@ -11,10 +11,6 @@ export interface BlockParams {
   speakCountdownSec?: number;       // default 3
   safety?: { maxRPE?: number; allowPainProceed?: boolean };
   chatterLevel?: ChatterLevel;      // default 'minimal'
-  // pacing (rep-rounds)
-  pacingScript?: { tStartSec:number; tEndSec:number; exerciseId:string }[];
-  rounds?: number;
-  roundRestSec?: number;            // 0 for nonstop
 }
 
 export interface WorkoutPrefs {
@@ -31,21 +27,20 @@ export type Event =
   | { type:'EV_WORK_PREVIEW'; exerciseId:string; setIndex?: number; totalSets?: number; roundIndex?: number; totalRounds?: number } // NEW
   | { type:'EV_WORK_START'; exerciseId:string; setIndex?: number; totalSets?: number }
   | { type:'EV_WORK_END'; exerciseId:string }
-  | { type:'EV_REST_START'; sec:number; reason?:string; previousExerciseId?: string }
-  | { type:'EV_REST_END'; exerciseId?: string }
+  | { type:'EV_REST_START'; sec:number; reason?:string }
+  | { type:'EV_REST_END' }
   | { type:'EV_ROUND_REST_START'; sec:number }
   | { type:'EV_ROUND_REST_END' }
   | { type:'EV_BLOCK_END'; blockId:string }
   | { type:'EV_WORKOUT_END' };
 
+// Optional meta access (if you expose cues/equipment/etc.)
 export interface ExerciseMeta {
-  id: string | number;
+  id: string|number;
   name: string;
   cues?: string[];
   equipment?: string[];
   muscleGroup?: string;
-  videoUrl?: string; 
-  imageUrl?: string;
   estimatedTimeSec?: number;
 }
 
@@ -60,7 +55,9 @@ export interface TimelineContext {
 
   // data hooks
   getExerciseName(id:string): string;
-  getNextExerciseName?(id:string): string | undefined;
+  getNextExerciseName?(id?:string): string | undefined;
+
+  // OPTIONAL: if present, we’ll use cues for {{cue}}/{{tempoCue}}
   getExerciseMeta?(id:string): ExerciseMeta;
 
   plannedLoads: Record<string, number | undefined>; // per exerciseId (kg)
