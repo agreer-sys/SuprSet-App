@@ -1,0 +1,66 @@
+What we change (behavior)
+Split the job into two moments
+WORK PREVIEW (during rest): “Set 3 — Bicep Curl coming up.”
+WORK START (on GO): “Go! Keep elbows pinned at sides.”
+→ Name is said only in the preview; start is cue-only.
+When to preview (adaptive)
+If restSec ≥ 45: preview at T–15s
+If 20 ≤ restSec < 45: preview at T–10s
+If restSec < 20: skip preview (too noisy); rely on countdown + start cue
+EMOM: preview at t=55s each minute
+Circuit transitions (10–15s): preview at T–7s
+Set/round number rules
+Rep-mode: always include set number in the preview (e.g., “Set 3 — …”).
+Start line never repeats the name.
+Time-mode/circuit: use round number in preview (e.g., “Round 2 — Squat Jumps next.”)
+For very short rests (<20s), omit set/round numbers to stay tight.
+Beep coexistence
+Keep preview outside the last-two short beeps window.
+Countdown remains mostly beep-only (no voice unless “Standard/High” chatter).
+Start cue fires within ~0.2–0.4s after the long “GO” beep.
+Unilateral + rep scheme callout
+Put all specificity in the preview (“Curtsy Lunges — 10 each side.”)
+Start cue stays form-only (“Control knee track.”)
+We’ll rely on your estimatedTimeSec for pacing; no “switch” callouts during the set.
+Variety & non-repetition
+Preview pool uses name-forward templates (no cues).
+Start pool uses cue-only templates.
+Enforce a per-exercise cool-down: don’t reuse the same cue within the last 3 starts for that exercise; prefer a tempo/breath cue for last-5s events.
+What we tweak (events & content)
+Add a lightweight event type: EV_WORK_PREVIEW (fires once per set/interval at the scheduled lead time above).
+If you want zero engine changes, you can simulate it by scheduling a preview line on EV_REST_START at (restSec - lead)—but a true EV_WORK_PREVIEW is cleaner and easier to reason about.
+Keep EV_WORK_START for cue-only lines.
+Keep last5s for cadence/breath cues (“Last five — control the descent.”).
+Copy patterns (so pools don’t collide)
+PREVIEW (rep-mode):
+“Set {{setNum}} — {{exercise}} coming up.”
+“Next: {{exercise}}. Set {{setNum}}.”
+“Up next — {{exercise}}.”
+PREVIEW (time-mode/circuit):
+“Round {{roundNum}} — {{exercise}} next.”
+“Next station: {{exercise}}.”
+START (all): (cue only)
+“Go — {{cue}}.”
+“Drive — {{cue}}.”
+“Move — {{cue}}.”
+LAST-5s (all): (tempo/breath cue)
+“Last five — {{tempoCue}}.”
+“Finish clean — {{tempoCue}}.”
+Yes—your data already allows this separation. We’ll use {{exercise}} for previews and only {{cue}} / {{tempoCue}} at start/last-5s.
+Chatter policy by level (so it feels human, not spammy)
+Silent: beeps + captions only; no previews or start lines.
+Signals: preview only when rest ≥ 20s; no last-5s; start line optional.
+Minimal (default): preview + start, last-5s only on time-mode.
+Standard: preview + start + occasional last-5s; 1 hype line per block max.
+High: same as Standard with slightly more encouragement; still respect 1 cue / 5s throttle.
+Why I prefer a real EV_WORK_PREVIEW
+It’s explicit, testable, and lets us log how often users actually start early/late relative to preview.
+It avoids overloading REST_END semantics (which may be very close to beeps or even coalesced in some timelines).
+It keeps the response library simple: separate pools for work_preview vs work_start.
+What I need from you (tiny decisions)
+Adopt EV_WORK_PREVIEW? (recommended)
+If not, we can schedule previews off EV_REST_START.
+Default preview lead OK? (15s / 10s / skip if <20s rest)
+Announce set/round always in preview (rep/time) — confirm.
+Countdown voice: keep off by default (beeps only)?
+(My rec: off at Minimal, optional at Standard+.)
