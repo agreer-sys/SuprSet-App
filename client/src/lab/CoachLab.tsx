@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useCallback } from 'react';
 import { seedResponses } from '@/coach/responseService';
 import { onEvent } from '@/coach/observer';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
@@ -6,13 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { useRealtimeVoice } from '@/hooks/useRealtimeVoice';
+import { Mic, MicOff } from 'lucide-react';
 
 const EXERCISES = [
   { id:'ex-1', name:'Bicep Curl', cues:['Elbows pinned at sides','Control the descent','Full lockout without swing','Neutral wrist'] },
   { id:'ex-2', name:'Release Push-Up', cues:['Brace the trunk','Elbows ~45°','Pack the shoulders','Exhale on press'] },
 ];
 
-function useCtx(chatter: ChatterLevel): TimelineContext {
+function useCtx(
+  chatter: ChatterLevel, 
+  speakFn: (text: string) => void,
+  beepFn: (kind: string) => void
+): TimelineContext {
   return useMemo(()=>({
     workoutId: 'lab',
     pattern: 'straight_sets',
@@ -27,17 +34,16 @@ function useCtx(chatter: ChatterLevel): TimelineContext {
       const e = EXERCISES.find(x=>x.id===id);
       return e ? { id:e.id, name:e.name, cues:e.cues } : { id, name:'Exercise' };
     },
-    speak: (t)=>console.log('[COACH]', t),
+    speak: speakFn,
     caption: (t)=>console.log('[CAPTION]', t),
-    beep: (kind)=>console.log('[BEEP]', kind),
+    beep: beepFn,
     haptic: ()=>{}
-  }), [chatter]);
+  }), [chatter, speakFn, beepFn]);
 }
 
 export default function CoachLab(){
   const [chatter, setChatter] = useState<ChatterLevel>('minimal');
-  const ctx = useCtx(chatter);
-
+  
   // Controls
   const [restSec, setRestSec] = useState(30);
   const [workSec, setWorkSec] = useState(30);
@@ -48,6 +54,89 @@ export default function CoachLab(){
 
   const runningRef = useRef(false);
   const timeouts = useRef<number[]>([]);
+
+  // Audio context for beeps
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const getAudioContext = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return audioContextRef.current;
+  };
+
+  // Voice system
+  const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
+    console.log('[TRANSCRIPT]', transcript, isFinal ? '(final)' : '');
+  }, []);
+
+  const handleError = useCallback((error: string) => {
+    console.error('[VOICE ERROR]', error);
+  }, []);
+
+  const realtime = useRealtimeVoice({
+    sessionId: 999, // Lab session ID
+    onTranscript: handleTranscript,
+    onError: handleError,
+  });
+
+  // Beep functions
+  const playBeep = useCallback((kind: string) => {
+    try {
+      const audioContext = getAudioContext();
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+
+      const now = audioContext.currentTime;
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Different beeps for different events
+      if (kind === 'countdown') {
+        oscillator.frequency.value = 440; // A note
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.3, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        oscillator.start(now);
+        oscillator.stop(now + 0.2);
+      } else if (kind === 'start') {
+        oscillator.frequency.value = 523; // C note
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.4, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 1.0);
+        oscillator.start(now);
+        oscillator.stop(now + 1.0);
+      } else if (kind === 'end') {
+        oscillator.frequency.value = 392; // G note
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.4, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+        oscillator.start(now);
+        oscillator.stop(now + 0.8);
+      } else if (kind === 'last5') {
+        oscillator.frequency.value = 330; // E note
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.3, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        oscillator.start(now);
+        oscillator.stop(now + 0.3);
+      }
+      console.log('[BEEP]', kind);
+    } catch (error) {
+      console.error('Beep error:', error);
+    }
+  }, []);
+
+  // Speak function
+  const speak = useCallback((text: string) => {
+    console.log('[COACH]', text);
+    realtime.speakDirectly(text);
+  }, [realtime]);
+
+  const ctx = useCtx(chatter, speak, playBeep);
 
   function clearAll(){
     timeouts.current.forEach(id=>clearTimeout(id));
@@ -118,9 +207,15 @@ export default function CoachLab(){
     });
   }
 
-  function play(){
+  async function play(){
     if (runningRef.current) return;
     runningRef.current = true;
+
+    // Initialize audio context
+    const audioContext = getAudioContext();
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
 
     console.clear();
     console.log('[LAB] Starting scenario…');
@@ -209,13 +304,31 @@ export default function CoachLab(){
             )}
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={play}>▶️ Play Scenario</Button>
+          <div className="flex gap-2 items-center">
+            {!realtime.isConnected ? (
+              <Button onClick={() => realtime.connect()} variant="default">
+                <Mic className="w-4 h-4 mr-2" />
+                Connect Voice
+              </Button>
+            ) : (
+              <Button onClick={() => realtime.disconnect()} variant="outline">
+                <MicOff className="w-4 h-4 mr-2" />
+                Disconnect
+              </Button>
+            )}
+            <Button onClick={play} disabled={!realtime.isConnected}>▶️ Play Scenario</Button>
             <Button variant="outline" onClick={clearAll}>⏹ Stop/Clear</Button>
+            {realtime.isConnected && (
+              <Badge variant="outline" className="ml-auto">
+                {realtime.isSpeaking ? '🔊 Speaking' : '✅ Connected'}
+              </Badge>
+            )}
           </div>
 
           <div className="text-xs text-muted-foreground pt-2">
-            Watch the console for [COACH], [CAPTION], and [BEEP] lines. Adjust rest/work and preview lead to hear cadence changes.
+            1. Click "Connect Voice" to enable microphone and AI coach<br />
+            2. Watch the console for [COACH], [CAPTION], and [BEEP] lines<br />
+            3. Listen for beeps and voice coaching during the scenario
           </div>
         </CardContent>
       </Card>
