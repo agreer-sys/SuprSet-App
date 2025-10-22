@@ -17,6 +17,7 @@ import PreBuiltWorkouts from "@/pages/pre-built-workouts";
 import AdminPanel from "@/pages/admin-panel";
 import WorkoutStructureDocs from "@/pages/workout-structure-docs";
 import CoachTest from "@/pages/coach-test";
+import CoachLab from "@/lab/CoachLab";
 
 function Router() {
   return (
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/admin" component={AdminPanel} />
       <Route path="/workout-structure-docs" component={WorkoutStructureDocs} />
       <Route path="/coach-test" component={CoachTest} />
+      <Route path="/lab/coach" component={CoachLab} />
       <Route component={NotFound} />
     </Switch>
   );
