@@ -60,19 +60,32 @@ export interface TimelineContext {
 
   // data hooks
   getExerciseName(id:string): string;
-  getNextExerciseName?(id:string): string | undefined;
+  getNextExerciseName?(id?:string): string | undefined;
   getExerciseMeta?(id:string): ExerciseMeta;
 
   plannedLoads: Record<string, number | undefined>; // per exerciseId (kg)
 
-  // ui/system hooks
+  // NEW: personalization + block summary for intros
+  user?: { firstName?: string };
+  blockMeta?: {
+    pattern?: 'superset'|'straight_sets'|'circuit'|'emom'|'amrap'|'custom';
+    mode?: 'time'|'reps';
+    durationSec?: number;
+    workSec?: number;
+    restSec?: number;
+    roundRestSec?: number;
+    rounds?: number;
+    setsPerExercise?: number;
+    exerciseCount?: number;
+    patternLabel?: string;
+    guideRoundSec?: number;
+  };
+
+  // ui/system hooks (to be implemented in app)
   showReadyModal?: () => Promise<void>;
   openRestQuickLog?: (exerciseId:string) => void;
   speak?: (text:string) => void;
-
-  // Beep kinds used app-side: 'start' (GO), 'last5', 'end' (work end), 'countdown'
   beep?: (kind:'start'|'last5'|'end'|'countdown') => void;
-
   caption?: (text:string) => void;
   haptic?: (kind:'light'|'medium'|'heavy') => void;
 }
