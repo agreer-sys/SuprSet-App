@@ -39,9 +39,11 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     return Array.from(exerciseMap.values());
   }, [workout.executionTimeline]);
 
-  // Determine pattern and mode from the compiled timeline
-  const pattern = 'superset'; // Default, could extract from workout metadata
-  const mode = 'reps' as const; // Default, could extract from workout metadata
+  // Extract block metadata from the compiled timeline
+  const firstBlock = workout.executionTimeline?.params;
+  const exerciseCount = exercises.length;
+  const pattern = firstBlock?.pattern ?? 'superset';
+  const mode = firstBlock?.mode ?? 'reps' as const;
 
   // Build a TimelineContext the observer can use
   const ctx = useMemo<TimelineContext>(() => ({
@@ -60,12 +62,29 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
         ? { id: e.id, name: e.name, cues: e.cues||[], equipment: e.equipment||[], muscleGroup: e.muscleGroup||'', estimatedTimeSec: e.estimatedTimeSec }
         : { id, name: 'Exercise', cues: [], equipment: [], muscleGroup: '', estimatedTimeSec: 45 };
     },
+    
+    // NEW: personalization + block summary for intros
+    user: { firstName: 'Alastair' }, // TODO: Replace with real user profile
+    blockMeta: {
+      pattern: firstBlock?.pattern,
+      mode: firstBlock?.mode,
+      durationSec: firstBlock?.durationSec,
+      workSec: firstBlock?.workSec,
+      restSec: firstBlock?.restSec,
+      roundRestSec: firstBlock?.roundRestSec,
+      rounds: firstBlock?.rounds,
+      setsPerExercise: firstBlock?.setsPerExercise,
+      exerciseCount,
+      patternLabel: undefined,   // optional override
+      guideRoundSec: 180,        // if using 3:00 rep-round guidance
+    },
+    
     // Minimal UI hooks
     showReadyModal: () => new Promise<void>(res => { if (window.confirm('Ready?')) res(); }),
     speak: (t) => console.log('[COACH]', t),
     caption: (t) => console.log('[CAPTION]', t),
     haptic: () => {}
-  }), [workout.id, pattern, mode, planned, exercises, chatterLevel]);
+  }), [workout.id, pattern, mode, planned, exercises, chatterLevel, exerciseCount, firstBlock]);
 
   // Seed response lines
   useEffect(() => {

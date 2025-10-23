@@ -18,7 +18,8 @@ const EXERCISES = [
 function useCtx(
   chatter: ChatterLevel, 
   speakFn: (text: string) => void,
-  beepFn: (kind: string) => void
+  beepFn: (kind: string) => void,
+  sets: number
 ): TimelineContext {
   return useMemo(()=>({
     workoutId: 'lab',
@@ -34,11 +35,23 @@ function useCtx(
       const e = EXERCISES.find(x=>x.id===id);
       return e ? { id:e.id, name:e.name, cues:e.cues } : { id, name:'Exercise' };
     },
+    
+    // NEW: personalization + block summary for intros
+    user: { firstName: 'Alastair' },
+    blockMeta: {
+      pattern: 'straight_sets',
+      mode: 'reps',
+      setsPerExercise: sets,
+      exerciseCount: EXERCISES.length,
+      patternLabel: undefined,
+      guideRoundSec: 180,
+    },
+    
     speak: speakFn,
     caption: (t)=>console.log('[CAPTION]', t),
     beep: beepFn,
     haptic: ()=>{}
-  }), [chatter, speakFn, beepFn]);
+  }), [chatter, speakFn, beepFn, sets]);
 }
 
 export default function CoachLab(){
@@ -136,7 +149,7 @@ export default function CoachLab(){
     realtime.speakDirectly(text);
   }, [realtime]);
 
-  const ctx = useCtx(chatter, speak, playBeep);
+  const ctx = useCtx(chatter, speak, playBeep, sets);
 
   function clearAll(){
     timeouts.current.forEach(id=>clearTimeout(id));
