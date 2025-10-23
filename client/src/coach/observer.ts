@@ -30,6 +30,15 @@ function shouldSpeak(): boolean {
   return true;
 }
 
+function pickCue(ctx: TimelineContext, exerciseId?: string): string {
+  if (!exerciseId || !ctx.getExerciseMeta) return 'one clean form cue.';
+  const cues = ctx.getExerciseMeta(exerciseId)?.cues || [];
+  if (!cues.length) return 'one clean form cue.';
+  // rotate simply by time (pseudo-random)
+  const i = Math.floor((Date.now()/1500) % cues.length);
+  return cues[i];
+}
+
 function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
   switch (ev.type) {
     case 'EV_BLOCK_START': {
@@ -46,7 +55,17 @@ function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
       // voice off at Minimal; captions can still show countdown elsewhere
       return null;
     }
-    case 'EV_WORK_START': return 'Go — focus on one clean cue.';
+    case 'EV_WORK_PREVIEW': {
+      const name = ctx.getExerciseName((ev as any).exerciseId);
+      const si = (ev as any).setIndex; const ri = (ev as any).roundIndex;
+      if (typeof si === 'number') return `Set ${si+1} — ${name} coming up.`;
+      if (typeof ri === 'number') return `Round ${ri+1} — ${name} next.`;
+      return `${name} coming up.`;
+    }
+    case 'EV_WORK_START': {
+      const cue = pickCue(ctx, (ev as any).exerciseId);
+      return `Go — ${cue}`;
+    }
     case 'EV_WORK_END': return 'Nice work — breathe.';
     case 'EV_REST_START': return 'Rest — log your set.';
     case 'EV_ROUND_REST_START': return 'Round rest — reset and get set.';
