@@ -1,7 +1,7 @@
 import { TimelineContext, Event } from '@/types/coach';
 import { selectResponse } from '@/coach/responseService';
 
-const SPEAK_MIN_GAP_MS = 5000; // throttle
+const SPEAK_MIN_GAP_MS = 5000;   // throttle
 const COUNTDOWN_VOICE_OFF = true; // beeps handle countdown by default
 
 let lastSpeakAt = 0;
@@ -14,8 +14,8 @@ function canSpeakNow(): boolean {
 }
 
 function speak(ctx: TimelineContext, text: string) {
-  ctx.caption?.(text);
-  if (ctx.chatterLevel === 'silent') return;
+  ctx.caption?.(text);                 // captions always OK
+  if (ctx.chatterLevel === 'silent') return; // no voice at silent
   ctx.speak?.(text);
 }
 
@@ -29,12 +29,13 @@ function fallbackLine(ctx: TimelineContext, ev: Event): string | null {
       if (typeof ri === 'number') return `Round ${ri+1} — ${name} next.`;
       return `${name} coming up.`;
     }
-    case 'EV_WORK_START': return 'Go — one clean form cue.';
-    case 'EV_HALFWAY':    return 'Halfway — keep your pace.';
-    case 'EV_WORK_END':   return 'Nice work — breathe.';
-    case 'EV_REST_START': return 'Rest — log your set.';
+    case 'EV_COUNTDOWN':   return COUNTDOWN_VOICE_OFF ? null : `Start in ${(ev.sec ?? 3)}…`;
+    case 'EV_WORK_START':  return 'Go — one clean form cue.';
+    case 'EV_HALFWAY':     return 'Halfway — keep your pace.';
+    case 'EV_WORK_END':    return 'Nice work — breathe.';
+    case 'EV_REST_START':  return 'Rest — log your set.';
     case 'EV_ROUND_REST_START': return 'Round rest — reset and get set.';
-    case 'EV_BLOCK_END':  return 'Block complete — next block up.';
+    case 'EV_BLOCK_END':   return 'Block complete — next block up.';
     default: return null;
   }
 }
@@ -44,18 +45,13 @@ export function onEvent(ctx: TimelineContext, ev: Event) {
   if (ev.type === 'EV_AWAIT_READY') { ctx.showReadyModal?.(); return; }
 
   // Countdown voice policy
-  if (ev.type === 'EV_COUNTDOWN' && COUNTDOWN_VOICE_OFF) {
-    // UI handles beeps/captions; no voice
-    return;
-  }
+  if (ev.type === 'EV_COUNTDOWN' && COUNTDOWN_VOICE_OFF) return;
 
-  // Gate halfway: High chatter only
+  // Gate halfway: High only
   if (ev.type === 'EV_HALFWAY' && ctx.chatterLevel !== 'high') return;
 
-  // Silent tier: allow captions only via selectResponse/fallback below
   const line = selectResponse(ctx, ev) ?? fallbackLine(ctx, ev);
   if (!line) return;
-
   if (!canSpeakNow()) return;
 
   speak(ctx, line);
