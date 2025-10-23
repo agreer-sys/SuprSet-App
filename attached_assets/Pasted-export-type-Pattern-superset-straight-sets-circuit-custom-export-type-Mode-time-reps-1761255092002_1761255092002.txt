@@ -1,7 +1,7 @@
 export type Pattern = 'superset'|'straight_sets'|'circuit'|'custom';
 export type Mode = 'time'|'reps';
 
-// Keep 5 values for backward compat, we'll remap to 3 tiers in observer logic
+// Keep 5 values for backward compat, we’ll remap to 3 tiers in observer logic
 export type ChatterLevel = 'silent'|'signals'|'minimal'|'standard'|'high';
 
 export interface BlockParams {
@@ -26,7 +26,7 @@ export type Event =
   | { type:'EV_BLOCK_START'; blockId:string }
   | { type:'EV_AWAIT_READY'; blockId:string }
   | { type:'EV_COUNTDOWN'; sec:number }
-  | { type:'EV_WORK_PREVIEW'; exerciseId:string; setIndex?: number; totalSets?: number; roundIndex?: number; totalRounds?: number }
+  | { type:'EV_WORK_PREVIEW'; exerciseId:string; setIndex?: number; totalSets?: number; roundIndex?: number; totalRounds?: number } // NEW
   | { type:'EV_WORK_START'; exerciseId:string }
   | { type:'EV_HALFWAY'; exerciseId:string } // NEW (gated to High chatter)
   | { type:'EV_WORK_END'; exerciseId:string }
@@ -36,17 +36,6 @@ export type Event =
   | { type:'EV_ROUND_REST_END' }
   | { type:'EV_BLOCK_END'; blockId:string }
   | { type:'EV_WORKOUT_END' };
-
-export interface ExerciseMeta {
-  id: string | number;
-  name: string;
-  cues?: string[];
-  equipment?: string[];
-  muscleGroup?: string;
-  videoUrl?: string; 
-  imageUrl?: string;
-  estimatedTimeSec?: number;
-}
 
 export interface TimelineContext {
   workoutId: string;
@@ -65,22 +54,6 @@ export interface TimelineContext {
   getExerciseMeta?(id:string): { id:string|number; name:string; cues?: string[] };
 
   plannedLoads: Record<string, number | undefined>;
-
-  // NEW: personalization + block summary for intros
-  user?: { firstName?: string };
-  blockMeta?: {
-    pattern?: 'superset'|'straight_sets'|'circuit'|'emom'|'amrap'|'custom';
-    mode?: 'time'|'reps';
-    durationSec?: number;
-    workSec?: number;
-    restSec?: number;
-    roundRestSec?: number;
-    rounds?: number;
-    setsPerExercise?: number;
-    exerciseCount?: number;
-    patternLabel?: string;
-    guideRoundSec?: number;
-  };
 
   // ui/system hooks
   showReadyModal?: () => Promise<void>;
