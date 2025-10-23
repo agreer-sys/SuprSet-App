@@ -172,7 +172,7 @@ export default function CoachLab(){
         </label>
         <label>Chatter
           <select value={chatter} onChange={e=>setChatter(e.target.value as ChatterLevel)} style={{display:'block', width:'100%'}}>
-            {['silent','signals','minimal','standard','high'].map(l=><option key={l} value={l}>{l}</option>)}
+            {['silent','minimal','high'].map(l=><option key={l} value={l}>{l}</option>)}
           </select>
         </label>
       </div>
