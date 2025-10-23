@@ -26,7 +26,6 @@ function mapEvent(ev: Event): string {
     case 'EV_WORK_START':  return 'work_start';
     case 'EV_WORK_END':    return 'work_end';
     case 'EV_REST_START':  return 'rest_start';
-    case 'EV_REST_END':    return 'rest_end';
     case 'EV_ROUND_REST_START': return 'round_rest';
     case 'EV_BLOCK_END':   return 'block_end';
     default: return 'misc';
