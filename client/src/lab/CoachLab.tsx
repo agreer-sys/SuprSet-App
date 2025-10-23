@@ -18,7 +18,7 @@ const EXERCISES = [
   ]},
 ];
 
-function useCtx(chatter: ChatterLevel): TimelineContext {
+function useCtx(chatter: ChatterLevel, sets: number): TimelineContext {
   return useMemo(()=>({
     workoutId: 'lab',
     pattern: 'straight_sets',
@@ -33,11 +33,23 @@ function useCtx(chatter: ChatterLevel): TimelineContext {
       const e = EXERCISES.find(x=>x.id===id);
       return e ? { id:e.id, name:e.name, cues:e.cues } : { id, name:'Exercise', cues:[] };
     },
+    
+    // Personalization + block summary for intros
+    user: { firstName: 'Alastair' },
+    blockMeta: {
+      pattern: 'straight_sets',
+      mode: 'reps',
+      setsPerExercise: sets,
+      exerciseCount: EXERCISES.length,
+      patternLabel: undefined,
+      guideRoundSec: 180,
+    },
+    
     speak: (t)=>console.log('%c[COACH]', 'color:#7c4dff', t),
     caption: (t)=>console.log('%c[CAPTION]', 'color:#607d8b', t),
     beep: (kind)=>console.log('%c[BEEP]', 'color:#009688', kind),
     haptic: ()=>{}
-  }), [chatter]);
+  }), [chatter, sets]);
 }
 
 export default function CoachLab(){
@@ -53,7 +65,7 @@ export default function CoachLab(){
   const [autoLead, setAutoLead] = useState(true);
   const [customLead, setCustomLead] = useState(10);
 
-  const ctx = useCtx(chatter);
+  const ctx = useCtx(chatter, sets);
   const runningRef = useRef(false);
   const tos = useRef<number[]>([]);
 
