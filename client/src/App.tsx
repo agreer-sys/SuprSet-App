@@ -18,6 +18,7 @@ import AdminPanel from "@/pages/admin-panel";
 import WorkoutStructureDocs from "@/pages/workout-structure-docs";
 import CoachTest from "@/pages/coach-test";
 import CoachLab from "@/lab/CoachLab";
+import CoachLabRepRound from "@/lab/CoachLabRepRound";
 
 function Router() {
   return (
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/workout-structure-docs" component={WorkoutStructureDocs} />
       <Route path="/coach-test" component={CoachTest} />
       <Route path="/lab/coach" component={CoachLab} />
+      <Route path="/lab/coach-rep-round" component={CoachLabRepRound} />
       <Route component={NotFound} />
     </Switch>
   );
