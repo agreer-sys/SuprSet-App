@@ -26,7 +26,8 @@ export type Event =
   | { type:'EV_COUNTDOWN'; sec:number }
   | { type:'EV_WORK_PREVIEW'; exerciseId:string; setIndex?: number; totalSets?: number; roundIndex?: number; totalRounds?: number }
   | { type:'EV_WORK_START'; exerciseId:string }
-  | { type:'EV_HALFWAY'; exerciseId:string }
+  | { type:'EV_TECH_HINT'; exerciseId:string; source:'a2_predicted'|'generic' }
+  | { type:'EV_HALFWAY'; exerciseId?:string }
   | { type:'EV_WORK_END'; exerciseId:string }
   | { type:'EV_REST_START'; sec:number; reason?:string }
   | { type:'EV_REST_END' }
@@ -49,7 +50,13 @@ export interface TimelineContext {
   getNextExerciseName?(id?:string): string | undefined;
 
   // Optional: lets coach pull cues for start/tempo lines
-  getExerciseMeta?(id:string): { id:string|number; name:string; cues?: string[] };
+  getExerciseMeta?(id:string): {
+    id: string|number;
+    name: string;
+    cues?: string[];
+    estimatedTimeSec?: number;
+    unilateral?: boolean;
+  };
 
   plannedLoads: Record<string, number | undefined>;
 
