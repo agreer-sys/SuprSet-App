@@ -1,6 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { onEvent } from '@/coach/observer';
 import { seedResponses } from '@/coach/responseService';
+import { scheduleA2TechnicalCue } from '@/coach/a2CueScheduler';
+import { PaceModel } from '@/coach/paceModel';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
 
 type Ex = { id:string; name:string; estimatedTimeSec:number; unilateral?:boolean; cues:string[] };
@@ -39,7 +41,7 @@ function useCtx(chatter: ChatterLevel): TimelineContext {
     getNextExerciseName: () => undefined,
     getExerciseMeta: (id) => {
       const e = EXS.find(x=>x.id===id);
-      return e ? { id:e.id, name:e.name, cues:e.cues } : { id, name:'Exercise', cues:[] };
+      return e ? { id:e.id, name:e.name, cues:e.cues, estimatedTimeSec:e.estimatedTimeSec, unilateral:e.unilateral } : { id, name:'Exercise', cues:[] };
     },
     speak: (t)=>window.speechSynthesis?.speak(Object.assign(new SpeechSynthesisUtterance(t),{rate:1,pitch:1,lang:'en-US'})),
     caption: (t)=>console.log('%c[CAPTION]', 'color:#607d8b', t),
@@ -78,50 +80,51 @@ export default function CoachLabRepRound(){
   function emit(ev: Event){ onEvent(ctx, ev); }
 
   function playRound(roundIndex:number){
-    const windows = computeWindows(EXS, roundSec);
+    const roundStartMs = Date.now();
 
-    // PREVIEW + START each window
-    windows.forEach((w, idx) => {
-      // Transition gap heuristic: if next starts ≥3s after end, we can say "transition" (we'll keep it quiet for lab)
-      // Preview near end of prior window (here: 10s before start)
-      const previewLead = Math.min(10, Math.max(5, Math.floor(w.dur*0.3))); // 30% of window but clamped
-      schedule(w.start*1000 - previewLead*1000, ()=>{
-        emit({ type:'EV_WORK_PREVIEW', exerciseId:w.id, roundIndex, totalRounds: rounds });
-      });
-
-      // Countdown beeps (3-2-1) before start of window
-      schedule((w.start - 2)*1000, ()=>ctx.beep?.('countdown'));
-      schedule((w.start - 1)*1000, ()=>ctx.beep?.('countdown'));
-      schedule((w.start - 0)*1000, ()=>ctx.beep?.('start'));
-
-      // Start cue
-      schedule(w.start*1000 + 200, ()=>{
-        emit({ type:'EV_WORK_START', exerciseId:w.id });
-      });
-
-      // Halfway cue only on High chatter and only if window long enough (≥25s)
-      if (w.dur >= 25) {
-        schedule((w.start + w.dur/2)*1000, ()=>{
-          emit({ type:'EV_HALFWAY', exerciseId:w.id });
-        });
-      }
-
-      // Last-5s beep
-      if (w.dur >= 7) {
-        schedule((w.start + w.dur - 5)*1000, ()=>ctx.beep?.('last5'));
-      }
-
-      // End marker (for log)
-      schedule((w.start + w.dur)*1000, ()=>{
-        emit({ type:'EV_WORK_END', exerciseId:w.id });
-      });
+    // Preview near T-10s (list A1..A3)
+    schedule(Math.max(0, 1000), () => {
+      const first = EXS[0];
+      emit({ type:'EV_WORK_PREVIEW', exerciseId:first.id, roundIndex, totalRounds: rounds });
     });
 
-    // Round rest marker after all windows (optional)
-    schedule(roundSec*1000, ()=>{
-      emit({ type:'EV_ROUND_REST_START', sec: 0 });
-      console.log(`[LAB] Round ${roundIndex+1}/${rounds} done`);
+    // 3-2-1 beeps then GO
+    schedule(0, ()=>ctx.beep?.('countdown'));
+    schedule(1000, ()=>ctx.beep?.('countdown'));
+    schedule(2000, ()=>ctx.beep?.('start'));
+
+    // Start cue (A1) shortly after GO
+    schedule(2200, () => {
+      emit({ type:'EV_WORK_START', exerciseId: EXS[0].id });
     });
+
+    // Minute pips (generic anchors)
+    if (roundSec >= 60) schedule(60*1000, () => emit({ type:'EV_COUNTDOWN', sec:60 }));
+    if (roundSec >= 120) schedule(120*1000, () => emit({ type:'EV_COUNTDOWN', sec:120 }));
+
+    // High-only halfway motivation
+    if (ctx.chatterLevel === 'high' && roundSec >= 40) {
+      schedule(Math.floor(roundSec*500), () => emit({ type:'EV_HALFWAY' }));
+    }
+
+    // A2 technical cue (High only, rounds 2+), with confidence gate + collision guards
+    const cancelA2 = scheduleA2TechnicalCue({
+      ctx,
+      roundStartMs,
+      roundSec,
+      roundIndex,
+      exercises: EXS.map(e => ({ id: e.id })),
+      emit: (ev) => emit(ev)
+    });
+
+    // Last-10s beeps and end
+    if (roundSec >= 12) schedule((roundSec - 10)*1000, ()=>ctx.beep?.('last5')); // label reused for last-10 tone in lab
+    schedule(roundSec*1000, ()=>ctx.beep?.('end'));
+    schedule(roundSec*1000, ()=>emit({ type:'EV_ROUND_REST_START', sec:0 }));
+    schedule(roundSec*1000, ()=>console.log(`[LAB] Round ${roundIndex+1}/${rounds} done`));
+
+    // expose a manual "Round done" tap in lab to test cancel
+    (window as any).labRoundDone = () => cancelA2();
   }
 
   function play(){
@@ -182,7 +185,9 @@ export default function CoachLabRepRound(){
       </div>
 
       <div style={{fontSize:12, color:'#666', marginTop:8}}>
-        Preview (name+round) fires before each window → beeps → start (cue-only). Halfway lines trigger only on <b>High</b>.
+        <div><b>Free pace</b> — no hard windows. Preview A1 → 3-2-1-GO → minute pips → halfway (High) → A2 tech hint (High, R2+, ≥70% conf) → last-10s beeps.</div>
+        <div style={{marginTop:4}}>A2 cue fires only if: <b>High chatter</b>, <b>Round 2+</b>, <b>confidence ≥70%</b>, and <b>A2 window ≥25s</b>. Avoids beep collisions.</div>
+        <div style={{marginTop:4}}>Test early finish: open console → <code>labRoundDone()</code> (cancels A2 cue).</div>
       </div>
     </div>
   );
