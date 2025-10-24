@@ -41,7 +41,7 @@ function useCtx(chatter: ChatterLevel): TimelineContext {
     getNextExerciseName: () => undefined,
     getExerciseMeta: (id) => {
       const e = EXS.find(x=>x.id===id);
-      return e ? { id:e.id, name:e.name, cues:e.cues, estimatedTimeSec:e.estimatedTimeSec, unilateral:e.unilateral } : { id, name:'Exercise', cues:[] };
+      return e ? { id:e.id, name:e.name, cues:e.cues, estimatedTimeSec:e.estimatedTimeSec, unilateral: !!e.unilateral } : { id, name:'Exercise' };
     },
     speak: (t)=>window.speechSynthesis?.speak(Object.assign(new SpeechSynthesisUtterance(t),{rate:1,pitch:1,lang:'en-US'})),
     caption: (t)=>console.log('%c[CAPTION]', 'color:#607d8b', t),
