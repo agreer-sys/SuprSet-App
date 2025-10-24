@@ -19,19 +19,30 @@ function speak(ctx: TimelineContext, text: string) {
   ctx.speak?.(text);
 }
 
-function fallbackLine(ctx: TimelineContext, ev: Event): string | null {
+function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
   switch (ev.type) {
     case 'EV_BLOCK_START': return 'Block starting — set up now.';
+
     case 'EV_WORK_PREVIEW': {
-      const name = ctx.getExerciseName((ev as any).exerciseId);
+      const name = ctx.getExerciseName(ev.exerciseId);
       const si = (ev as any).setIndex; const ri = (ev as any).roundIndex;
       if (typeof si === 'number') return `Set ${si+1} — ${name} coming up.`;
       if (typeof ri === 'number') return `Round ${ri+1} — ${name} next.`;
       return `${name} coming up.`;
     }
-    case 'EV_COUNTDOWN':   return COUNTDOWN_VOICE_OFF ? null : `Start in ${(ev.sec ?? 3)}…`;
+
     case 'EV_WORK_START':  return 'Go — one clean form cue.';
-    case 'EV_HALFWAY':     return 'Halfway — keep your pace.';
+
+    case 'EV_TECH_HINT': {
+      // High chatter only: a short technical line for A2 when we're confident
+      if (ctx.chatterLevel !== 'high') return null;
+      const meta = ctx.getExerciseMeta?.(ev.exerciseId);
+      const name = meta?.name ?? ctx.getExerciseName(ev.exerciseId);
+      // keep it cue-only; name is present for text logs only
+      return `Keep it crisp — ${name.toLowerCase().includes('lunge') ? 'knee tracks mid-foot; torso tall.' : 'control the descent; own the range.'}`;
+    }
+
+    case 'EV_HALFWAY':     return 'Halfway — smooth tempo.';
     case 'EV_WORK_END':    return 'Nice work — breathe.';
     case 'EV_REST_START':  return 'Rest — log your set.';
     case 'EV_ROUND_REST_START': return 'Round rest — reset and get set.';
@@ -50,7 +61,7 @@ export function onEvent(ctx: TimelineContext, ev: Event) {
   // Gate halfway: High only
   if (ev.type === 'EV_HALFWAY' && ctx.chatterLevel !== 'high') return;
 
-  const line = selectResponse(ctx, ev) ?? fallbackLine(ctx, ev);
+  const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
   if (!line) return;
   if (!canSpeakNow()) return;
 
