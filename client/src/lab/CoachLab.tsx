@@ -165,6 +165,8 @@ export default function CoachLab(){
     // WORK end → REST end
     schedule((restSec + workSec) * 1000, () => {
       ctx.beep?.('end');
+    });
+    schedule((restSec + workSec) * 1000 + 400, () => {
       emit({ type:'EV_WORK_END', exerciseId });
       emit({ type:'EV_REST_END' });
     });

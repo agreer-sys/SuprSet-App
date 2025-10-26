@@ -168,8 +168,8 @@ export default function CoachLabRepRound(){
     // Last-10s beeps and end
     if (roundSec >= 12) schedule((roundSec - 10)*1000, ()=>ctx.beep?.('last5')); // label reused for last-10 tone in lab
     schedule(roundSec*1000, ()=>ctx.beep?.('end'));
-    schedule(roundSec*1000, ()=>emit({ type:'EV_ROUND_REST_START', sec:0 }));
-    schedule(roundSec*1000, ()=>console.log(`[LAB] Round ${roundIndex+1}/${rounds} done`));
+    schedule(roundSec*1000 + 400, ()=>emit({ type:'EV_ROUND_REST_START', sec:0 })); // Delay 400ms to avoid overlapping end beep
+    schedule(roundSec*1000 + 400, ()=>console.log(`[LAB] Round ${roundIndex+1}/${rounds} done`));
 
     // expose a manual "Round done" tap in lab to test cancel
     (window as any).labRoundDone = () => cancelA2();
@@ -191,7 +191,8 @@ export default function CoachLabRepRound(){
     emit({ type:'EV_BLOCK_START', blockId:'rep-round' });
 
     for (let r=0; r<rounds; r++){
-      const offset = r * roundSec * 1000;
+      const restGap = 3000; // 3-second gap between rounds for coach speech + transition
+      const offset = r * (roundSec * 1000 + restGap);
       setTimeout(()=> playRound(r), offset);
     }
 
@@ -199,7 +200,7 @@ export default function CoachLabRepRound(){
       emit({ type:'EV_BLOCK_END', blockId:'rep-round' });
       running.current = false;
       console.log('[LAB-REP] complete.');
-    }, rounds * roundSec * 1000 + 300);
+    }, rounds * (roundSec * 1000 + 3000) + 300);
   }
 
   return (
