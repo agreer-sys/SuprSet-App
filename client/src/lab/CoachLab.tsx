@@ -174,6 +174,9 @@ export default function CoachLab(){
     if (runningRef.current) return;
     runningRef.current = true;
 
+    // Initialize audio context on user interaction
+    getAudioContext();
+
     console.clear();
     console.log('[LAB] Coach Lab starting…');
 
