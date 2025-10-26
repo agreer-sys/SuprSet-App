@@ -28,33 +28,51 @@ const EXS: Ex[] = [
   ]},
 ];
 
+let audioCtx: AudioContext | null = null;
+
+function getAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
 function playBeep(kind: 'countdown' | 'start' | 'last5' | 'end') {
-  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  
-  if (kind === 'countdown') {
-    osc.frequency.value = 440; // A4
-    gain.gain.value = 0.3;
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.1);
-  } else if (kind === 'start') {
-    osc.frequency.value = 880; // A5 (higher pitch for GO)
-    gain.gain.value = 0.4;
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.15);
-  } else if (kind === 'last5') {
-    osc.frequency.value = 523; // C5
-    gain.gain.value = 0.3;
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.2);
-  } else if (kind === 'end') {
-    osc.frequency.value = 220; // A3 (lower for end)
-    gain.gain.value = 0.4;
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.3);
+  try {
+    const ctx = getAudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    const now = ctx.currentTime;
+    
+    if (kind === 'countdown') {
+      osc.frequency.value = 440; // A4
+      gain.gain.value = 0.3;
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } else if (kind === 'start') {
+      osc.frequency.value = 880; // A5 (higher pitch for GO)
+      gain.gain.value = 0.4;
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } else if (kind === 'last5') {
+      osc.frequency.value = 523; // C5
+      gain.gain.value = 0.3;
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } else if (kind === 'end') {
+      osc.frequency.value = 220; // A3 (lower for end)
+      gain.gain.value = 0.4;
+      osc.start(now);
+      osc.stop(now + 0.3);
+    }
+  } catch (err) {
+    console.error('[BEEP ERROR]', err);
   }
 }
 
