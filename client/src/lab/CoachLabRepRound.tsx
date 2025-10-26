@@ -28,6 +28,36 @@ const EXS: Ex[] = [
   ]},
 ];
 
+function playBeep(kind: 'countdown' | 'start' | 'last5' | 'end') {
+  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  
+  if (kind === 'countdown') {
+    osc.frequency.value = 440; // A4
+    gain.gain.value = 0.3;
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+  } else if (kind === 'start') {
+    osc.frequency.value = 880; // A5 (higher pitch for GO)
+    gain.gain.value = 0.4;
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.15);
+  } else if (kind === 'last5') {
+    osc.frequency.value = 523; // C5
+    gain.gain.value = 0.3;
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.2);
+  } else if (kind === 'end') {
+    osc.frequency.value = 220; // A3 (lower for end)
+    gain.gain.value = 0.4;
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  }
+}
+
 function useCtx(chatter: ChatterLevel): TimelineContext {
   return useMemo(()=>({
     workoutId: 'lab-rep',
@@ -45,7 +75,7 @@ function useCtx(chatter: ChatterLevel): TimelineContext {
     },
     speak: (t)=>window.speechSynthesis?.speak(Object.assign(new SpeechSynthesisUtterance(t),{rate:1,pitch:1,lang:'en-US'})),
     caption: (t)=>console.log('%c[CAPTION]', 'color:#607d8b', t),
-    beep: (kind)=>console.log('%c[BEEP]', 'color:#009688', kind),
+    beep: (kind)=>{ console.log('%c[BEEP]', 'color:#009688', kind); playBeep(kind); },
     haptic: ()=>{}
   }), [chatter]);
 }
