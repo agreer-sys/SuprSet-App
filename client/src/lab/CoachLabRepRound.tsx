@@ -6,6 +6,7 @@ import { PaceModel } from '@/coach/paceModel';
 import { beeps } from '@/coach/beeps';
 import { voiceBus } from '@/audio/voiceBus';
 import { speakTTS } from '@/audio/ttsAdapter';
+import { ROUND_END_TO_SPEECH_MS, ROUND_END_TO_COUNTDOWN_MS, getRoundCycleDuration } from '@/coach/roundScheduler';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
 
 type Ex = { id:string; name:string; estimatedTimeSec:number; unilateral?:boolean; cues:string[] };
@@ -131,9 +132,14 @@ export default function CoachLabRepRound(){
 
     // Last-10s beeps and end
     if (roundSec >= 12) schedule((roundSec - 10)*1000, ()=>ctx.beep?.('last5')); // label reused for last-10 tone in lab
+    
+    // Canonical round-end timing:
+    // T0: end beep (~600ms)
+    // T0 + 700ms: "Round rest" voice (beep clears + safety)
+    // T0 + 3000ms: next round countdown (scheduled in main loop)
     schedule(roundSec*1000, ()=>ctx.beep?.('end'));
-    schedule(roundSec*1000 + 400, ()=>emit({ type:'EV_ROUND_REST_START', sec:0 })); // Delay 400ms to avoid overlapping end beep
-    schedule(roundSec*1000 + 400, ()=>console.log(`[LAB] Round ${roundIndex+1}/${rounds} done`));
+    schedule(roundSec*1000 + ROUND_END_TO_SPEECH_MS, ()=>emit({ type:'EV_ROUND_REST_START', sec:0 }));
+    schedule(roundSec*1000 + ROUND_END_TO_SPEECH_MS, ()=>console.log(`[LAB] Round ${roundIndex+1}/${rounds} done`));
 
     // expose a manual "Round done" tap in lab to test cancel
     (window as any).labRoundDone = () => cancelA2();
@@ -154,17 +160,19 @@ export default function CoachLabRepRound(){
 
     emit({ type:'EV_BLOCK_START', blockId:'rep-round' });
 
+    // Schedule all rounds with canonical rest gap timing
+    const cycleDuration = getRoundCycleDuration(roundSec);
     for (let r=0; r<rounds; r++){
-      const restGap = 3000; // 3-second gap between rounds for coach speech + transition
-      const offset = r * (roundSec * 1000 + restGap);
+      const offset = r * cycleDuration;
       setTimeout(()=> playRound(r), offset);
     }
 
+    // Block end after all rounds complete
     setTimeout(()=>{
       emit({ type:'EV_BLOCK_END', blockId:'rep-round' });
       running.current = false;
       console.log('[LAB-REP] complete.');
-    }, rounds * (roundSec * 1000 + 3000) + 300);
+    }, rounds * cycleDuration + 300);
   }
 
   return (
@@ -200,6 +208,7 @@ export default function CoachLabRepRound(){
       <div style={{fontSize:12, color:'#666', marginTop:8}}>
         <div><b>Free pace</b> — no hard windows. Preview A1 → 3-2-1-GO → minute pips → halfway (High) → A2 tech hint (High, R2+, ≥70% conf) → last-10s beeps.</div>
         <div style={{marginTop:4}}>A2 cue fires only if: <b>High chatter</b>, <b>Round 2+</b>, <b>confidence ≥70%</b>, and <b>A2 window ≥25s</b>. Avoids beep collisions.</div>
+        <div style={{marginTop:4}}><b>Round transitions:</b> End beep @ T0 → Voice @ T0+700ms → Next countdown @ T0+3000ms (clean, breathable gaps)</div>
         <div style={{marginTop:4}}>Test early finish: open console → <code>labRoundDone()</code> (cancels A2 cue).</div>
       </div>
     </div>

@@ -1,0 +1,48 @@
+Your diagnosis (and Replit’s) is spot-on. You’re seeing two separate timing edges:
+	1.	End → Next-round countdown overlap in the Rep-Round lab
+	2.	Caption timestamp matching the end beep (voice is actually ducked/guarded, but the log prints at the same ms)
+
+Here’s what I recommend locking in so it feels clean and consistent everywhere:
+
+Canonical “between rounds” schedule (rep-rounds)
+
+Let T0 = round end (long beep ~600 ms):
+	•	T0: play end beep (long).
+	•	T0 + ~0.4–0.7s: speak “Round rest — reset and get set.”
+(Choose beepDuration + 100 ms; with our defaults that’s ~700 ms. This guarantees the beep clears before voice.)
+	•	T0 + 3.0s: start next round’s 3-2-1 countdown beeps
+(short at +3.0s, short at +4.0s, GO long at +5.0s).
+
+That gives a real, breathable micro-pause without feeling sluggish. It also makes your logs predictable:
+	•	last10 pip at T0−10s
+	•	end beep at T0
+	•	“Round rest” line at T0+0.7s (approx)
+	•	countdown pips at T0+3.0s and T0+4.0s
+	•	start (GO) at T0+5.0s
+
+Make it robust (so HMR/refresh quirks don’t bite you)
+	•	Single scheduler for rep-rounds (Player + Lab): centralize the three things above into one helper so both pages use the same constants.
+	•	ROUND_END_TO_SPEECH_MS = beepDurMs + 100 (≈700 ms)
+	•	ROUND_END_TO_COUNTDOWN_MS = 3000
+	•	Guard voice around beeps: keep voiceBus.guardTTSStart() (250–300 ms). This already defers speech if a beep just fired. The ~700 ms offset guarantees speech lands after the beep anyway; the guard is a second safety net.
+	•	Clear and reschedule: on each round end, clear any pending next-round timers before scheduling new ones (avoids double countdowns after hot reloads).
+	•	One source of truth for “round start time”: compute from Date.now() once and schedule all three events relative to that so drift doesn’t accumulate.
+
+On the logs you shared
+
+“Round rest — reset and get set.” and the first countdown pip had the same ms.
+
+That’s exactly the thing your teammate noted. With the constants above, you’ll see:
+	•	End beep @ X.000
+	•	“Round rest…” @ X.700
+	•	First countdown pip @ X+3.000
+
+If you still see same-ms lines after a hard refresh, it usually means one page is still using an old inline setTimeout. Centralizing the schedule into a shared helper fixes that.
+
+Acceptance checks
+	•	No countdown beep within ≤2.5 s of the end beep.
+	•	“Round rest” voice never starts until after the long beep has audibly cleared (≈0.7 s).
+	•	GO is always ~5.0 s after round end (3.0 s gap + 2.0 s countdown).
+	•	Voice never begins within ±250 ms of any beep (guard window).
+
+If you want, I can package a tiny “RoundBetweenScheduler” helper so Player + Lab both call the same function and you don’t need to chase this in two places.

@@ -58,6 +58,12 @@ The application uses a client-server architecture with a React frontend and an E
   - **Multi-Source Support**: Routes HTMLAudioElement, MediaStream, or browser TTS through unified bus
   - **iOS Compatible**: User gesture requirement for AudioContext initialization
   - **Integration**: Beeps automatically trigger voice ducking via `beeps.setDucker()` callback
+- **Canonical Round Transitions (v1.0, Oct 27, 2025)**: Standardized timing for rep-round workouts with centralized scheduler. Features:
+  - **T0**: End beep (~600ms long beep)
+  - **T0 + 700ms**: "Round rest" voice (beep clears + 100ms safety)
+  - **T0 + 3000ms**: Next round countdown starts (3-2-1-GO)
+  - **Centralized constants**: `ROUND_END_TO_SPEECH_MS = 700`, `ROUND_END_TO_COUNTDOWN_MS = 3000`
+  - **Single source of truth**: `client/src/coach/roundScheduler.ts` used by both Player and Lab
 
 **Backend (Express + Node.js)**
 - **Server**: Express.js with TypeScript.
