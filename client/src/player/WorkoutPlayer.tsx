@@ -131,14 +131,36 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     }
   }, [workout.executionTimeline]);
 
-  // Wire the real timeline player → observer
+  // Wire the real timeline player → observer + beeps
   const playerRef = useRef<TimelinePlayer | null>(null);
   useEffect(() => {
     if (stage !== 'playing' || !workout.executionTimeline) return;
     
     const player = new TimelinePlayer();
     playerRef.current = player;
+    
+    // Subscribe to events for voice/coaching
     const unsub = player.subscribe((ev: Event) => onEvent(ctx, ev));
+    
+    // Subscribe to events for beeps
+    const unsubBeeps = player.subscribe((ev: Event) => {
+      switch (ev.type) {
+        case 'EV_COUNTDOWN':
+          // Differentiate between short countdown pips (220ms) and GO beep (600ms)
+          if (ev.sec && ev.sec >= 0.5) {
+            // GO beep (long beep at start of work)
+            ctx.beep?.('start');
+          } else {
+            // Countdown pips (3-2-1, short pips)
+            ctx.beep?.('countdown');
+          }
+          break;
+        case 'EV_WORK_END':
+          // End beep at work completion
+          ctx.beep?.('end');
+          break;
+      }
+    });
     
     console.log('🎬 Starting compiled timeline:', workout.executionTimeline);
     player.start(workout.executionTimeline);
@@ -146,6 +168,7 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     return () => {
       player.stop();
       unsub();
+      unsubBeeps();
     };
   }, [stage, ctx, workout.executionTimeline]);
 
