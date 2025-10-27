@@ -46,6 +46,12 @@ The application uses a client-server architecture with a React frontend and an E
 - **Timeline Player**: `TimelinePlayer.ts` converts server-compiled ExecutionTimeline objects into coach events, mapping work/rest/await_ready steps to the event system.
 - **Workout Player**: Fetches real block workouts with compiled timelines from `/api/block-workouts` endpoint and executes them with coach integration.
 - **Preflight Weights**: kg/lbs toggle with auto-conversion (default: lbs). Converts all entered weights when switching units, rounded to 1 decimal place.
+- **Beep System (v1.0, Oct 27, 2025)**: Deterministic Web Audio API-based beeps with gain envelopes to prevent clicks. Features:
+  - **SHORT PIP**: 220ms @ 880Hz (countdown, last-5/10 warnings)
+  - **LONG BEEP**: 600ms @ 660Hz (start/end transitions)
+  - **CONFIRM CHIRP**: 180ms @ 880→1320Hz chirp (user tap feedback)
+  - **Voice Coordination**: ±250ms TTS suppression window around beeps
+  - **Test Harness**: `/lab/beeps` route for manual beep testing and sequence validation
 
 **Backend (Express + Node.js)**
 - **Server**: Express.js with TypeScript.
