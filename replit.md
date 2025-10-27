@@ -59,11 +59,15 @@ The application uses a client-server architecture with a React frontend and an E
   - **iOS Compatible**: User gesture requirement for AudioContext initialization
   - **Integration**: Beeps automatically trigger voice ducking via `beeps.setDucker()` callback
 - **Canonical Round Transitions (v1.0, Oct 27, 2025)**: Standardized timing for rep-round workouts with centralized scheduler. Features:
-  - **T0**: End beep (~600ms long beep)
+  - **T0**: End beep (600ms long beep triggered by client)
   - **T0 + 700ms**: "Round rest" voice (beep clears + 100ms safety)
-  - **T0 + 3000ms**: Next round countdown starts (3-2-1-GO)
-  - **Centralized constants**: `ROUND_END_TO_SPEECH_MS = 700`, `ROUND_END_TO_COUNTDOWN_MS = 3000`
-  - **Single source of truth**: `client/src/coach/roundBetweenScheduler.ts` used by both Player and Lab
+  - **T0 + 3000ms**: First countdown pip (220ms short pip)
+  - **T0 + 4000ms**: Second countdown pip (220ms short pip)
+  - **T0 + 5000ms**: GO beep (600ms long beep)
+  - **T0 + 5600ms**: Next work starts (200ms after GO beep ends)
+  - **Centralized constants**: `ROUND_END_TO_SPEECH_MS = 700`, `ROUND_END_TO_COUNTDOWN_MS = 3000`, `WORK_START_OFFSET_MS = 5600`
+  - **Single source of truth**: `client/src/coach/roundBetweenScheduler.ts` for client, mirrored in `server/timeline-compiler.ts` for server
+  - **Timeline compilation**: Server stamps canonical timestamps into timeline; client beep handler differentiates pips (220ms) vs GO (600ms) by duration
 
 **Backend (Express + Node.js)**
 - **Server**: Express.js with TypeScript.
