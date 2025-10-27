@@ -1,4 +1,4 @@
-// client/src/coach/roundScheduler.ts
+// client/src/coach/roundBetweenScheduler.ts
 // Canonical "between rounds" timing for rep-round workouts
 // Ensures consistent, breathable transitions with no voice/beep collisions
 

@@ -6,7 +6,7 @@ import { PaceModel } from '@/coach/paceModel';
 import { beeps } from '@/coach/beeps';
 import { voiceBus } from '@/audio/voiceBus';
 import { speakTTS } from '@/audio/ttsAdapter';
-import { ROUND_END_TO_SPEECH_MS, ROUND_END_TO_COUNTDOWN_MS, getRoundCycleDuration } from '@/coach/roundScheduler';
+import { ROUND_END_TO_SPEECH_MS, ROUND_END_TO_COUNTDOWN_MS, getRoundCycleDuration } from '@/coach/roundBetweenScheduler';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
 
 type Ex = { id:string; name:string; estimatedTimeSec:number; unilateral?:boolean; cues:string[] };
