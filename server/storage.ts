@@ -4,6 +4,7 @@ import {
   exercisePairings,
   users,
   contributions,
+  coachResponses,
   superSets,
   workouts,
   workoutSuperSets,
@@ -171,6 +172,22 @@ export interface IStorage {
   // Block Workout Session methods
   startBlockWorkoutSession(userId: string, workoutId: number): Promise<any>;
   getActiveBlockWorkoutSession(userId: string): Promise<any>;
+  
+  // Coach Response methods
+  getCoachResponses(filters: {
+    eventType: string;
+    pattern: string;
+    mode: string;
+    chatterLevel: string;
+    locale: string;
+  }): Promise<Array<{
+    id: number;
+    textTemplate: string;
+    priority: number;
+    cooldownSec: number;
+    lastUsedAt: string | null;
+  }>>;
+  markCoachResponseUsed(id: number, usedAt: Date): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1665,6 +1682,67 @@ export class DatabaseStorage implements IStorage {
       ...session,
       blockWorkout: workout
     };
+  }
+  
+  // Coach Response methods
+  async getCoachResponses(filters: {
+    eventType: string;
+    pattern: string;
+    mode: string;
+    chatterLevel: string;
+    locale: string;
+  }): Promise<Array<{
+    id: number;
+    textTemplate: string;
+    priority: number;
+    cooldownSec: number;
+    lastUsedAt: string | null;
+  }>> {
+    const { eventType, pattern, mode, chatterLevel, locale } = filters;
+    
+    const responses = await db
+      .select({
+        id: coachResponses.id,
+        textTemplate: coachResponses.textTemplate,
+        priority: coachResponses.priority,
+        cooldownSec: coachResponses.cooldownSec,
+        lastUsedAt: coachResponses.lastUsedAt
+      })
+      .from(coachResponses)
+      .where(
+        and(
+          eq(coachResponses.active, true),
+          eq(coachResponses.eventType, eventType),
+          or(
+            eq(coachResponses.pattern, pattern),
+            eq(coachResponses.pattern, 'any')
+          ),
+          or(
+            eq(coachResponses.mode, mode),
+            eq(coachResponses.mode, 'any')
+          ),
+          or(
+            eq(coachResponses.chatterLevel, chatterLevel),
+            eq(coachResponses.chatterLevel, 'any')
+          ),
+          eq(coachResponses.locale, locale)
+        )
+      )
+      .orderBy(desc(coachResponses.priority));
+    
+    return responses.map(r => ({
+      ...r,
+      lastUsedAt: r.lastUsedAt ? r.lastUsedAt.toISOString() : null
+    }));
+  }
+  
+  async markCoachResponseUsed(id: number, usedAt: Date): Promise<void> {
+    await db.execute(
+      sql`UPDATE coach_responses 
+          SET usage_count = usage_count + 1, 
+              last_used_at = ${usedAt} 
+          WHERE id = ${id}`
+    );
   }
 }
 

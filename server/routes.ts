@@ -409,6 +409,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Coach Responses API
+  app.get('/api/coach-responses', async (req, res) => {
+    try {
+      const { event_type, pattern = 'any', mode = 'any', chatter_level = 'minimal', locale = 'en-US' } = req.query as Record<string, string>;
+      
+      if (!event_type) {
+        return res.status(400).json({ error: 'event_type required' });
+      }
+      
+      const responses = await storage.getCoachResponses({
+        eventType: event_type,
+        pattern,
+        mode,
+        chatterLevel: chatter_level,
+        locale
+      });
+      
+      res.json({ items: responses });
+    } catch (error) {
+      console.error('Error fetching coach responses:', error);
+      res.status(500).json({ error: 'Failed to fetch coach responses' });
+    }
+  });
+  
+  app.post('/api/coach-responses/:id/mark-used', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const used_at = req.body?.used_at ? new Date(req.body.used_at) : new Date();
+      
+      await storage.markCoachResponseUsed(id, used_at);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error('Error marking coach response as used:', error);
+      res.status(500).json({ error: 'Failed to mark response as used' });
+    }
+  });
+
   // Contribution routes
   app.post('/api/contributions', isAuthenticated, async (req: any, res) => {
     try {

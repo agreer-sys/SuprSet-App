@@ -364,6 +364,41 @@ export const insertContributionSchema = createInsertSchema(contributions).omit({
   updatedAt: true,
 });
 
+// Coach Responses - AI workout coach dynamic response library
+export const coachResponses = pgTable(
+  "coach_responses",
+  {
+    id: serial("id").primaryKey(),
+    eventType: varchar("event_type", { length: 32 }).notNull(), // 'work_preview' | 'work_start' | 'last5s' | 'halfway' | 'rest_start'
+    pattern: varchar("pattern", { length: 24 }).notNull().default("any"), // 'superset' | 'straight_sets' | 'circuit' | 'any'
+    mode: varchar("mode", { length: 24 }).notNull().default("any"), // 'time' | 'reps' | 'any'
+    chatterLevel: varchar("chatter_level", { length: 16 }).notNull().default("minimal"), // 'silent'|'minimal'|'high'|'any'
+    locale: varchar("locale", { length: 8 }).notNull().default("en-US"),
+    textTemplate: text("text_template").notNull(), // supports tokens: {{exercise}}, {{next}}, {{restSec}}, {{cue}}, {{tempoCue}}
+    priority: integer("priority").notNull().default(0),
+    cooldownSec: integer("cooldown_sec").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    usageCount: integer("usage_count").notNull().default(0),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: false }),
+    updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
+  },
+  (t) => ({
+    byDims: index("coach_responses_dims_idx").on(
+      t.eventType, t.pattern, t.mode, t.chatterLevel, t.locale, t.active
+    ),
+  })
+);
+
+export const insertCoachResponseSchema = createInsertSchema(coachResponses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type CoachResponse = typeof coachResponses.$inferSelect;
+export type InsertCoachResponse = z.infer<typeof insertCoachResponseSchema>;
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
