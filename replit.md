@@ -46,10 +46,13 @@ The application uses a client-server architecture with a React frontend and an E
 - **Timeline Player**: `TimelinePlayer.ts` converts server-compiled ExecutionTimeline objects into coach events, mapping work/rest/await_ready steps to the event system.
 - **Workout Player**: Fetches real block workouts with compiled timelines from `/api/block-workouts` endpoint and executes them with coach integration.
 - **Preflight Weights**: kg/lbs toggle with auto-conversion (default: lbs). Converts all entered weights when switching units, rounded to 1 decimal place.
-- **Beep System (v1.0, Oct 27, 2025)**: Deterministic Web Audio API-based beeps with gain envelopes to prevent clicks. Features:
-  - **SHORT PIP**: 220ms @ 880Hz (countdown, last-5/10 warnings)
-  - **LONG BEEP**: 600ms @ 660Hz (start/end transitions)
-  - **CONFIRM CHIRP**: 180ms @ 880→1320Hz chirp (user tap feedback)
+- **Beep System (v1.1-earbud, Oct 27, 2025)**: Deterministic Web Audio API-based beeps optimized for comfortable earbud listening. Features:
+  - **SHORT PIP**: 180ms @ 650Hz with 12ms attack/120ms release (countdown, last-5/10 warnings)
+  - **LONG BEEP**: 550ms @ 520Hz with soft envelope (start/end transitions)
+  - **CONFIRM CHIRP**: 160ms @ 720→1080Hz chirp (user tap feedback)
+  - **Low-pass filter**: 1600Hz @ Q=0.7 to reduce harshness in earbuds
+  - **Softer gain**: 0.60/0.55 peak (vs 0.85 original) for gentle audio cues
+  - **Volume control**: `setSignalsVolume()` method for per-session adjustment
   - **Voice Coordination**: ±250ms TTS suppression window around beeps
   - **Test Harness**: `/lab/beeps` route for manual beep testing and sequence validation
 - **Voice Ducking Bus (v1.0, Oct 27, 2025)**: WebAudio gain bus routing all coach voice through a single channel with automatic ducking. Features:
