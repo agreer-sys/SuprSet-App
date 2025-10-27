@@ -4,6 +4,9 @@ import { seedResponses } from '@/coach/responseService';
 import { PreflightWeightsSheet } from '@/components/PreflightWeightsSheet';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
 import { TimelinePlayer } from '@/runtime/TimelinePlayer';
+import { speakTTS } from '@/audio/ttsAdapter';
+import { beeps } from '@/coach/beeps';
+import { voiceBus } from '@/audio/voiceBus';
 
 interface WorkoutPlayerProps {
   workout: {
@@ -16,7 +19,32 @@ interface WorkoutPlayerProps {
 export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
   const [planned, setPlanned] = useState<Record<string, number|undefined>>({});
   const [stage, setStage] = useState<'loading'|'preflight'|'playing'>('loading');
+  const [audioReady, setAudioReady] = useState(false);
   const chatterLevel: ChatterLevel = 'minimal';
+
+  // Initialize AudioContext on first user gesture (iOS requirement)
+  useEffect(() => {
+    if (audioReady) return;
+    
+    const initAudio = () => {
+      voiceBus.ensure(); // Initialize AudioContext
+      beeps.ensureCtx(); // Initialize beep AudioContext
+      setAudioReady(true);
+      console.log('🎧 Audio system initialized');
+      
+      // Remove listeners after first gesture
+      document.removeEventListener('pointerdown', initAudio);
+      document.removeEventListener('touchstart', initAudio);
+    };
+    
+    document.addEventListener('pointerdown', initAudio, { once: true });
+    document.addEventListener('touchstart', initAudio, { once: true });
+    
+    return () => {
+      document.removeEventListener('pointerdown', initAudio);
+      document.removeEventListener('touchstart', initAudio);
+    };
+  }, [audioReady]);
 
   // Extract exercises from the compiled timeline
   const exercises = useMemo(() => {
@@ -81,7 +109,8 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     
     // Minimal UI hooks
     showReadyModal: () => new Promise<void>(res => { if (window.confirm('Ready?')) res(); }),
-    speak: (t) => console.log('[COACH]', t),
+    speak: (t) => speakTTS(t),
+    beep: (k) => beeps.play(k),
     caption: (t) => console.log('[CAPTION]', t),
     haptic: () => {}
   }), [workout.id, pattern, mode, planned, exercises, chatterLevel, exerciseCount, firstBlock]);
