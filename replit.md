@@ -52,6 +52,12 @@ The application uses a client-server architecture with a React frontend and an E
   - **CONFIRM CHIRP**: 180ms @ 880→1320Hz chirp (user tap feedback)
   - **Voice Coordination**: ±250ms TTS suppression window around beeps
   - **Test Harness**: `/lab/beeps` route for manual beep testing and sequence validation
+- **Voice Ducking Bus (v1.0, Oct 27, 2025)**: WebAudio gain bus routing all coach voice through a single channel with automatic ducking. Features:
+  - **Smooth Ducking**: -6dB voice attenuation during beeps with 20ms ramp up/down
+  - **Guard Window**: ±250ms TTS start suppression to prevent voice/beep collisions
+  - **Multi-Source Support**: Routes HTMLAudioElement, MediaStream, or browser TTS through unified bus
+  - **iOS Compatible**: User gesture requirement for AudioContext initialization
+  - **Integration**: Beeps automatically trigger voice ducking via `beeps.setDucker()` callback
 
 **Backend (Express + Node.js)**
 - **Server**: Express.js with TypeScript.

@@ -2,6 +2,8 @@
 // Minimal, offline-safe beep engine + voice ducking.
 // Usage: import { beeps } from '@/coach/beeps'; beeps.play('start')
 
+import { voiceBus } from '@/audio/voiceBus';
+
 type BeepKind = 'countdown'|'start'|'last5'|'end'|'confirm';
 
 type DuckFn = (on: boolean, ms: number) => void; // implement to duck TTS/music
@@ -84,6 +86,11 @@ class BeepEngine {
 }
 
 export const beeps = new BeepEngine();
+
+// Wire beep ducking to voice bus
+beeps.setDucker((on, ms) => {
+  if (on) voiceBus.duck(ms);
+});
 
 // Helper schedulers for rep-rounds and time-blocks
 export function scheduleRepRoundBeeps(roundSec = 180, minutePips = true){

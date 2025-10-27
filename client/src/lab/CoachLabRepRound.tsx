@@ -1,9 +1,11 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { onEvent } from '@/coach/observer';
 import { seedResponses } from '@/coach/responseService';
 import { scheduleA2TechnicalCue } from '@/coach/a2CueScheduler';
 import { PaceModel } from '@/coach/paceModel';
 import { beeps } from '@/coach/beeps';
+import { voiceBus } from '@/audio/voiceBus';
+import { speakTTS } from '@/audio/ttsAdapter';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
 
 type Ex = { id:string; name:string; estimatedTimeSec:number; unilateral?:boolean; cues:string[] };
@@ -44,7 +46,7 @@ function useCtx(chatter: ChatterLevel): TimelineContext {
       const e = EXS.find(x=>x.id===id);
       return e ? { id:e.id, name:e.name, cues:e.cues, estimatedTimeSec:e.estimatedTimeSec, unilateral: !!e.unilateral } : { id, name:'Exercise' };
     },
-    speak: (t)=>window.speechSynthesis?.speak(Object.assign(new SpeechSynthesisUtterance(t),{rate:1,pitch:1,lang:'en-US'})),
+    speak: (t)=>speakTTS(t),
     caption: (t)=>console.log('%c[CAPTION]', 'color:#607d8b', t),
     beep: (kind)=>{ console.log('%c[BEEP]', 'color:#009688', kind); beeps.play(kind); },
     haptic: ()=>{}
@@ -71,6 +73,15 @@ export default function CoachLabRepRound(){
   const [chatter, setChatter] = useState<ChatterLevel>('minimal');
   const [roundSec, setRoundSec] = useState(180); // 3:00 per round
   const [rounds, setRounds] = useState(4);
+  
+  // Initialize AudioContext on user interaction (iOS requirement)
+  useEffect(() => {
+    const initAudio = () => {
+      try { voiceBus.ensure(); } catch {}
+    };
+    window.addEventListener('pointerdown', initAudio, { once: true });
+    return () => window.removeEventListener('pointerdown', initAudio);
+  }, []);
 
   const ctx = useCtx(chatter);
   const tos = useRef<number[]>([]);
