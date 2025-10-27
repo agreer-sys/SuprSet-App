@@ -9,15 +9,25 @@
  * - Calculate absolute timestamps (atMs, endMs)
  * - Insert transitions, rest periods, await_ready steps
  * - Validate timeline integrity
+ * - Apply canonical between-rounds timing for rep-round workouts
  */
 
 import type { Block, BlockExercise } from "@shared/schema";
+
+// Canonical between-rounds timing (matches client/src/coach/roundBetweenScheduler.ts)
+const ROUND_END_TO_SPEECH_MS = 700;    // Voice after beep clears
+const ROUND_END_TO_COUNTDOWN_MS = 3000; // First countdown pip
+const COUNTDOWN_PIP_INTERVAL_MS = 1000; // 3-2-1
+const GO_BEEP_OFFSET_MS = 5000;        // GO beep (3s + 2s of pips)
+const WORK_START_OFFSET_MS = 5200;     // Work starts 200ms after GO
 
 // Step types supported by the coach
 export type StepType = 
   | "instruction" 
   | "work" 
-  | "rest" 
+  | "rest"
+  | "round_rest"
+  | "countdown"
   | "transition" 
   | "await_ready" 
   | "hold" 
@@ -280,16 +290,38 @@ export async function compileBlockToTimeline(
           }
           // For time-based exercises, use normal rest periods
           // Add round rest after last exercise of a round (circuit training)
-          else if (isLastExercise && !isLastSet && roundRestSec > 0) {
+          else if (isLastExercise && !isLastSet) {
+            // Canonical between-rounds timing for rep-round workouts:
+            // T0: Work ends (end beep triggered by client)
+            // T0+700ms: "Round rest" voice cue
+            // T0+3000ms: First countdown pip
+            // T0+4000ms: Second countdown pip
+            // T0+5000ms: GO beep
+            // T0+5200ms: Next work starts
+            
+            // Add a short round_rest step for the voice cue
             steps.push({
               step: stepCounter++,
-              type: "rest",
-              label: "Round Complete - Rest",
-              durationSec: roundRestSec,
-              atMs: currentTimeMs,
-              endMs: currentTimeMs + roundRestSec * 1000,
+              type: "round_rest",
+              label: "Round Complete",
+              durationSec: 1, // Minimal duration, just a marker for the event
+              atMs: currentTimeMs + ROUND_END_TO_SPEECH_MS,
+              endMs: currentTimeMs + ROUND_END_TO_SPEECH_MS + 1000,
             });
-            currentTimeMs += roundRestSec * 1000;
+            
+            // Add countdown steps (3-2-1)
+            for (let i = 0; i < 3; i++) {
+              steps.push({
+                step: stepCounter++,
+                type: "countdown",
+                durationSec: 0.22, // Short pip duration
+                atMs: currentTimeMs + ROUND_END_TO_COUNTDOWN_MS + (i * COUNTDOWN_PIP_INTERVAL_MS),
+                endMs: currentTimeMs + ROUND_END_TO_COUNTDOWN_MS + (i * COUNTDOWN_PIP_INTERVAL_MS) + 220,
+              });
+            }
+            
+            // Advance time to work start (200ms after GO beep)
+            currentTimeMs += WORK_START_OFFSET_MS;
           }
           // Add normal exercise rest between exercises within a round
           else {
