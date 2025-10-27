@@ -19,6 +19,7 @@ import WorkoutStructureDocs from "@/pages/workout-structure-docs";
 import CoachTest from "@/pages/coach-test";
 import CoachLab from "@/lab/CoachLab";
 import CoachLabRepRound from "@/lab/CoachLabRepRound";
+import BeepHarness from "@/lab/BeepHarness";
 
 function Router() {
   return (
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/coach-test" component={CoachTest} />
       <Route path="/lab/coach" component={CoachLab} />
       <Route path="/lab/coach-rep-round" component={CoachLabRepRound} />
+      <Route path="/lab/beeps" component={BeepHarness} />
       <Route component={NotFound} />
     </Switch>
   );
