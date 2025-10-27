@@ -1,0 +1,267 @@
+# Beep Map — One‑Pager for Replit (v1.0)
+
+**Goal:** Drop‑in, deterministic beeps that work offline, never fight voice, and map 1:1 to SuprSet events for **rep‑rounds** and **time‑based blocks**.
+
+---
+
+## 1) Sound palette & timing (ship these defaults)
+
+**Wave:** sine → quick gain envelope (no clicks).  **Output gain:** ~0.9 of voice.
+
+* **SHORT PIP**  → `220ms @ 880Hz`
+* **LONG BEEP**  → `600ms @ 660Hz`
+* **CONFIRM CHIME (tap)** → `180ms chirp 880→1320Hz`
+
+**Voice coordination:** duck voice −6dB *during* beeps and suppress new TTS starts for **±250ms** around each beep.
+
+---
+
+## 2) Event → Beep map (rep‑rounds & time blocks)
+
+| Moment                       | Sound        | Notes                          |
+| ---------------------------- | ------------ | ------------------------------ |
+| **Countdown (T-2s, T-1s)**   | SHORT, SHORT | into round/work                |
+| **GO (T=0)**                 | **LONG**     | start of round/work            |
+| **Minute pips (1:00, 2:00)** | SHORT        | optional; ON in Silent/Signals |
+| **Last‑10 (rep‑round)**      | SHORT        | single anchor; no voice        |
+| **Last‑5 (time‑work)**       | SHORT        | single anchor; no voice        |
+| **End (round/work end)**     | **LONG**     | transition to rest/log         |
+| **Early "Round done" tap**   | CONFIRM      | immediate feedback             |
+
+**Kinds used by `ctx.beep(kind)`**: `'countdown' | 'start' | 'last5' | 'end' | 'confirm'`
+
+---
+
+## 3) `/coach/beeps.ts` — drop‑in WebAudio engine
+
+```ts
+// /coach/beeps.ts
+// Minimal, offline-safe beep engine + voice ducking.
+// Usage: import { beeps } from '@/coach/beeps'; beeps.play('start')
+
+type BeepKind = 'countdown'|'start'|'last5'|'end'|'confirm';
+
+type DuckFn = (on: boolean, ms: number) => void; // implement to duck TTS/music
+
+class BeepEngine {
+  private ctx?: AudioContext;
+  private ducker: DuckFn | null = null;
+
+  // tones
+  private F_SHORT = 880;   // Hz
+  private F_LONG  = 660;   // Hz
+  private DUR_SHORT = 0.22; // s
+  private DUR_LONG  = 0.60; // s
+
+  ensureCtx(){
+    if (!this.ctx) this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    return this.ctx;
+  }
+
+  setDucker(fn: DuckFn){ this.ducker = fn; }
+
+  private tone(freq:number, dur:number){
+    const ac = this.ensureCtx();
+    const t0 = ac.currentTime;
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.85, t0 + 0.01);
+    g.gain.linearRampToValueAtTime(0.85, t0 + dur - 0.05);
+    g.gain.linearRampToValueAtTime(0.0, t0 + dur);
+    o.connect(g).connect(ac.destination);
+    o.start(t0);
+    o.stop(t0 + dur);
+    this.duck(Math.round(dur*1000));
+  }
+
+  private chirp(dur:number, f0:number, f1:number){
+    const ac = this.ensureCtx();
+    const t0 = ac.currentTime;
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f0, t0);
+    o.frequency.linearRampToValueAtTime(f1, t0 + dur);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.85, t0 + 0.01);
+    g.gain.linearRampToValueAtTime(0.0, t0 + dur);
+    o.connect(g).connect(ac.destination);
+    o.start(t0);
+    o.stop(t0 + dur);
+    this.duck(Math.round(dur*1000));
+  }
+
+  private duck(ms:number){
+    if (!this.ducker) return;
+    try { this.ducker(true, ms); setTimeout(()=>this.ducker?.(false, ms), ms); } catch {}
+  }
+
+  play(kind: BeepKind){
+    switch (kind) {
+      case 'countdown': return this.tone(this.F_SHORT, this.DUR_SHORT);
+      case 'start':     return this.tone(this.F_LONG,  this.DUR_LONG);
+      case 'last5':     return this.tone(this.F_SHORT, this.DUR_SHORT);
+      case 'end':       return this.tone(this.F_LONG,  this.DUR_LONG);
+      case 'confirm':   return this.chirp(0.18, 880, 1320);
+    }
+  }
+
+  /** Utility: schedule a sequence relative to now. Returns cancel(). */
+  sequence(items: Array<{ atMs:number; kind: BeepKind }>): () => void {
+    const tids: number[] = [];
+    for (const it of items) {
+      const id = window.setTimeout(() => this.play(it.kind), Math.max(0, it.atMs));
+      tids.push(id);
+    }
+    return () => tids.forEach(clearTimeout);
+  }
+}
+
+export const beeps = new BeepEngine();
+```
+
+---
+
+## 4) Wire into the Coach runtime
+
+**TimelineContext hook** (where you build `ctx`):
+
+```ts
+import { beeps } from '@/coach/beeps';
+
+const ctx = {
+  // ...other fields
+  beep: (kind: 'countdown'|'start'|'last5'|'end'|'confirm') => beeps.play(kind),
+  speak: (t: string) => speakWithDucking(t),
+};
+
+// Voice ducking (example): pass your TTS/music ducker into the beep engine
+beeps.setDucker((on, ms) => {
+  if (on) voiceBus.setGainDb(-6); else voiceBus.setGainDb(0);
+});
+
+function speakWithDucking(text:string){
+  // prevent starting TTS inside ±250ms of a beep
+  // (simple heuristic: small delay after beep start)
+  setTimeout(() => realtimeSpeak(text), 250);
+}
+```
+
+> If you don’t have a gain bus, you can no‑op the ducker; you’ll still avoid most clashes with the 250ms start delay.
+
+---
+
+## 5) Schedulers you can call today
+
+### A) Rep‑round cadence (e.g., 3:00)
+
+```ts
+// Schedule beeps for a 3:00 round starting now
+function scheduleRepRoundBeeps(roundSec = 180, minutePips = true){
+  const items = [
+    { atMs:    0, kind:'countdown' },
+    { atMs: 1000, kind:'countdown' },
+    { atMs: 2000, kind:'start'     },
+  ];
+  if (minutePips && roundSec >= 60) items.push({ atMs: 60_000, kind:'countdown' });
+  if (minutePips && roundSec >= 120) items.push({ atMs: 120_000, kind:'countdown' });
+  if (roundSec >= 12) items.push({ atMs: (roundSec-10)*1000, kind:'last5' });
+  items.push({ atMs: roundSec*1000, kind:'end' });
+  return beeps.sequence(items);
+}
+```
+
+### B) Time‑based interval (e.g., 30s work / 30s rest)
+
+```ts
+function scheduleTimeBlockBeeps(workSec:number, restSec:number){
+  // Rest → Work start
+  beeps.sequence([
+    { atMs: (restSec-2)*1000, kind:'countdown' },
+    { atMs: (restSec-1)*1000, kind:'countdown' },
+    { atMs: (restSec-0)*1000, kind:'start' },
+  ]);
+  // Work anchors
+  if (workSec >= 7) beeps.sequence([{ atMs: (restSec + workSec - 5)*1000, kind:'last5' }]);
+  beeps.sequence([{ atMs: (restSec + workSec)*1000, kind:'end' }]);
+}
+```
+
+---
+
+## 6) Mini harness (optional) — quick manual test in Replit
+
+Create `client/src/lab/BeepHarness.tsx` and add a route to it.
+
+```tsx
+import React, { useRef } from 'react';
+import { beeps } from '@/coach/beeps';
+
+export default function BeepHarness(){
+  const cancelRef = useRef<null | (()=>void)>(null);
+  return (
+    <div style={{ padding: 16 }}>
+      <h3>Beep Harness</h3>
+      <div style={{ display:'flex', gap:8 }}>
+        <button onClick={()=> beeps.play('countdown')}>Short Pip</button>
+        <button onClick={()=> beeps.play('start')}>Long (GO)</button>
+        <button onClick={()=> beeps.play('end')}>Long (End)</button>
+        <button onClick={()=> beeps.play('confirm')}>Confirm</button>
+      </div>
+      <div style={{ marginTop:12, display:'flex', gap:8 }}>
+        <button onClick={()=> { cancelRef.current?.(); cancelRef.current = scheduleRepRoundBeeps(180, true); }}>▶ Rep‑Round 3:00</button>
+        <button onClick={()=> { cancelRef.current?.(); cancelRef.current = scheduleRepRoundBeeps(150, false); }}>▶ Rep‑Round 2:30 (no minute pips)</button>
+        <button onClick={()=> {
+          cancelRef.current?.();
+          // demo 30/30 for 3 sets
+          const work=30, rest=30;
+          let t=0; for(let i=0;i<3;i++){
+            setTimeout(()=>scheduleTimeBlockBeeps(work, rest), t);
+            t += (rest+work)*1000;
+          }
+          cancelRef.current = () => {};
+        }}>▶ 30/30 ×3</button>
+        <button onClick={()=> { cancelRef.current?.(); }}>⏹ Stop</button>
+      </div>
+    </div>
+  );
+}
+
+// local copies if not importing the helpers:
+function scheduleRepRoundBeeps(roundSec = 180, minutePips = true){
+  const items = [
+    { atMs:    0, kind:'countdown' as const },
+    { atMs: 1000, kind:'countdown' as const },
+    { atMs: 2000, kind:'start'     as const },
+  ];
+  if (minutePips && roundSec >= 60) items.push({ atMs: 60_000, kind:'countdown' as const });
+  if (minutePips && roundSec >= 120) items.push({ atMs: 120_000, kind:'countdown' as const });
+  if (roundSec >= 12) items.push({ atMs: (roundSec-10)*1000, kind:'last5' as const });
+  items.push({ atMs: roundSec*1000, kind:'end' as const });
+  return beeps.sequence(items);
+}
+function scheduleTimeBlockBeeps(workSec:number, restSec:number){
+  beeps.sequence([
+    { atMs: (restSec-2)*1000, kind:'countdown' },
+    { atMs: (restSec-1)*1000, kind:'countdown' },
+    { atMs: (restSec-0)*1000, kind:'start' },
+  ]);
+  if (workSec >= 7) beeps.sequence([{ atMs: (restSec + workSec - 5)*1000, kind:'last5' }]);
+  beeps.sequence([{ atMs: (restSec + workSec)*1000, kind:'end' }]);
+}
+```
+
+---
+
+## 7) QA checklist (copy to PR)
+
+* ✅ **Offline**: beeps play with network disabled.
+* ✅ **Overlap**: back‑to‑back pips don’t clip; no clicks at on/off.
+* ✅ **Ducking**: voice attenuates during beep; TTS never starts within ±250ms of a beep.
+* ✅ **Mapping**: `ctx.beep('countdown'|'start'|'last5'|'end'|'confirm')` is called at the right moments in both **rep‑round** and **time‑blocks**.
+* ✅ **Volume**: LONG beep at end is perceptibly louder / lower pitch than SHORT pips.
+
+**Done.** Paste these three chunks (`/coach/beeps.ts`, wiring snippet, optional harness) and you’re set.
