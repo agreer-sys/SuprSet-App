@@ -51,7 +51,7 @@ function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
   }
 }
 
-export function onEvent(ctx: TimelineContext, ev: Event) {
+export async function onEvent(ctx: TimelineContext, ev: Event) {
   // Ready gate
   if (ev.type === 'EV_AWAIT_READY') { ctx.showReadyModal?.(); return; }
 
@@ -61,7 +61,7 @@ export function onEvent(ctx: TimelineContext, ev: Event) {
   // Gate halfway: High only
   if (ev.type === 'EV_HALFWAY' && ctx.chatterLevel !== 'high') return;
 
-  const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
+  const line = (await selectResponse(ctx, ev)) ?? synthesizePromptLine(ctx, ev);
   if (!line) return;
   if (!canSpeakNow()) return;
 
