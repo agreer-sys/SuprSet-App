@@ -184,13 +184,29 @@ export default function WorkoutSessionPage() {
   });
 
   // NEW: Build TimelineContext for the observer
-  const coachContext = useMemo<TimelineContext>(() => ({
-    workoutId: session?.id?.toString() || 'unknown',
-    pattern: 'superset', // TODO: Extract from workout metadata
-    mode: 'reps' as const, // TODO: Extract from workout metadata
-    chatterLevel,
-    prefs: { preflightLoadIntake: true, strictEMOM: true, allowAutoExtendRest: false, rpeLabels: 'words' },
-    plannedLoads,
+  const coachContext = useMemo<TimelineContext>(() => {
+    // Build blocks array from executionTimeline params
+    const blocks = executionTimeline ? [{
+      id: 'block-1',
+      params: executionTimeline.params || {},
+      exerciseIds: exercises.map(e => e.id)
+    }] : [];
+
+    return {
+      workoutId: session?.id?.toString() || 'unknown',
+      pattern: executionTimeline?.params?.pattern || 'superset',
+      mode: executionTimeline?.params?.mode || 'reps',
+      chatterLevel,
+      prefs: { 
+        preflightLoadIntake: true, 
+        strictEMOM: true, 
+        allowAutoExtendRest: false, 
+        rpeLabels: 'words',
+        repPaceSec
+      },
+      blocks,
+      exercises,
+      plannedLoads,
     nowMs: () => Date.now(),
     getExerciseName: (id) => exercises.find(e => e.id === id)?.name || 'Exercise',
     getNextExerciseName: () => undefined,
@@ -212,9 +228,10 @@ export default function WorkoutSessionPage() {
         timestamp: new Date().toISOString() 
       }]);
     },
-    caption: (text) => console.log('[COACH CAPTION]', text),
-    haptic: () => {}
-  }), [session?.id, chatterLevel, plannedLoads, exercises, realtime]);
+      caption: (text) => console.log('[COACH CAPTION]', text),
+      haptic: () => {}
+    };
+  }, [session?.id, chatterLevel, plannedLoads, exercises, realtime, executionTimeline, repPaceSec]);
 
   // NEW: Seed coach responses on mount (SMART varied responses to demonstrate the system)
   useEffect(() => {

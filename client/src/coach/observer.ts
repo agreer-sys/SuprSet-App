@@ -1,5 +1,6 @@
 import { TimelineContext, Event } from '@/types/coach';
 import { selectResponse } from '@/coach/responseService';
+import { buildBlockIntroLine } from '@/coach/introTokens';
 
 const SPEAK_MIN_GAP_MS = 5000;   // throttle
 const COUNTDOWN_VOICE_OFF = true; // beeps handle countdown by default
@@ -21,7 +22,16 @@ function speak(ctx: TimelineContext, text: string) {
 
 function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
   switch (ev.type) {
-    case 'EV_BLOCK_START': return 'Block starting — set up now.';
+    case 'EV_BLOCK_START': {
+      // Build a proper block introduction using block params
+      if (ctx.blocks && ctx.exercises) {
+        const block = ctx.blocks.find(b => b.id === ev.blockId);
+        if (block) {
+          return buildBlockIntroLine(block, ctx.exercises, ctx.prefs.repPaceSec);
+        }
+      }
+      return 'Block starting — set up now.';
+    }
 
     case 'EV_WORK_PREVIEW': {
       const name = ctx.getExerciseName(ev.exerciseId);

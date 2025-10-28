@@ -42,8 +42,12 @@ export interface TimelineContext {
   pattern: Pattern;
   mode: Mode;
   chatterLevel: ChatterLevel;
-  prefs: WorkoutPrefs;
+  prefs: WorkoutPrefs & { repPaceSec?: number };
   nowMs(): number;
+
+  // Block and exercise data for intro generation
+  blocks?: Array<{ id: string; params: any; exerciseIds: string[] }>;
+  exercises?: Array<{ id: string; name: string }>;
 
   // data hooks
   getExerciseName(id:string): string;
