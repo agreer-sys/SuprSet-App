@@ -1154,6 +1154,19 @@ export default function WorkoutSessionPage() {
         ? executionTimeline.executionTimeline[currentStepIndex + 1]
         : null;
       
+      // EV_WORK_PREVIEW: Announce upcoming exercise during rest (HIGH chatter only)
+      if (FLAGS.COACH_V2 && chatterLevel === 'high' && nextStep?.type === 'work' && nextStep.exercise && !hasPlayed('preview')) {
+        emitCoachEvent({
+          type: 'EV_WORK_PREVIEW',
+          exerciseId: nextStep.exercise.id,
+          setIndex: nextStep.set,
+          totalSets: nextStep.totalSets,
+          roundIndex: nextStep.round,
+          totalRounds: nextStep.totalRounds
+        });
+        markPlayed('preview');
+      }
+      
       // Only beep if next step is WORK (time-based)
       if (nextStep?.type === 'work') {
         if (timeRemaining === 3 && !hasPlayed(3) && canBeep) {
