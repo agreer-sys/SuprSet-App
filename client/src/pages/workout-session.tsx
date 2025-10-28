@@ -1359,6 +1359,12 @@ export default function WorkoutSessionPage() {
                     lastResyncMs.current = 0;
                     console.log('🚀 Workout started at', new Date(now).toISOString());
                     
+                    // Emit EV_BLOCK_START to introduce the block
+                    emitCoachEvent({ 
+                      type: 'EV_BLOCK_START', 
+                      blockId: 'block-1'
+                    });
+                    
                     // Auto-connect AI Coach when workout starts
                     try {
                       if (!realtime.isConnected) {
