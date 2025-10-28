@@ -95,10 +95,18 @@ export default function CoachLabRepRound(){
   function playRound(roundIndex:number){
     const roundStartMs = Date.now();
 
-    // Preview near T-10s (list A1..A3)
-    schedule(Math.max(0, 1000), () => {
+    // Preview timing:
+    // - Round 1: -1500ms (before beeps) to avoid countdown collision
+    // - Round 2+: +1000ms (during rest gap after round-rest voice)
+    const previewOffset = roundIndex === 0 ? -1500 : 1000;
+    schedule(Math.max(0, previewOffset), () => {
       const first = EXS[0];
-      emit({ type:'EV_WORK_PREVIEW', exerciseId:first.id, roundIndex, totalRounds: rounds });
+      emit({ 
+        type:'EV_WORK_PREVIEW', 
+        exerciseId:first.id, 
+        roundIndex, 
+        totalRounds: rounds
+      });
     });
 
     // 3-2-1 beeps then GO
@@ -157,8 +165,6 @@ export default function CoachLabRepRound(){
       { id:211,event_type:'work_start',pattern:'any',mode:'reps',chatter_level:'minimal',locale:'en-US',text_template:'Go — {{cue}}.',priority:5,cooldown_sec:4,active:true,usage_count:0,last_used_at:null },
       { id:221,event_type:'halfway',pattern:'any',mode:'reps',chatter_level:'high',locale:'en-US',text_template:'Halfway — keep it smooth.',priority:5,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
     ] as any);
-
-    emit({ type:'EV_BLOCK_START', blockId:'rep-round' });
 
     // Schedule all rounds with canonical rest gap timing
     const cycleDuration = getRoundCycleDuration(roundSec);
