@@ -3,6 +3,6 @@
 
 export const FLAGS = {
   // Coach V2: Advanced rep-round timing, block intros, downstream tech hints
-  // Default: true for internal testing; set to false for safe rollback
-  COACH_V2: (typeof window !== 'undefined' && new URLSearchParams(location.search).has('coachV2')) || true,
+  // Default: false for safe rollback; enable via ?coachV2 URL param
+  COACH_V2: typeof window !== 'undefined' && new URLSearchParams(location.search).has('coachV2'),
 };
