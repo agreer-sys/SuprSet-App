@@ -156,10 +156,10 @@ export default function WorkoutSessionPage() {
 
   // NEW: Auto-show intro when block workout is detected (only once)
   useEffect(() => {
-    if (isBlockWorkout && exercises.length > 0 && !showIntro && !preflightCompleted) {
+    if (isBlockWorkout && exercises.length > 0 && !preflightCompleted && !showIntro && !showPreflight) {
       setShowIntro(true);
     }
-  }, [isBlockWorkout, exercises.length, showIntro, preflightCompleted]);
+  }, [isBlockWorkout, exercises.length, preflightCompleted]); // Removed showIntro and showPreflight from deps to prevent fighting with button clicks
 
   // OpenAI Realtime API setup (needs to be before coachContext)
   const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
