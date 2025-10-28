@@ -20,6 +20,8 @@ import type { WorkoutSessionNew, SetLog, CoachingSession } from "@shared/schema"
 import { onEvent } from '@/coach/observer';
 import { seedResponses } from '@/coach/responseService';
 import { PreflightWeightsSheet } from '@/components/PreflightWeightsSheet';
+import { WorkoutIntroSheet } from '@/components/WorkoutIntroSheet';
+import type { ChatterLevel as IntroChatterLevel } from '@/components/WorkoutIntroSheet';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
 
 export default function WorkoutSessionPage() {
@@ -55,8 +57,10 @@ export default function WorkoutSessionPage() {
   const lastUpdateWallClockMs = useRef<number>(0);
 
   // NEW: Coach system setup
-  const [chatterLevel] = useState<ChatterLevel>('minimal');
+  const [chatterLevel, setChatterLevel] = useState<ChatterLevel>('minimal');
+  const [repPaceSec, setRepPaceSec] = useState<number>(180);
   const [plannedLoads, setPlannedLoads] = useState<Record<string, number|undefined>>({});
+  const [showIntro, setShowIntro] = useState(false); // Show intro first for block workouts
   const [showPreflight, setShowPreflight] = useState(false); // Only show for block workouts
   const [preflightCompleted, setPreflightCompleted] = useState(false); // Track if preflight was completed
 
@@ -150,12 +154,12 @@ export default function WorkoutSessionPage() {
     return Array.from(exerciseMap.values());
   }, [executionTimeline]);
 
-  // NEW: Auto-show preflight when block workout is detected (only once)
+  // NEW: Auto-show intro when block workout is detected (only once)
   useEffect(() => {
-    if (isBlockWorkout && exercises.length > 0 && !preflightCompleted && !showPreflight) {
-      setShowPreflight(true);
+    if (isBlockWorkout && exercises.length > 0 && !showIntro && !preflightCompleted) {
+      setShowIntro(true);
     }
-  }, [isBlockWorkout, exercises.length, preflightCompleted, showPreflight]);
+  }, [isBlockWorkout, exercises.length, showIntro, preflightCompleted]);
 
   // OpenAI Realtime API setup (needs to be before coachContext)
   const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
@@ -1258,6 +1262,54 @@ export default function WorkoutSessionPage() {
   const completedSets = setLogs?.length || 0;
   const progressPercentage = (completedSets / totalSets) * 100;
 
+  // NEW: Show Intro Sheet for block workouts FIRST
+  if (isBlockWorkout && showIntro && exercises.length > 0 && executionTimeline) {
+    const firstBlock = executionTimeline.params;
+    const blocks = [{
+      id: 'block-1',
+      name: firstBlock?.name || 'Block 1',
+      params: {
+        pattern: firstBlock?.pattern || 'superset',
+        mode: firstBlock?.mode || 'reps',
+        setsPerExercise: firstBlock?.setsPerExercise || firstBlock?.rounds || 3,
+        workSec: firstBlock?.workSec,
+        restSec: firstBlock?.restSec,
+        roundRestSec: firstBlock?.roundRestSec,
+        durationSec: firstBlock?.durationSec,
+        targetReps: firstBlock?.targetReps || '8-12',
+        awaitReadyBeforeStart: firstBlock?.awaitReadyBeforeStart || false
+      },
+      exerciseIds: exercises.map(e => e.id)
+    }];
+
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <WorkoutIntroSheet
+          workoutTitle={blockSession?.blockWorkout?.name || "Today's Workout"}
+          blocks={blocks}
+          exercises={exercises}
+          defaultChatter={chatterLevel as IntroChatterLevel}
+          defaultRepPaceSec={repPaceSec}
+          onChangeChatter={(c) => setChatterLevel(c as ChatterLevel)}
+          onChangeRepPace={setRepPaceSec}
+          onOpenPreflight={() => {
+            setShowIntro(false);
+            setShowPreflight(true);
+          }}
+          onBegin={() => {
+            setShowIntro(false);
+            const hasRepBlocks = blocks.some(b => b.params?.mode === 'reps');
+            if (hasRepBlocks) {
+              setShowPreflight(true);
+            } else {
+              setPreflightCompleted(true);
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
   // NEW: Show Preflight Weights Sheet for block workouts before starting
   if (isBlockWorkout && showPreflight && exercises.length > 0) {
     return (
@@ -1271,9 +1323,9 @@ export default function WorkoutSessionPage() {
             setShowPreflight(false);
           }}
           onCancel={() => {
-            // Allow skipping preflight
-            setPreflightCompleted(true);
+            // Go back to intro instead of skipping
             setShowPreflight(false);
+            setShowIntro(true);
           }}
         />
       </div>
