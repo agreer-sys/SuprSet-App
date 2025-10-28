@@ -42,7 +42,12 @@ function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
       return `${name} coming up.`;
     }
 
-    case 'EV_WORK_START':  return 'Go — one clean form cue.';
+    case 'EV_WORK_START': {
+      // Cue-only (no exercise name - preview already announced it)
+      const meta = ctx.getExerciseMeta?.(ev.exerciseId);
+      const cue = meta?.cues?.[0]; // Use first cue if available
+      return cue ? `${cue}` : 'Go — tight and controlled.';
+    }
 
     case 'EV_TECH_HINT': {
       // High chatter only: a short technical line for A2 when we're confident
