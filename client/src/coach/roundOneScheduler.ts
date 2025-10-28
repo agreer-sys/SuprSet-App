@@ -1,51 +1,67 @@
 // client/src/coach/roundOneScheduler.ts
-// Centralized Round 1 timing for rep-round workouts
-// Ensures preview fires BEFORE beeps start, with proper guard windows
+// Round 1: preview (optional) → 3-2-1 → GO with proper guard windows
+import type { TimelineContext } from '@/types/coach';
 
 export interface RoundOneOpts {
-  previewLeadMs?: number;      // how early to fire preview (default: 1500ms before first beep)
-  onPreview?: () => void;       // preview callback
-  onCountdown1?: () => void;    // first countdown beep (T0)
-  onCountdown2?: () => void;    // second countdown beep (T0+1000ms)
-  onGo?: () => void;            // GO beep (T0+2000ms)
-  onWorkStart?: () => void;     // A1 start cue (T0+2200ms)
+  ctx: TimelineContext;
+  goAtMs: number;                        // epoch ms for GO beep
+  emit: (ev: any) => void;
+  previewExerciseId?: string;            // A1 id
+  enablePreview?: boolean;               // default false for Minimal
+  previewLeadMs?: number;                // default 1000ms before first pip
+  emitCountdownEvents?: boolean;         // optional countdown events
+  onGo?: () => void;                     // fire A1 start cue ~200-300ms after GO
+  totalRounds?: number;                  // optional
 }
 
 /**
  * Schedule Round 1 events with clean separation:
- * - Preview fires BEFORE beeps (default -1500ms)
- * - Beeps are clean (no voice/captions)
- * - Start cue fires ~200ms after GO beep
+ * - Preview fires ≥1s BEFORE first beep (if enabled)
+ * - Beeps are clean (no voice/captions during countdown)
+ * - Start cue fires ~220ms after GO beep
  * 
  * Returns cancel function to clear all timers.
  */
 export function scheduleRoundOne(opts: RoundOneOpts): () => void {
-  const {
-    previewLeadMs = 1500,
-    onPreview,
-    onCountdown1,
-    onCountdown2,
-    onGo,
-    onWorkStart
+  const { 
+    ctx, goAtMs, emit, previewExerciseId, enablePreview = false, 
+    previewLeadMs = 1000, emitCountdownEvents = false, onGo, totalRounds 
   } = opts;
-
+  
   const tids: number[] = [];
-  const schedule = (ms: number, fn?: () => void) => {
-    if (fn) tids.push(window.setTimeout(fn, ms));
-  };
+  const at = (ms: number, fn: () => void) => tids.push(window.setTimeout(fn, Math.max(0, ms)));
 
-  // Preview fires BEFORE first beep
-  schedule(-previewLeadMs, onPreview);
+  // Countdown pips: -2000ms, -1000ms; GO at 0ms (relative to goAtMs)
+  const c1At = goAtMs - 2000;
+  const c2At = goAtMs - 1000;
+  const previewAt = goAtMs - (2000 + previewLeadMs); // e.g., 1s before first pip
 
-  // Countdown beeps (clean, no voice)
-  schedule(0, onCountdown1);
-  schedule(1000, onCountdown2);
+  // Optional preview (skip if no exercise id)
+  if (enablePreview && previewExerciseId) {
+    at(previewAt - Date.now(), () => {
+      emit({ 
+        type: 'EV_WORK_PREVIEW', 
+        exerciseId: previewExerciseId, 
+        roundIndex: 0, 
+        totalRounds 
+      });
+    });
+  }
 
-  // GO beep (clean)
-  schedule(2000, onGo);
-
-  // A1 start cue after GO clears
-  schedule(2200, onWorkStart);
+  at(c1At - Date.now(), () => { 
+    ctx.beep?.('countdown'); 
+    if (emitCountdownEvents) emit({ type: 'EV_COUNTDOWN', sec: 3 }); 
+  });
+  
+  at(c2At - Date.now(), () => { 
+    ctx.beep?.('countdown'); 
+    if (emitCountdownEvents) emit({ type: 'EV_COUNTDOWN', sec: 2 }); 
+  });
+  
+  at(goAtMs - Date.now(), () => { 
+    ctx.beep?.('start'); 
+    onGo?.(); 
+  });
 
   return () => tids.forEach(clearTimeout);
 }

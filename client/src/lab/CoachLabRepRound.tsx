@@ -6,7 +6,7 @@ import { PaceModel } from '@/coach/paceModel';
 import { beeps } from '@/coach/beeps';
 import { voiceBus } from '@/audio/voiceBus';
 import { speakTTS } from '@/audio/ttsAdapter';
-import { guardCaption } from '@/ui/captionAdapter';
+import { makeGuardedCaption } from '@/ui/captionAdapter';
 import { scheduleRoundOne } from '@/coach/roundOneScheduler';
 import { ROUND_END_TO_SPEECH_MS, ROUND_END_TO_COUNTDOWN_MS, getRoundCycleDuration } from '@/coach/roundBetweenScheduler';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
@@ -36,7 +36,7 @@ const EXS: Ex[] = [
 
 function useCtx(chatter: ChatterLevel): TimelineContext {
   const guardedCaption = useMemo(() => 
-    guardCaption((t) => console.log('%c[CAPTION]', 'color:#607d8b', t))
+    makeGuardedCaption((t) => console.log('%c[CAPTION]', 'color:#607d8b', t))
   , []);
 
   return useMemo(()=>({
@@ -176,22 +176,25 @@ export default function CoachLabRepRound(){
       { id:221,event_type:'halfway',pattern:'any',mode:'reps',chatter_level:'high',locale:'en-US',text_template:'Halfway — keep it smooth.',priority:5,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
     ] as any);
 
-    // Round 1 preview fires 1.5s BEFORE first beep
-    const first = EXS[0];
-    setTimeout(() => emit({ 
-      type:'EV_WORK_PREVIEW', 
-      exerciseId: first.id, 
-      roundIndex: 0, 
-      totalRounds: rounds
-    }), 0);
+    // Round 1: use centralized scheduler with preview BEFORE beeps
+    const goAtMs = Date.now() + 3000; // 3s initial padding
+    const a1Id = EXS[0]?.id;
+    const cancelR1 = scheduleRoundOne({
+      ctx,
+      emit: (ev) => emit(ev),
+      goAtMs,
+      previewExerciseId: a1Id,
+      enablePreview: !!a1Id, // only if we have an exercise id
+      totalRounds: rounds,
+      onGo: () => setTimeout(() => emit({ type:'EV_WORK_START', exerciseId: a1Id }), 220)
+    });
+    tos.current.push(cancelR1 as any);
 
-    // Schedule all rounds with canonical rest gap timing
+    // Schedule rounds 2+ with canonical rest gap timing
     const cycleDuration = getRoundCycleDuration(roundSec);
-    for (let r=0; r<rounds; r++){
+    for (let r=1; r<rounds; r++){
       const offset = r * cycleDuration;
-      // Round 1 starts at +1500ms (after preview gap)
-      const actualOffset = r === 0 ? 1500 : offset;
-      setTimeout(()=> playRound(r), actualOffset);
+      setTimeout(()=> playRound(r), offset);
     }
 
     // Block end after all rounds complete

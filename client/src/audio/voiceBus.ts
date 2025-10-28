@@ -70,11 +70,10 @@ class VoiceBus {
   }
 
   /**
-   * Guard: if a beep just fired, delay starting speech so pips stay clean.
-   * Example usage:
-   *   voiceBus.guardTTSStart(() => realtimeSpeak(text));
+   * Generic guard: if a beep just fired, delay executing fn so beeps stay clean.
+   * Used by both TTS and caption systems for unified collision avoidance.
    */
-  guardTTSStart<T>(fn: () => T, extraDelayMs = 0): T | void {
+  guardStart<T>(fn: () => T, extraDelayMs = 0): T | void {
     const since = Date.now() - this.lastBeepAt;
     const wait  = Math.max(0, this.ttsCooldownMs - since) + extraDelayMs;
     if (wait <= 0) return fn();
@@ -82,13 +81,11 @@ class VoiceBus {
   }
 
   /**
-   * Calculate earliest safe time to start voice/caption after last beep.
-   * Returns delay in ms (0 if safe now, >0 if must wait).
-   * Used by both TTS and caption adapters for unified collision avoidance.
+   * Legacy TTS guard - routes to generic guardStart.
+   * @deprecated Use guardStart instead
    */
-  guardStart(): number {
-    const since = Date.now() - this.lastBeepAt;
-    return Math.max(0, this.ttsCooldownMs - since);
+  guardTTSStart<T>(fn: () => T, extraDelayMs = 0): T | void {
+    return this.guardStart(fn, extraDelayMs);
   }
 
   /**
