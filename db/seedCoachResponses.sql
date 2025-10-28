@@ -6,11 +6,20 @@ TRUNCATE TABLE coach_responses RESTART IDENTITY CASCADE;
 
 -- =========================================
 -- EV_BLOCK_START: Block introduction
+-- Tokens: {{pattern}}, {{mode}}, {{rounds}}, {{exCount}}, {{cadence}}, {{duration}}, {{firstExercise}}
 -- =========================================
+
+-- Rep-based blocks (use cadence)
 INSERT INTO coach_responses (event_type, pattern, mode, chatter_level, text_template, priority, cooldown_sec) VALUES
-('EV_BLOCK_START', 'any', 'any', 'minimal', 'Starting {{exercise}}', 10, 300),
-('EV_BLOCK_START', 'any', 'any', 'high', 'Alright, let''s begin with {{exercise}}. {{cue}}', 20, 300),
-('EV_BLOCK_START', 'any', 'any', 'high', 'Time for {{exercise}}. {{cue}}', 15, 300);
+('EV_BLOCK_START', 'any', 'reps', 'minimal', '{{pattern}} — {{rounds}} rounds • cadence {{cadence}}. First up: {{firstExercise}}.', 20, 300),
+('EV_BLOCK_START', 'any', 'reps', 'high', '{{pattern}} — {{rounds}} rounds • cadence {{cadence}}. First up: {{firstExercise}}.', 25, 300),
+('EV_BLOCK_START', 'any', 'reps', 'high', 'Alright. {{pattern}} — {{rounds}} rounds at {{cadence}}. We start with {{firstExercise}}.', 18, 300);
+
+-- Time-based blocks (use duration)
+INSERT INTO coach_responses (event_type, pattern, mode, chatter_level, text_template, priority, cooldown_sec) VALUES
+('EV_BLOCK_START', 'any', 'time', 'minimal', '{{pattern}} — {{exCount}} exercises • {{duration}}. First up: {{firstExercise}}.', 20, 300),
+('EV_BLOCK_START', 'any', 'time', 'high', '{{pattern}} — {{exCount}} exercises • {{duration}}. First up: {{firstExercise}}.', 25, 300),
+('EV_BLOCK_START', 'any', 'time', 'high', 'Time block: {{exCount}} exercises at {{duration}}. Starting with {{firstExercise}}.', 18, 300);
 
 -- =========================================
 -- EV_COUNTDOWN: 3-2-1 countdown

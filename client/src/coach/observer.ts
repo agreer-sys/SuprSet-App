@@ -23,7 +23,8 @@ function speak(ctx: TimelineContext, text: string) {
 function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
   switch (ev.type) {
     case 'EV_BLOCK_START': {
-      // Build a proper block introduction using block params
+      // Fallback: Build a proper block introduction using block params
+      // This is used if DB lookup fails
       if (ctx.blocks && ctx.exercises) {
         const block = ctx.blocks.find(b => b.id === ev.blockId);
         if (block) {

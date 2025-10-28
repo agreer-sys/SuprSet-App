@@ -77,6 +77,49 @@ function renderTemplate(tpl: string, ctx: TimelineContext, ev: Event): string {
     setNum,
     roundNum
   };
+
+  // Add block-specific tokens for EV_BLOCK_START
+  if (ev.type === 'EV_BLOCK_START' && ctx.blocks && ctx.exercises) {
+    const block = ctx.blocks.find(b => b.id === ev.blockId);
+    if (block) {
+      const p = block.params || {};
+      const exIds = block.exerciseIds || [];
+      
+      // Pattern label
+      const patternMap: Record<string, string> = {
+        superset: 'Superset',
+        straight_sets: 'Straight Sets',
+        circuit: 'Circuit'
+      };
+      tokens.pattern = patternMap[p.pattern] || 'Block';
+      
+      // Mode
+      tokens.mode = p.mode === 'time' ? 'Time' : 'Reps';
+      
+      // Exercise count
+      tokens.exCount = exIds.length;
+      
+      // First exercise name
+      tokens.firstExercise = ctx.exercises?.find(e => e.id === exIds[0])?.name || 'first exercise';
+      
+      // Rounds (for rep mode)
+      tokens.rounds = p.setsPerExercise ?? 1;
+      
+      // Cadence (for rep mode)
+      if (p.mode === 'reps') {
+        const pace = ctx.prefs.repPaceSec ?? 180;
+        const m = Math.floor(pace / 60);
+        const s = String(pace % 60).padStart(2, '0');
+        tokens.cadence = `${m}:${s}`;
+      }
+      
+      // Duration (for time mode)
+      if (p.mode === 'time') {
+        tokens.duration = `${p.workSec || 0}s on / ${p.restSec || 0}s off`;
+      }
+    }
+  }
+
   return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => String(tokens[k] ?? ''));
 }
 
