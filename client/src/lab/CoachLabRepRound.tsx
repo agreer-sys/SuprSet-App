@@ -177,7 +177,7 @@ export default function CoachLabRepRound(){
     ] as any);
 
     // Round 1: use centralized scheduler with preview BEFORE beeps
-    const goAtMs = Date.now() + 5000; // 5s initial padding (4.5s for preview+beeps, +500ms buffer)
+    const goAtMs = Date.now() + 6500; // 6.5s initial padding (6s for preview+beeps, +500ms buffer)
     const a1Id = EXS[0]?.id;
     const cancelR1 = scheduleRoundOne({
       ctx,

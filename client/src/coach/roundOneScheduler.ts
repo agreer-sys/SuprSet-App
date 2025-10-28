@@ -8,7 +8,7 @@ export interface RoundOneOpts {
   emit: (ev: any) => void;
   previewExerciseId?: string;            // A1 id
   enablePreview?: boolean;               // default false for Minimal
-  previewLeadMs?: number;                // default 2500ms before first pip (large buffer for setTimeout jitter + guard)
+  previewLeadMs?: number;                // default 4000ms before first pip (accounts for setTimeout jitter up to 1s)
   emitCountdownEvents?: boolean;         // optional countdown events
   onGo?: () => void;                     // fire A1 start cue ~200-300ms after GO
   totalRounds?: number;                  // optional
@@ -16,7 +16,7 @@ export interface RoundOneOpts {
 
 /**
  * Schedule Round 1 events with clean separation:
- * - Preview fires ≥2.5s BEFORE first beep (large buffer for setTimeout jitter + guard window)
+ * - Preview fires ≥4s BEFORE first beep (large buffer for setTimeout jitter up to 1s)
  * - Beeps are clean (no voice/captions during countdown)
  * - Start cue fires ~220ms after GO beep
  * 
@@ -25,7 +25,7 @@ export interface RoundOneOpts {
 export function scheduleRoundOne(opts: RoundOneOpts): () => void {
   const { 
     ctx, goAtMs, emit, previewExerciseId, enablePreview = false, 
-    previewLeadMs = 2500, emitCountdownEvents = false, onGo, totalRounds 
+    previewLeadMs = 4000, emitCountdownEvents = false, onGo, totalRounds 
   } = opts;
   
   const tids: number[] = [];
@@ -34,7 +34,7 @@ export function scheduleRoundOne(opts: RoundOneOpts): () => void {
   // Countdown pips: -2000ms, -1000ms; GO at 0ms (relative to goAtMs)
   const c1At = goAtMs - 2000;
   const c2At = goAtMs - 1000;
-  const previewAt = goAtMs - (2000 + previewLeadMs); // e.g., 2.5s before first pip (default)
+  const previewAt = goAtMs - (2000 + previewLeadMs); // e.g., 4s before first pip (default)
 
   // Optional preview (skip if no exercise id)
   if (enablePreview && previewExerciseId) {
