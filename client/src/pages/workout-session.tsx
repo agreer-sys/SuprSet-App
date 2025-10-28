@@ -986,11 +986,7 @@ export default function WorkoutSessionPage() {
         hasSpokenForStepRef.current.add(`complete-${previousStepIndexRef.current}`);
       } else if (previousStep.type === 'rest' && !hasSpokenForStepRef.current.has(`rest_complete-${previousStepIndexRef.current}`)) {
         realtime.sendEvent('rest_complete');
-        // Pass the NEXT exercise (current step after rest)
-        emitCoachEvent({ 
-          type: 'EV_REST_END',
-          exerciseId: currentStep.exercise?.id?.toString() || 'unknown'
-        });
+        emitCoachEvent({ type: 'EV_REST_END' });
         hasSpokenForStepRef.current.add(`rest_complete-${previousStepIndexRef.current}`);
       }
     }
@@ -1155,7 +1151,8 @@ export default function WorkoutSessionPage() {
         : null;
       
       // EV_WORK_PREVIEW: Announce upcoming exercise during rest (HIGH chatter only)
-      if (FLAGS.COACH_V2 && chatterLevel === 'high' && nextStep?.type === 'work' && nextStep.exercise && !hasPlayed('preview')) {
+      // Use a special marker (99) to track preview playback
+      if (FLAGS.COACH_V2 && chatterLevel === 'high' && nextStep?.type === 'work' && nextStep.exercise && !hasPlayed(99)) {
         emitCoachEvent({
           type: 'EV_WORK_PREVIEW',
           exerciseId: nextStep.exercise.id,
@@ -1164,7 +1161,7 @@ export default function WorkoutSessionPage() {
           roundIndex: nextStep.round,
           totalRounds: nextStep.totalRounds
         });
-        markPlayed('preview');
+        markPlayed(99);
       }
       
       // Only beep if next step is WORK (time-based)
@@ -1189,7 +1186,7 @@ export default function WorkoutSessionPage() {
         markPlayed(1);
       }
     }
-  }, [isBlockWorkout, executionTimeline, currentStepIndex, elapsedMs, isPaused, isAwaitingReady, workoutStartEpochMs]);
+  }, [isBlockWorkout, executionTimeline, currentStepIndex, elapsedMs, isPaused, isAwaitingReady, workoutStartEpochMs, emitCoachEvent, chatterLevel]);
 
   // Clear beep tracking when step changes
   useEffect(() => {
