@@ -35,6 +35,29 @@ The AI receives pre-compiled workout timeline context including:
 - **Testing Requirements**: Always confirm all adjustments work properly on mobile browser before reporting completion - mobile-first validation mandatory
 - **Strategic Vision**: Build community-driven AI model rather than relying on generic solutions - create competitive moat through proprietary datasets
 
+## Recent Changes
+
+### Phase 3 Merge (Oct 28, 2025)
+Integrated Lab improvements into production app with COACH_V2 feature flag for safe rollback:
+
+**Changes:**
+1. **Feature Flag System**: Added `FLAGS.COACH_V2` (defaults OFF, enable via `?coachV2` URL param) for gated rollout and rollback control
+2. **Beep Module Integration**: Replaced raw Web Audio beeps with `beeps.ts` module (earbud-optimized tones with voice ducking)
+3. **EV_WORK_PREVIEW Event**: Added exercise preview during REST steps (HIGH chatter only) - announces upcoming exercise before work starts
+4. **Cue-Only Work Start**: Updated `EV_WORK_START` fallback to provide form cues only (no exercise name repetition since preview announced it)
+5. **Canonical Constants Verified**: Server timeline compiler and client round scheduler use identical `ROUND_END_TO_SPEECH_MS` and `ROUND_END_TO_COUNTDOWN_MS` constants
+6. **Database Index Verified**: `coach_responses_dims_idx` composite index confirmed for optimal query performance
+
+**Architecture:**
+- Lab environment remains as permanent testing sandbox (`/lab/*` routes)
+- Server-compiled ExecutionTimeline is authoritative scheduler
+- Client emits coach events from timeline steps (no client-side round schedulers)
+- Feature flag gates all V2 behavior for safe rollback
+
+**Testing:**
+- QA checklist: Flag ON/OFF modes, beep timing, chatter levels, preview/cue separation, pause/resume
+- Architect review: PASS - Rollback guarantees maintained, legacy flow intact when flag OFF
+
 ## System Architecture
 The application uses a client-server architecture with a React frontend and an Express.js backend.
 
