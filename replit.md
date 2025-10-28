@@ -71,6 +71,14 @@ The application uses a client-server architecture with a React frontend and an E
   - **Centralized constants**: `ROUND_END_TO_SPEECH_MS = 700`, `ROUND_END_TO_COUNTDOWN_MS = 3000`, `WORK_START_OFFSET_MS = 5600`
   - **Single source of truth**: `client/src/coach/roundBetweenScheduler.ts` for client, mirrored in `server/timeline-compiler.ts` for server
   - **Timeline compilation**: Server stamps canonical timestamps into timeline; client beep handler differentiates pips (220ms) vs GO (600ms) by duration
+- **Downstream Tech Cue System (v1.0, Oct 27, 2025)**: Intelligent A2/A3 technical hints for rep-round workouts with comprehensive guardrails. Features:
+  - **Chatter-aware**: Only fires on `high` chatter level (rounds 2+)
+  - **A2 preferred**: Fires A2 hint ~3s after window start; A3 only if A2 didn't fire
+  - **Optional alternation**: Even rounds use A3, odd rounds use A2 (configurable via `ALTERNATE_TECH_HINT`)
+  - **Confidence threshold**: ≥70% confidence required
+  - **Time guard**: ≥20s remaining in round
+  - **Voice coordination**: Honors voiceBus guard window (±250ms beep collision avoidance)
+  - **Implementation**: `cuePolicy.ts` (constants/guards), `downstreamTech.ts` (scheduler)
 
 **Backend (Express + Node.js)**
 - **Server**: Express.js with TypeScript.

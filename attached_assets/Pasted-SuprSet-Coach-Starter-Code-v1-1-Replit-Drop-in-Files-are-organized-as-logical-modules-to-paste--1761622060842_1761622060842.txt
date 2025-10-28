@@ -1,0 +1,1140 @@
+SuprSet Coach Starter Code (v1.1) — Replit Drop‑in
+
+Files are organized as logical modules to paste into your codebase. Replace imports (e.g., UI components) as needed.
+
+⸻
+
+/types/coach.ts
+
+export type Pattern = 'superset'|'straight_sets'|'circuit'|'custom';
+export type Mode = 'time'|'reps';
+export type ChatterLevel = 'silent'|'signals'|'minimal'|'standard'|'high';
+
+export interface BlockParams {
+  pattern: Pattern;
+  mode: Mode;
+  awaitReadyBeforeStart?: boolean; // default false
+  partnerAlt?: boolean;
+  restBetweenPartnersSec?: number;  // default 0
+  speakCountdownSec?: number;       // default 3
+  safety?: { maxRPE?: number; allowPainProceed?: boolean };
+  chatterLevel?: ChatterLevel;      // default 'minimal'
+}
+
+export interface WorkoutPrefs {
+  preflightLoadIntake: boolean;     // default true
+  strictEMOM: boolean;              // default true
+  allowAutoExtendRest: false;       // per decision
+  rpeLabels: 'words'|'numbers'|'both'; // default 'words'
+}
+
+export type Event =
+  | { type:'EV_BLOCK_START'; blockId:string }
+  | { type:'EV_AWAIT_READY'; blockId:string }
+  | { type:'EV_COUNTDOWN'; sec:number }
+  | { type:'EV_WORK_START'; exerciseId:string }
+  | { type:'EV_WORK_END'; exerciseId:string }
+  | { type:'EV_REST_START'; sec:number; reason?:string }
+  | { type:'EV_REST_END' }
+  | { type:'EV_ROUND_REST_START'; sec:number }
+  | { type:'EV_ROUND_REST_END' }
+  | { type:'EV_BLOCK_END'; blockId:string }
+  | { type:'EV_WORKOUT_END' };
+
+export interface TimelineContext {
+  workoutId: string;
+  blockId?: string;
+  pattern: Pattern;
+  mode: Mode;
+  chatterLevel: ChatterLevel;
+  prefs: WorkoutPrefs;
+  nowMs(): number;
+  // data hooks
+  getExerciseName(id:string): string;
+  getNextExerciseName?(id?:string): string | undefined;
+  plannedLoads: Record<string, number | undefined>; // per exerciseId (kg)
+  // ui/system hooks (to be implemented in app)
+  showReadyModal?: () => Promise<void>;
+  openRestQuickLog?: (exerciseId:string) => void;
+  speak?: (text:string) => void;
+  beep?: (kind:'start'|'last5'|'end'|'countdown'|'confirm') => void;
+  caption?: (text:string) => void;
+  haptic?: (kind:'light'|'medium'|'heavy') => void;
+}
+
+
+⸻
+
+/coach/responseService.ts
+
+import { TimelineContext, Event } from '@/types/coach';
+
+export interface CoachResponse {
+  id: number;
+  event_type: string;   // e.g., 'pre_block','countdown','work_start','last5s','rest_start','round_rest','block_end'
+  pattern: string;      // specific or 'any'
+  mode: string;         // 'time'|'reps'|'any'
+  chatter_level: string;// level or 'any'
+  locale: string;       // 'en-US'
+  text_template: string;// tokens: {{exercise}}, {{next}}, {{restSec}}, {{loadDelta}}, {{count}}, {{sets}}
+  priority: number;     // 1..5
+  cooldown_sec: number; // 0..n
+  active: boolean;
+  usage_count: number;
+  last_used_at: number | null; // epoch ms
+}
+
+// TODO: wire to real DB. Minimal in-memory adapter for now.
+let _pool: CoachResponse[] = [];
+export function seedResponses(rows: CoachResponse[]) { _pool = rows; }
+
+function mapEvent(ev: Event): string {
+  switch (ev.type) {
+    case 'EV_BLOCK_START': return 'pre_block';
+    case 'EV_COUNTDOWN': return 'countdown';
+    case 'EV_WORK_START': return 'work_start';
+    case 'EV_WORK_END': return 'work_end';
+    case 'EV_REST_START': return 'rest_start';
+    case 'EV_ROUND_REST_START': return 'round_rest';
+    case 'EV_BLOCK_END': return 'block_end';
+    default: return 'misc';
+  }
+}
+
+function inCooldown(r: CoachResponse, now: number): boolean {
+  if (!r.last_used_at) return false;
+  return now - r.last_used_at < r.cooldown_sec * 1000;
+}
+
+function fit(r: CoachResponse, ctx: TimelineContext, ev: Event): boolean {
+  if (!r.active) return false;
+  const e = mapEvent(ev);
+  const matchEvent = r.event_type === e;
+  const matchPattern = r.pattern === 'any' || r.pattern === ctx.pattern;
+  const matchMode = r.mode === 'any' || r.mode === ctx.mode;
+  const matchChat = r.chatter_level === 'any' || r.chatter_level === ctx.chatterLevel;
+  return matchEvent && matchPattern && matchMode && matchChat;
+}
+
+function prioritize(rows: CoachResponse[]): CoachResponse | null {
+  if (!rows.length) return null;
+  // Higher priority first, then lower usage_count
+  return rows.sort((a,b) => (b.priority - a.priority) || (a.usage_count - b.usage_count))[0];
+}
+
+function renderTemplate(tpl: string, ctx: TimelineContext, ev: Event): string {
+  const tokens: Record<string, string | number> = {
+    exercise: (ev as any).exerciseId ? ctx.getExerciseName((ev as any).exerciseId) : '',
+    next: ctx.getNextExerciseName ? (ctx.getNextExerciseName() || '') : '',
+    restSec: (ev as any).sec ?? '',
+    count: (ev as any).sec ?? '',
+    sets: '',
+    loadDelta: ''
+  };
+  return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => String(tokens[k] ?? ''));
+}
+
+export function selectResponse(ctx: TimelineContext, ev: Event): string | null {
+  const now = ctx.nowMs();
+  const candidates = _pool.filter(r => fit(r, ctx, ev) && !inCooldown(r, now));
+  const pick = prioritize(candidates);
+  if (!pick) return null;
+  pick.usage_count += 1;
+  pick.last_used_at = now;
+  return renderTemplate(pick.text_template, ctx, ev);
+}
+
+
+⸻
+
+/coach/observer.ts
+
+import { TimelineContext, Event } from '@/types/coach';
+import { selectResponse } from '@/coach/responseService';
+
+function passesChatterGate(ctx: TimelineContext): boolean {
+  return ctx.chatterLevel !== 'silent';
+}
+
+function speakOrSignal(ctx: TimelineContext, line: string) {
+  if (ctx.chatterLevel === 'signals') {
+    // minimal audio cues only
+    ctx.caption?.(line);
+    ctx.haptic?.('light');
+    return;
+  }
+  ctx.caption?.(line);
+  ctx.speak?.(line);
+}
+
+function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
+  // Tier‑1 fallback: short, deterministic, event‑aware lines
+  switch (ev.type) {
+    case 'EV_BLOCK_START': return 'Block starting — set up now.';
+    case 'EV_COUNTDOWN': return `Start in ${(ev.sec ?? 3)}…`;
+    case 'EV_WORK_START': return 'Go — one clean form cue.';
+    case 'EV_WORK_END': return 'Nice work — breathe.';
+    case 'EV_REST_START': return 'Rest — log your set.';
+    case 'EV_ROUND_REST_START': return 'Round rest — reset and get set.';
+    case 'EV_BLOCK_END': return 'Block complete — next block up.';
+    default: return null;
+  }
+}
+
+export function onEvent(ctx: TimelineContext, ev: Event) {
+  // Ready gates
+  if (ev.type === 'EV_AWAIT_READY') {
+    ctx.showReadyModal && ctx.showReadyModal();
+    return; // UI will resume timeline
+  }
+
+  // EMOM strictness is enforced by the timeline builder; observer keeps cues tight
+  if (!passesChatterGate(ctx)) return;
+
+  const line = selectResponse(ctx, ev) ?? synthesizePromptLine(ctx, ev);
+  if (!line) return;
+  // throttle policy can live here if needed (e.g., 1 cue / 5s)
+  speakOrSignal(ctx, line);
+
+  // Open logging UI at rest start
+  if (ev.type === 'EV_REST_START' && ctx.openRestQuickLog && (ctx.mode === 'reps')) {
+    // In rep‑mode we log during rest
+    // If partnerAlt is used, caller will pass the active exerciseId in a separate event or context
+    // Here we assume EV_WORK_END carried it previously; app can store it on ctx
+  }
+}
+
+
+⸻
+
+/components/PreflightWeightsSheet.tsx
+
+import React, { useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+type ExerciseRow = { id: string; name: string };
+
+export function PreflightWeightsSheet({
+  exercises,
+  lastLoads,
+  onSave,
+  onCancel
+}: {
+  exercises: ExerciseRow[];
+  lastLoads: Record<string, number | undefined>;
+  onSave: (planned: Record<string, number | undefined>) => void;
+  onCancel?: () => void;
+}) {
+  const [planned, setPlanned] = useState<Record<string, number | undefined>>(() => ({ ...lastLoads }));
+
+  const rows = useMemo(() => exercises, [exercises]);
+
+  const setLoad = (id: string, v: string) => {
+    const n = v === '' ? undefined : Number(v);
+    setPlanned(p => ({ ...p, [id]: Number.isFinite(n!) ? n : undefined }));
+  };
+
+  const useLast = (id: string) => setPlanned(p => ({ ...p, [id]: lastLoads[id] }));
+
+  return (
+    <Card className="w-full max-w-2xl">
+      <CardHeader>
+        <CardTitle>Set your working weights</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {rows.map(r => (
+          <div key={r.id} className="grid grid-cols-12 items-center gap-2">
+            <div className="col-span-6 truncate">{r.name}</div>
+            <div className="col-span-3">
+              <Input
+                inputMode="decimal"
+                value={planned[r.id] ?? ''}
+                placeholder={lastLoads[r.id] ? String(lastLoads[r.id]) : 'kg'}
+                onChange={e => setLoad(r.id, e.target.value)}
+              />
+            </div>
+            <div className="col-span-3 flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => useLast(r.id)}>Use last</Button>
+            </div>
+          </div>
+        ))}
+        <div className="flex justify-end gap-2 pt-4">
+          {onCancel && <Button variant="ghost" onClick={onCancel}>Cancel</Button>}
+          <Button onClick={() => onSave(planned)}>Save & Continue</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+⸻
+
+/components/RestQuickLogCard.tsx
+
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Toggle } from '@/components/ui/toggle';
+
+export function RestQuickLogCard({
+  exerciseName,
+  defaultReps,
+  defaultLoad,
+  defaultRPE = 'Moderate',
+  defaultPain = false,
+  onUseLast,
+  onSubmit
+}: {
+  exerciseName: string;
+  defaultReps?: number;
+  defaultLoad?: number;
+  defaultRPE?: 'Easy'|'Moderate'|'Hard';
+  defaultPain?: boolean;
+  onUseLast: () => void;
+  onSubmit: (payload: { reps?: number; load?: number; rpe: 'Easy'|'Moderate'|'Hard'; pain: boolean }) => void;
+}) {
+  const [reps, setReps] = useState<number | undefined>(defaultReps);
+  const [load, setLoad] = useState<number | undefined>(defaultLoad);
+  const [rpe, setRpe] = useState<'Easy'|'Moderate'|'Hard'>(defaultRPE);
+  const [pain, setPain] = useState<boolean>(defaultPain);
+
+  return (
+    <Card className="w-full">
+      <CardContent className="space-y-3 pt-4">
+        <div className="text-sm text-muted-foreground">{exerciseName}</div>
+        <div className="grid grid-cols-12 gap-2 items-center">
+          <div className="col-span-3">
+            <Input inputMode="numeric" placeholder="Reps" value={reps ?? ''} onChange={e => setReps(e.target.value ? Number(e.target.value) : undefined)} />
+          </div>
+          <div className="col-span-3">
+            <Input inputMode="decimal" placeholder="Load (kg)" value={load ?? ''} onChange={e => setLoad(e.target.value ? Number(e.target.value) : undefined)} />
+          </div>
+          <div className="col-span-4 flex gap-1">
+            {(['Easy','Moderate','Hard'] as const).map(level => (
+              <Button key={level} variant={rpe===level? 'default':'outline'} size="sm" onClick={() => setRpe(level)}>
+                {level}
+              </Button>
+            ))}
+          </div>
+          <div className="col-span-2 flex justify-end">
+            <Toggle pressed={pain} onPressedChange={setPain}>Pain</Toggle>
+          </div>
+        </div>
+        <div className="flex justify-between pt-2">
+          <Button variant="ghost" onClick={onUseLast}>Use last set values</Button>
+          <Button onClick={() => onSubmit({ reps, load, rpe, pain })}>Save</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+⸻
+
+/db/seedCoachResponses.sql
+
+CREATE TABLE IF NOT EXISTS coach_responses (
+  id SERIAL PRIMARY KEY,
+  event_type TEXT NOT NULL,
+  pattern TEXT DEFAULT 'any',
+  mode TEXT DEFAULT 'any',
+  chatter_level TEXT DEFAULT 'any',
+  locale TEXT DEFAULT 'en-US',
+  text_template TEXT NOT NULL,
+  priority INT DEFAULT 3,
+  cooldown_sec INT DEFAULT 30,
+  active BOOLEAN DEFAULT TRUE,
+  usage_count INT DEFAULT 0,
+  last_used_at TIMESTAMP NULL
+);
+
+INSERT INTO coach_responses (event_type, pattern, mode, chatter_level, text_template, priority) VALUES
+('pre_block','any','reps','minimal','Superset: {{exercise}} then {{next}} — {{sets}} sets, {{restSec}}s rest. Set 1 in {{count}}…',4),
+('last5s','any','time','minimal','Last five — finish clean, breathe.',3),
+('rest_start','any','reps','minimal','Nice set. Log reps & load; tap “Use last values” if unchanged.',5);
+
+
+⸻
+
+Notes
+	•	Hook observer.onEvent into your existing ExecutionTimeline event bus.
+	•	Replace UI imports with your design system if different (we used shadcn/ui placeholders).
+	•	The response service uses an in‑memory pool; swap with real DB queries when ready.
+	•	EMOM strictness remains a timeline responsibility; the observer only cues.
+
+⸻
+
+Wiring Snippet — Hook onEvent(ctx, ev) + Preflight Mount (tiny)
+
+Minimal example showing: 1) mounting PreflightWeightsSheet before Begin Workout, and 2) wiring your ExecutionTimeline emitter to the Coach observer.
+
+/player/WorkoutPlayer.tsx
+
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { onEvent } from '@/coach/observer';
+import { seedResponses } from '@/coach/responseService';
+import { PreflightWeightsSheet } from '@/components/PreflightWeightsSheet';
+import type { TimelineContext, ChatterLevel } from '@/types/coach';
+import { ExecutionTimeline } from '@/runtime/executionTimeline'; // your emitter
+
+export function WorkoutPlayer({ workout, blocks, exercises, lastLoads }:{
+  workout: { id: string };
+  blocks: Array<{ id: string; params: { pattern:'superset'|'straight_sets'|'circuit'|'custom'; mode:'time'|'reps'; awaitReadyBeforeStart?: boolean } }>;
+  exercises: Array<{ id: string; name: string }>;
+  lastLoads: Record<string, number|undefined>;
+}) {
+  const [planned, setPlanned] = useState<Record<string, number|undefined>>({});
+  const [stage, setStage] = useState<'preflight'|'playing'>('preflight');
+  const chatterLevel: ChatterLevel = 'minimal';
+
+  // Build a TimelineContext the observer can use
+  const ctx = useMemo<TimelineContext>(() => ({
+    workoutId: workout.id,
+    pattern: blocks[0]?.params.pattern ?? 'straight_sets',
+    mode: blocks[0]?.params.mode ?? 'reps',
+    chatterLevel,
+    prefs: { preflightLoadIntake: true, strictEMOM: true, allowAutoExtendRest: false, rpeLabels: 'words' },
+    plannedLoads: planned,
+    nowMs: () => Date.now(),
+    getExerciseName: (id) => exercises.find(e => e.id === id)?.name || 'Exercise',
+    getNextExerciseName: () => undefined,
+    // Minimal UI hooks
+    showReadyModal: () => new Promise<void>(res => { if (window.confirm('Ready?')) res(); }),
+    speak: (t) => console.log('[COACH]', t),
+    caption: (t) => console.log('[CAPTION]', t),
+    haptic: () => {}
+  }), [workout.id, blocks, planned, exercises, chatterLevel]);
+
+  // (Optional) seed a couple response lines (Tier‑2) so you see variety immediately
+  useEffect(() => {
+    seedResponses([
+      { id:1,event_type:'pre_block',pattern:'any',mode:'any',chatter_level:'minimal',locale:'en-US',text_template:'Block starting — set up now.',priority:4,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
+      { id:2,event_type:'rest_start',pattern:'any',mode:'reps',chatter_level:'minimal',locale:'en-US',text_template:'Rest — log reps & load; tap “Use last values” if unchanged.',priority:5,cooldown_sec:10,active:true,usage_count:0,last_used_at:null }
+    ] as any);
+  }, []);
+
+  // Wire the timeline emitter → observer
+  const tlRef = useRef<ExecutionTimeline | null>(null);
+  useEffect(() => {
+    if (stage !== 'playing') return;
+    const tl = new ExecutionTimeline();
+    tlRef.current = tl;
+    const unsub = tl.subscribe(ev => onEvent(ctx, ev));
+    tl.start(blocks, { strictEMOM: true });
+    return () => unsub();
+  }, [stage, ctx, blocks]);
+
+  if (stage === 'preflight') {
+    return (
+      <PreflightWeightsSheet
+        exercises={exercises}
+        lastLoads={lastLoads}
+        onSave={(p) => { setPlanned(p); setStage('playing'); }}
+      />
+    );
+  }
+  return <div>▶️ Workout running… (see console for Coach output)</div>;
+}
+
+/runtime/executionTimeline.ts (super‑tiny demo emitter)
+
+import type { Event } from '@/types/coach';
+
+type Sub = (ev: Event) => void;
+export class ExecutionTimeline {
+  private subs: Sub[] = [];
+  subscribe(fn: Sub){ this.subs.push(fn); return () => this.subs = this.subs.filter(s => s!==fn); }
+  private emit(ev: Event){ this.subs.forEach(s => s(ev)); }
+
+  start(blocks: Array<{id:string; params:{ awaitReadyBeforeStart?: boolean }}>, opts:{ strictEMOM: boolean }){
+    const block = blocks[0];
+    this.emit({ type:'EV_BLOCK_START', blockId:block.id });
+    if (block.params.awaitReadyBeforeStart) {
+      this.emit({ type:'EV_AWAIT_READY', blockId:block.id });
+      // UI should call resumeAfterReady() when user confirms.
+    } else {
+      this.resumeAfterReady(block.id);
+    }
+  }
+
+  resumeAfterReady(blockId: string){
+    this.emit({ type:'EV_COUNTDOWN', sec:3 });
+    setTimeout(() => {
+      this.emit({ type:'EV_WORK_START', exerciseId:'ex-1' });
+      setTimeout(() => {
+        this.emit({ type:'EV_WORK_END', exerciseId:'ex-1' });
+        this.emit({ type:'EV_REST_START', sec:90, reason:'between_sets' });
+        // …continue emitting events per your compiled timeline
+      }, 3000);
+    }, 3000);
+  }
+}
+
+That’s it:
+	•	Mount PreflightWeightsSheet → onSave sets planned + flips stage to playing.
+	•	Create ExecutionTimeline, subscribe with onEvent(ctx, ev), then start().
+	•	If a block uses awaitReadyBeforeStart, call resumeAfterReady() after the Ready modal resolves.
+
+⸻
+
+/coach/beeps.ts
+
+// /coach/beeps.ts — offline‑safe WebAudio beeps + optional voice ducking hook
+export type BeepKind = 'countdown'|'start'|'last5'|'end'|'confirm';
+
+type DuckFn = (on: boolean, ms: number) => void; // provided by voiceBus
+
+class BeepEngine {
+  private ctx?: AudioContext;
+  private ducker: DuckFn | null = null;
+  private F_SHORT = 880;    // Hz
+  private F_LONG  = 660;    // Hz
+  private DUR_SHORT = 0.22; // s
+  private DUR_LONG  = 0.60; // s
+
+  ensureCtx(){
+    if (!this.ctx) this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    return this.ctx;
+  }
+  setDucker(fn: DuckFn){ this.ducker = fn; }
+  private duck(ms:number){ if (this.ducker) { try { this.ducker(true, ms); setTimeout(()=>this.ducker?.(false, ms), ms); } catch {} } }
+
+  private tone(freq:number, dur:number){
+    const ac = this.ensureCtx();
+    const t0 = ac.currentTime;
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.85, t0 + 0.01);
+    g.gain.linearRampToValueAtTime(0.85, t0 + dur - 0.05);
+    g.gain.linearRampToValueAtTime(0.0, t0 + dur);
+    osc.connect(g).connect(ac.destination);
+    osc.start(t0); osc.stop(t0 + dur);
+    this.duck(Math.round(dur * 1000));
+  }
+  private chirp(dur:number, f0:number, f1:number){
+    const ac = this.ensureCtx();
+    const t0 = ac.currentTime;
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(f0, t0);
+    osc.frequency.linearRampToValueAtTime(f1, t0 + dur);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.85, t0 + 0.01);
+    g.gain.linearRampToValueAtTime(0.0, t0 + dur);
+    osc.connect(g).connect(ac.destination);
+    osc.start(t0); osc.stop(t0 + dur);
+    this.duck(Math.round(dur * 1000));
+  }
+
+  play(kind: BeepKind){
+    switch (kind){
+      case 'countdown': return this.tone(this.F_SHORT, this.DUR_SHORT);
+      case 'start':     return this.tone(this.F_LONG,  this.DUR_LONG);
+      case 'last5':     return this.tone(this.F_SHORT, this.DUR_SHORT);
+      case 'end':       return this.tone(this.F_LONG,  this.DUR_LONG);
+      case 'confirm':   return this.chirp(0.18, 880, 1320);
+    }
+  }
+  sequence(items: Array<{ atMs:number; kind: BeepKind }>): () => void {
+    const tids: number[] = [];
+    for (const it of items) tids.push(window.setTimeout(() => this.play(it.kind), Math.max(0, it.atMs)));
+    return () => tids.forEach(clearTimeout);
+  }
+}
+
+export const beeps = new BeepEngine();
+
+
+⸻
+
+/audio/voiceBus.ts
+
+// /audio/voiceBus.ts — shared WebAudio gain bus for coach voice with smooth ducking
+function dbToGain(db:number){ return Math.pow(10, db/20); }
+
+class VoiceBus {
+  private ac?: AudioContext;
+  private voiceIn?: GainNode;
+  private master?: GainNode;
+  private lastBeepAt = 0;      // epoch ms
+  private ttsCooldownMs = 250; // guard window
+
+  ensure(){
+    if (!this.ac){
+      this.ac = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ac = this.ac;
+      this.voiceIn = ac.createGain();
+      this.master  = ac.createGain();
+      this.voiceIn.gain.value = 1.0;
+      this.master.gain.value  = 1.0;
+      this.voiceIn.connect(this.master).connect(ac.destination);
+    }
+    return this.ac!;
+  }
+  attachElement(el: HTMLAudioElement){
+    const ac = this.ensure();
+    const node = ac.createMediaElementSource(el);
+    node.connect(this.voiceIn!);
+  }
+  attachStream(stream: MediaStream){
+    const ac = this.ensure();
+    const node = ac.createMediaStreamSource(stream);
+    node.connect(this.voiceIn!);
+  }
+  setGainDb(db:number){
+    this.ensure();
+    const g = dbToGain(db);
+    const t = this.ac!.currentTime;
+    this.voiceIn!.gain.cancelScheduledValues(t);
+    this.voiceIn!.gain.setTargetAtTime(g, t, 0.015);
+  }
+  duck(ms=250, depthDb=-6){
+    this.ensure();
+    const ac = this.ac!;
+    const now = ac.currentTime;
+    const target = dbToGain(depthDb);
+    this.voiceIn!.gain.cancelScheduledValues(now);
+    this.voiceIn!.gain.setTargetAtTime(target, now, 0.01);
+    const releaseAt = now + Math.max(0.05, ms/1000);
+    this.voiceIn!.gain.setTargetAtTime(1.0, releaseAt, 0.04);
+    this.lastBeepAt = Date.now();
+  }
+  guardTTSStart<T>(fn: () => T, extraDelayMs=0): T | void {
+    const since = Date.now() - this.lastBeepAt;
+    const wait = Math.max(0, this.ttsCooldownMs - since) + extraDelayMs;
+    if (wait <= 0) return fn();
+    setTimeout(fn, wait);
+  }
+}
+
+export const voiceBus = new VoiceBus();
+
+
+⸻
+
+/audio/ttsAdapter.ts
+
+// /audio/ttsAdapter.ts — simple browser TTS adapter honoring the guard window
+import { voiceBus } from '@/audio/voiceBus';
+
+export function speakTTS(text: string){
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US'; utter.rate = 1.0; utter.pitch = 1.0; utter.volume = 0.95;
+  voiceBus.guardTTSStart(() => window.speechSynthesis.speak(utter));
+}
+
+
+⸻
+
+Update /player/WorkoutPlayer.tsx (audio wiring)
+
+// Add at top
+import { beeps } from '@/coach/beeps';
+import { voiceBus } from '@/audio/voiceBus';
+import { speakTTS } from '@/audio/ttsAdapter';
+
+// In component body (once) — unlock AudioContext on gesture (iOS)
+React.useEffect(() => {
+  const onFirst = () => { try { (voiceBus as any).ensure?.(); } catch {} };
+  window.addEventListener('pointerdown', onFirst, { once: true });
+  return () => window.removeEventListener('pointerdown', onFirst);
+}, []);
+
+// When building ctx in useMemo, set speak/beep:
+const ctx = useMemo(() => ({
+  // ...existing fields
+  speak: (t: string) => speakTTS(t),
+  beep:  (k: 'start'|'last5'|'end'|'countdown'|'confirm') => beeps.play(k),
+  caption: (t: string) => console.log('%c[CAPTION]', 'color:#607d8b', t),
+}), [/* deps */]);
+
+// After imports, connect beeps → voice ducking (once per app)
+beeps.setDucker((on, ms) => { if (on) voiceBus.duck(ms); });
+
+
+⸻
+
+/coach/roundBetweenScheduler.ts
+
+// /coach/roundBetweenScheduler.ts — canonical between‑rounds timing for rep‑rounds
+import type { TimelineContext } from '@/types/coach';
+
+export type CancelFn = () => void;
+export interface RoundBetweenOpts {
+  ctx: TimelineContext;
+  roundEndMs?: number;         // default Date.now()
+  gapMs?: number;              // end → first countdown (default 3000)
+  endBeepMs?: number;          // long beep dur (default 600)
+  previewLeadMs?: number;      // speak preview before countdown (default 1000)
+  nextRoundIndex?: number; totalRounds?: number;
+  nextFirstExerciseId?: string;
+  emit: (ev:any) => void;
+  onPreview?: () => void;
+  onGo?: () => void;
+  emitCountdownEvents?: boolean;
+}
+
+export function scheduleRoundBetween(opts: RoundBetweenOpts): { cancel: CancelFn; goAtMs: number }{
+  const { ctx, emit, onPreview, onGo, gapMs=3000, endBeepMs=600, previewLeadMs=1000,
+          roundEndMs=Date.now(), nextRoundIndex, totalRounds, nextFirstExerciseId,
+          emitCountdownEvents=false } = opts;
+  const tids: number[] = [];
+  const at = (ms:number, fn:()=>void) => { tids.push(window.setTimeout(fn, Math.max(0, ms))); };
+  const cancel: CancelFn = () => tids.forEach(clearTimeout);
+
+  // Round rest line after beep clears
+  const restLineAt = roundEndMs + endBeepMs + 100;
+  at(restLineAt - Date.now(), () => emit({ type:'EV_ROUND_REST_START', sec: Math.round(gapMs/1000) }));
+
+  // Preview near start
+  if (nextFirstExerciseId){
+    const previewAt = roundEndMs + Math.max(200, gapMs - previewLeadMs);
+    at(previewAt - Date.now(), () => {
+      if (onPreview) return onPreview();
+      emit({ type:'EV_WORK_PREVIEW', exerciseId: nextFirstExerciseId, roundIndex: nextRoundIndex, totalRounds });
+    });
+  }
+
+  // Countdown pips, then GO
+  const c1At = roundEndMs + gapMs;
+  const c2At = c1At + 1000;
+  const goAt = c1At + 2000;
+  at(c1At - Date.now(), () => { ctx.beep?.('countdown'); if (emitCountdownEvents) emit({ type:'EV_COUNTDOWN', sec:3 }); });
+  at(c2At - Date.now(), () => { ctx.beep?.('countdown'); if (emitCountdownEvents) emit({ type:'EV_COUNTDOWN', sec:2 }); });
+  at(goAt - Date.now(), () => { ctx.beep?.('start'); onGo?.(); });
+
+  return { cancel, goAtMs: goAt };
+}
+
+
+⸻
+
+Usage snippet — rep‑round end handler
+
+import { scheduleRoundBetween } from '@/coach/roundBetweenScheduler';
+
+// after a round ends:
+const { cancel, goAtMs } = scheduleRoundBetween({
+  ctx,
+  emit: (ev) => onEvent(ctx, ev),
+  nextRoundIndex: roundIndex + 1,
+  totalRounds: totalRounds,
+  nextFirstExerciseId: exercises[0]?.id,
+  onGo: () => setTimeout(() => onEvent(ctx, { type:'EV_WORK_START', exerciseId: exercises[0].id }), 220),
+});
+
+// If advancing early (user taps Round Done), call cancel() before scheduling the next between‑rounds.
+
+
+⸻
+
+DB + API Drop‑in — Coach Responses (production‑ready)
+
+Purpose: swap from in‑memory seeds to a database‑backed response library with cooldowns, priorities, and usage tracking. Drizzle + Express (or your current server). Client falls back to seeds if API unavailable.
+
+1) Drizzle schema — /db/schema/coachResponses.ts
+
+// /db/schema/coachResponses.ts
+import { pgTable, serial, varchar, text, boolean, integer, timestamp, index } from 'drizzle-orm/pg-core';
+
+export const coachResponses = pgTable(
+  'coach_responses',
+  {
+    id: serial('id').primaryKey(),
+    eventType: varchar('event_type', { length: 32 }).notNull(),            // e.g., 'work_preview' | 'work_start' | 'last5s' | 'halfway' | 'rest_start'
+    pattern: varchar('pattern', { length: 24 }).notNull().default('any'),  // 'superset' | 'straight_sets' | 'circuit' | 'emom' | 'amrap' | 'any'
+    mode: varchar('mode', { length: 24 }).notNull().default('any'),        // 'time' | 'reps' | 'any'
+    chatterLevel: varchar('chatter_level', { length: 16 }).notNull().default('minimal'), // 'silent'|'minimal'|'high'| 'any'
+    locale: varchar('locale', { length: 8 }).notNull().default('en-US'),
+
+    textTemplate: text('text_template').notNull(), // supports tokens: {{exercise}}, {{next_exercise}}, {{restSec}}, {{loadDelta}}
+
+    priority: integer('priority').notNull().default(0),
+    cooldownSec: integer('cooldown_sec').notNull().default(0),
+    active: boolean('active').notNull().default(true),
+
+    usageCount: integer('usage_count').notNull().default(0),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: false }),
+    updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: false }).defaultNow(),
+  },
+  (t) => ({
+    byDims: index('coach_responses_dims_idx').on(
+      t.eventType, t.pattern, t.mode, t.chatterLevel, t.locale, t.active
+    ),
+  })
+);
+
+export type CoachResponse = typeof coachResponses.$inferSelect;
+
+
+⸻
+
+2) SQL migration — /db/migrations/20251027_coach_responses.sql
+
+CREATE TABLE IF NOT EXISTS coach_responses (
+  id SERIAL PRIMARY KEY,
+  event_type VARCHAR(32) NOT NULL,
+  pattern VARCHAR(24) NOT NULL DEFAULT 'any',
+  mode VARCHAR(24) NOT NULL DEFAULT 'any',
+  chatter_level VARCHAR(16) NOT NULL DEFAULT 'minimal',
+  locale VARCHAR(8) NOT NULL DEFAULT 'en-US',
+  text_template TEXT NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 0,
+  cooldown_sec INTEGER NOT NULL DEFAULT 0,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  usage_count INTEGER NOT NULL DEFAULT 0,
+  last_used_at TIMESTAMP NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS coach_responses_dims_idx
+  ON coach_responses (event_type, pattern, mode, chatter_level, locale, active);
+
+If you use Drizzle Kit, either run this file directly or generate an equivalent migration from the schema.
+
+⸻
+
+3) Seed runner — /scripts/seedCoachResponses.ts
+
+// /scripts/seedCoachResponses.ts
+// Loads SQL from db/seedCoachResponses.sql into the database.
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { db } from '@/db/client';
+import { sql } from 'drizzle-orm';
+
+async function main(){
+  const file = path.resolve(process.cwd(), 'db/seedCoachResponses.sql');
+  const text = await fs.readFile(file, 'utf8');
+  // optional: clear table first
+  await db.execute(sql`TRUNCATE TABLE coach_responses RESTART IDENTITY;`);
+  await db.execute(sql.raw(text));
+  // sanity: count rows
+  const rows = await db.execute(sql`SELECT COUNT(*) FROM coach_responses;`);
+  // eslint-disable-next-line no-console
+  console.log('[seed] coach_responses loaded:', rows);
+}
+
+main().catch((e) => { console.error(e); process.exit(1); });
+
+Ensure your @/db/client exports a configured Drizzle instance.
+
+⸻
+
+4) API routes — Express version /server/routes/coachResponses.ts
+
+// /server/routes/coachResponses.ts
+import { Router } from 'express';
+import { db } from '@/db/client';
+import { coachResponses } from '@/db/schema/coachResponses';
+import { and, eq, sql } from 'drizzle-orm';
+
+const router = Router();
+
+// GET /api/coach_responses?event_type=&pattern=&mode=&chatter_level=&locale=
+router.get('/api/coach_responses', async (req, res) => {
+  const {
+    event_type, pattern = 'any', mode = 'any', chatter_level = 'minimal', locale = 'en-US'
+  } = req.query as Record<string, string>;
+
+  if (!event_type) return res.status(400).json({ error: 'event_type required' });
+
+  // Pull active rows; cooldown applied client‑side using last_used_at if you prefer.
+  const rows = await db
+    .select()
+    .from(coachResponses)
+    .where(
+      and(
+        eq(coachResponses.active, true),
+        eq(coachResponses.eventType, event_type),
+        // loose matching: allow 'any' dimensions
+        sql`(${coachResponses.pattern} = ${pattern} OR ${coachResponses.pattern} = 'any')`,
+        sql`(${coachResponses.mode} = ${mode} OR ${coachResponses.mode} = 'any')`,
+        sql`(${coachResponses.chatterLevel} = ${chatter_level} OR ${coachResponses.chatterLevel} = 'any')`,
+        eq(coachResponses.locale, locale)
+      )
+    )
+    .orderBy(coachResponses.priority);
+
+  res.json({ items: rows });
+});
+
+// POST /api/coach_responses/:id/mark_used  { used_at?: string }
+router.post('/api/coach_responses/:id/mark_used', async (req, res) => {
+  const id = Number(req.params.id);
+  const used_at = req.body?.used_at ? new Date(req.body.used_at) : new Date();
+  await db.execute(sql`UPDATE coach_responses SET usage_count = usage_count + 1, last_used_at = ${used_at} WHERE id = ${id}`);
+  res.json({ ok: true });
+});
+
+export default router;
+
+Mount this in your server (e.g., /server/index.ts):
+
+import coachResponsesRouter from '@/server/routes/coachResponses';
+app.use(coachResponsesRouter);
+
+
+
+Next.js API alternative: place same logic in app/api/coach_responses/route.ts and app/api/coach_responses/[id]/mark_used/route.ts using NextResponse.
+
+⸻
+
+5) Client — response API wrapper /coach/responseApi.ts
+
+// /coach/responseApi.ts
+export interface PoolQuery {
+  event_type: string;
+  pattern?: string;
+  mode?: string;
+  chatter_level?: string;
+  locale?: string;
+}
+
+export interface PoolItem {
+  id: number; textTemplate: string; priority: number; cooldownSec: number; lastUsedAt: string | null;
+}
+
+export async function fetchPool(q: PoolQuery): Promise<PoolItem[]> {
+  const u = new URL('/api/coach_responses', window.location.origin);
+  Object.entries({ ...q }).forEach(([k, v]) => v && u.searchParams.set(k, String(v)));
+  const r = await fetch(u.toString(), { credentials: 'include' });
+  if (!r.ok) throw new Error('fetchPool failed');
+  const j = await r.json();
+  return j.items as PoolItem[];
+}
+
+export async function markUsed(id: number){
+  await fetch(`/api/coach_responses/${id}/mark_used`, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({}) });
+}
+
+
+⸻
+
+6) Client — integrate with responseService /coach/responseService.ts (delta)
+
+// /coach/responseService.ts (additions)
+import { fetchPool, markUsed, PoolItem } from '@/coach/responseApi';
+
+// Pick with cooldown + low-usage preference
+function choose(items: PoolItem[], now = Date.now()): PoolItem | null {
+  const ready = items.filter(it => {
+    if (!it.lastUsedAt || !it.cooldownSec) return true;
+    const last = new Date(it.lastUsedAt).getTime();
+    return (now - last) / 1000 > it.cooldownSec;
+  });
+  if (!ready.length) return null;
+  // sort by priority ASC, then by (usage_count asc) if present
+  ready.sort((a,b) => a.priority - b.priority);
+  return ready[0];
+}
+
+export async function getResponseFromDB(filters: { event_type: string; pattern: string; mode: string; chatter_level: string; locale: string; tokens: Record<string,string> }){
+  try {
+    const items = await fetchPool(filters);
+    const pick = choose(items);
+    if (!pick) return null;
+    // simple token replacement
+    let text = pick.textTemplate;
+    Object.entries(filters.tokens || {}).forEach(([k,v]) => { text = text.replaceAll(`{{${k}}}`, v); });
+    // fire and forget mark used
+    markUsed(pick.id).catch(()=>{});
+    return text;
+  } catch {
+    return null; // caller will fall back to in‑memory
+  }
+}
+
+
+⸻
+
+7) Player wiring (delta) — prefer DB, fallback to seeds
+
+// Where you currently call selectResponse(...):
+import { getResponseFromDB } from '@/coach/responseService';
+
+async function selectCoachLine(ctx, ev, tokens){
+  const dbText = await getResponseFromDB({
+    event_type: mapEvent(ev.type),
+    pattern: ctx.pattern ?? 'any',
+    mode: ctx.mode ?? 'any',
+    chatter_level: ctx.chatterLevel ?? 'minimal',
+    locale: 'en-US',
+    tokens
+  });
+  if (dbText) return dbText;
+  // fallback to in‑memory pool (existing logic)
+  return selectFromSeeds(ev, ctx, tokens);
+}
+
+
+⸻
+
+8) Ops checklist
+	•	Run migration: apply /db/migrations/20251027_coach_responses.sql.
+	•	Execute seed: tsx scripts/seedCoachResponses.ts (or your runner).
+	•	Mount routes: /server/routes/coachResponses.ts under /api.
+	•	Flip Player to use getResponseFromDB with seed fallback.
+	•	Verify cooldowns/priority ordering; watch usage_count increment.
+
+Done. This completes the DB‑backed response library with minimal surface area. If you want Next.js API route variants, I can append them too.
+
+⸻
+
+Patch — Downstream Tech Hints (Rep‑Rounds) with Guards & Alternation
+
+Implements the logic we agreed: High chatter adds one downstream technical cue per round (A2 preferred; A3 if A2 didn’t fire), with guardrails: Round ≥2, ≥70% confidence, ≥20s remaining, no beep collisions (guarded), and optional round alternation (A2 on odd, A3 on even).
+
+1) New: /coach/cuePolicy.ts
+
+// /coach/cuePolicy.ts — guard constants & simple policy helpers
+export const CONF_THRESH = 0.70;         // ≥70% confidence to speak
+export const MIN_REMAINING_SEC = 20;     // must have ≥20s left in round
+export const TECH_OFFSET_MS = 3000;      // fire ~3s after window start
+export const BEEP_GUARD_MS = 250;        // speech starts avoid ±250ms of beeps (handled by voiceBus.guard)
+export const ALTERNATE_TECH_HINT = true; // if true: odd rounds→A2, even→A3 (1‑based)
+
+export type ChatterLevel = 'silent'|'minimal'|'high';
+
+export function allowDownstream(chatter: ChatterLevel, roundIndex: number){
+  return chatter === 'high' && roundIndex >= 1; // R2+
+}
+
+export function preferA2ThisRound(roundIndex: number){
+  if (!ALTERNATE_TECH_HINT) return true; // default to A2 if not alternating
+  const round1Based = roundIndex + 1;
+  return round1Based % 2 === 1; // odd→A2, even→A3
+}
+
+export function hasTimeRemaining(nowMs: number, roundEndMs: number){
+  return (roundEndMs - nowMs) / 1000 >= MIN_REMAINING_SEC;
+}
+
+2) New: /coach/downstreamTech.ts
+
+// /coach/downstreamTech.ts — schedules A2/A3 technical hints with guards
+import { allowDownstream, preferA2ThisRound, hasTimeRemaining, CONF_THRESH, TECH_OFFSET_MS } from '@/coach/cuePolicy';
+import type { TimelineContext } from '@/types/coach';
+
+export interface DownstreamOpts {
+  ctx: TimelineContext;               // has speak(), caption(), chatterLevel, nowMs()
+  roundIndex: number;                 // 0‑based
+  roundEndMs: number;                 // epoch ms when round ends (GO + roundDur)
+  exerciseIds: { A1: string; A2?: string; A3?: string };
+  windowsMs: { a2StartMs?: number; a3StartMs?: number }; // window starts (epoch ms)
+  confidence: { a2?: number; a3?: number };              // 0..1
+  getCue: (exerciseId: string) => string | null;          // returns a short tech cue (2–3 words)
+  debug?: (msg: string) => void;                          // optional logger for HUD
+}
+
+export function scheduleDownstreamTech(opts: DownstreamOpts){
+  const { ctx, roundIndex, roundEndMs, exerciseIds, windowsMs, confidence, getCue, debug } = opts;
+  const tids: number[] = [];
+  let fired = false;
+
+  if (!allowDownstream((ctx.chatterLevel as any) ?? 'minimal', roundIndex)) {
+    debug?.('[tech] skip: chatter!=high or round<R2');
+    return () => tids.forEach(clearTimeout);
+  }
+
+  const tryFire = (exId?: string, label: 'A2'|'A3', conf?: number) => {
+    if (!exId) { debug?.(`[tech] ${label} skip: missing exId`); return; }
+    if (fired)  { debug?.(`[tech] ${label} skip: already fired this round`); return; }
+    const now = ctx.nowMs ? ctx.nowMs() : Date.now();
+    if ((conf ?? 0) < CONF_THRESH){ debug?.(`[tech] ${label} skip: conf ${(conf??0).toFixed(2)} < ${CONF_THRESH}`); return; }
+    if (!hasTimeRemaining(now, roundEndMs)){ debug?.(`[tech] ${label} skip: <${MIN_REMAINING_SEC}s remaining`); return; }
+    const cue = getCue(exId);
+    if (!cue){ debug?.(`[tech] ${label} skip: no cue available`); return; }
+    // Speak (voiceBus will guard near beeps; captions always on)
+    ctx.caption?.(cue);
+    ctx.speak?.(cue);
+    debug?.(`[tech] ${label} fired: "${cue}"`);
+    fired = true;
+  };
+
+  const preferA2 = preferA2ThisRound(roundIndex);
+
+  // A2 slot
+  if (windowsMs.a2StartMs){
+    const at = Math.max(0, windowsMs.a2StartMs + TECH_OFFSET_MS - Date.now());
+    tids.push(window.setTimeout(() => {
+      if (preferA2) tryFire(exerciseIds.A2, 'A2', confidence.a2);
+      else debug?.('[tech] A2 deferred by alternation');
+    }, at));
+  }
+
+  // A3 slot — only fires if A2 didn’t, or if alternation prefers A3
+  if (windowsMs.a3StartMs){
+    const at = Math.max(0, windowsMs.a3StartMs + TECH_OFFSET_MS - Date.now());
+    tids.push(window.setTimeout(() => {
+      if (!fired) tryFire(exerciseIds.A3, 'A3', confidence.a3);
+      else debug?.('[tech] A3 skip: A2 already fired');
+    }, at));
+  }
+
+  return () => tids.forEach(clearTimeout);
+}
+
+3) Coach Lab integration (rep‑rounds) — minimal delta
+
+In your rep‑round Lab page (e.g., /lab/coach-rep-round.tsx), after you compute the A1/A2/A3 window start times for the round, call the scheduler. Example:
+
+import { scheduleRoundBetween } from '@/coach/roundBetweenScheduler';
+import { scheduleDownstreamTech } from '@/coach/downstreamTech';
+
+// inside your round orchestration logic:
+const roundEndMs = goAtMs + roundDurMs; // you already know GO and round duration
+
+// NOTE: these come from your pacing windows calculation
+const a2StartMs = windows.A2.startMs; // epoch ms
+const a3StartMs = windows.A3.startMs; // epoch ms
+
+// Confidence — if you compute live confidence, pass it; else use heuristics (0.8 when present).
+const confA2 = 0.8; const confA3 = 0.8;
+
+// Speak preview/countdown via scheduleRoundBetween as you already do
+const { cancel: cancelBetween } = scheduleRoundBetween({
+  ctx,
+  emit: (ev) => onEvent(ctx, ev),
+  nextRoundIndex: roundIndex + 1,
+  totalRounds,
+  nextFirstExerciseId: exercises[0]?.id,
+  onGo: () => setTimeout(() => onEvent(ctx, { type:'EV_WORK_START', exerciseId: exercises[0].id }), 220),
+});
+
+// Now schedule the downstream tech hint slots (High chatter only)
+const cancelTech = scheduleDownstreamTech({
+  ctx,
+  roundIndex,
+  roundEndMs,
+  exerciseIds: { A1: exIds[0], A2: exIds[1], A3: exIds[2] },
+  windowsMs: { a2StartMs, a3StartMs },
+  confidence: { a2: confA2, a3: confA3 },
+  getCue: (id) => getExerciseMeta(id)?.cues?.find(Boolean) ?? null,
+  debug: (m) => console.log('%c[LAB]', 'color:#9c27b0', m),
+});
+
+// On round cancel/advance early, clear timers
+return () => { cancelBetween(); cancelTech(); };
+
+4) Optional: tiny HUD for visibility
+
+If you want a simple on‑screen indicator in Lab, add a small HUD component that appends lines passed through the debug callback. This is optional and not needed in production.
+
+⸻
+
+Behavior summary now:
+	•	Minimal: A1 start cue only (no downstream tech).
+	•	High: A1 start + halfway; one downstream tech (A2 preferred; A3 if A2 didn’t fire or alternation prefers A3). Guards: R2+, ≥70% conf, ≥20s remaining.
+	•	Voice starts near beeps are still protected by the existing voiceBus.guard.
