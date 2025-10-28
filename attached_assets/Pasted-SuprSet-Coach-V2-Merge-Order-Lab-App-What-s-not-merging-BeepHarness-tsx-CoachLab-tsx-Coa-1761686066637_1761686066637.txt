@@ -1,0 +1,108 @@
+SuprSet Coach V2 — Merge Order (Lab → App)
+
+What’s not merging
+	•	BeepHarness.tsx, CoachLab.tsx, CoachLabRepRound.tsx stay as Lab-only test pages. No route moves.
+
+What does merge (replace/augment production)
+	1.	Audio plumbing
+
+	•	Modify /audio/voiceBus.ts (add guardStart/guardTTSStart, ducking window).
+	•	Replace /coach/beeps.ts with softened tones + setSignalsVolume().
+
+	2.	Guarded captions
+
+	•	Add /ui/captionAdapter.ts and wire in player so ctx.caption = makeGuardedCaption(...).
+
+	3.	Block introduction
+
+	•	Ensure production player emits EV_BLOCK_START before any countdown.
+	•	In workout-session.tsx (or WorkoutPlayer.tsx), at block start:
+	•	coachEmit({ type:'EV_BLOCK_START', blockId, meta:{pattern, mode} })
+	•	Respect awaitReadyBeforeStart gate, then proceed.
+	•	Observer handles EV_BLOCK_START → speaks computed intro line.
+
+	4.	Round scheduling (rep-rounds)
+
+	•	Add /coach/roundOneScheduler.ts (R1: preview → 3-2-1 → GO).
+	•	Add /coach/roundBetweenScheduler.ts (R2+: end → gap → next 3-2-1).
+	•	Remove/disable any legacy code that starts the next round immediately at end-beep.
+
+	5.	Preview/cue separation
+
+	•	Emit EV_WORK_PREVIEW late in rest (≈1.2s before first pip).
+	•	At EV_WORK_START, coach speaks cue-only (no exercise name).
+	•	Both go through voiceBus guards (no lines inside 3-2-1).
+
+	6.	Downstream tech hint (High chatter only)
+
+	•	Add /coach/cuePolicy.ts (constants + alternation).
+	•	Add /coach/downstreamTech.ts; schedule one hint per round (A2 preferred; A3 if A2 didn’t). Guards: R2+, ≥70% confidence, ≥20s remaining, no beep collision.
+
+	7.	Pre-start Intro Sheet (Phase 3)
+
+	•	Add /coach/introHelpers.ts (compute pattern/mode/duration/targets).
+	•	Add /components/WorkoutIntroSheet.tsx.
+	•	Modify player to use stages: intro → preflight → playing, passing:
+	•	Chatter picker: silent | minimal | high → ctx.chatterLevel
+	•	Rep pace picker (2:30 · 3:00 · 3:30 · 4:00) → ctx.prefs.repPaceSec
+	•	Preflight Weights button for rep blocks
+
+	8.	Response pools (DB-backed)
+
+	•	Keep Replit’s integrated schema/routes.
+	•	Modify responseService.ts to try DB first, fallback to seeds.
+	•	Ensure pool has entries for: pre_block, work_preview, work_start, last5s, halfway (High).
+	•	Confirm index on (event_type, pattern, mode, chatter_level, locale, active).
+
+	9.	Feature flag
+
+	•	Add COACH_V2 flag (env or ?coachV2=1).
+	•	Ship with flag on for internal testers; easy rollback.
+
+⸻
+
+File-by-file summary
+
+Add
+	•	/ui/captionAdapter.ts
+	•	/coach/roundOneScheduler.ts
+	•	/coach/roundBetweenScheduler.ts
+	•	/coach/cuePolicy.ts
+	•	/coach/downstreamTech.ts
+	•	/coach/introHelpers.ts
+	•	/components/WorkoutIntroSheet.tsx
+
+Modify
+	•	/audio/voiceBus.ts (guard)
+	•	/coach/beeps.ts (soft tones, volume)
+	•	workout-session.tsx or WorkoutPlayer.tsx
+	•	Emit EV_BLOCK_START
+	•	Use Intro Sheet stage
+	•	Use schedulers for rep-rounds
+	•	Bind ctx.caption via makeGuardedCaption
+	•	coach/observer.ts
+	•	Handle EV_BLOCK_START with block intro
+	•	Ensure preview/cue separation
+
+Remove/Disable
+	•	Any legacy immediate next-round countdown on round end.
+
+⸻
+
+QA pass/fail (quick)
+	•	R1: preview ≥1.0s before first pip; no speech inside pips; GO cue ≈ +250 ms.
+	•	R2+: end beep → ~400 ms → “round rest” line → ~2.6 s → 3-2-1 beeps.
+	•	Minimal: A1 start cue only. High: A1 start + halfway + one downstream tech (A2 or A3).
+	•	EMOM/time blocks unchanged.
+	•	Pause/Resume retains gaps; no double-pips.
+	•	Offline: beeps/timer continue; speech delays safely.
+
+⸻
+
+Everything they need (the actual code) is already in the canvas sections we added:
+	•	“Phase 3 — Pre-start ‘Workout Intro’ (UI) — Paste-ready drop-in”
+	•	“Phase 3 Merge — Lab → App Implementation Guide”
+	•	Round-1 and Between-round schedulers
+	•	Caption guard & soft beeps
+
+Have them follow the order above and lift the code from the canvas—no Lab routes move, only production modules get upgraded.
