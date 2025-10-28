@@ -1262,19 +1262,8 @@ export default function WorkoutSessionPage() {
   const completedSets = setLogs?.length || 0;
   const progressPercentage = (completedSets / totalSets) * 100;
 
-  // Debug state values
-  console.log('🔍 Render state:', {
-    isBlockWorkout,
-    showIntro,
-    showPreflight,
-    preflightCompleted,
-    exercisesCount: exercises.length,
-    hasTimeline: !!executionTimeline
-  });
-
   // NEW: Show Intro Sheet for block workouts FIRST
   if (isBlockWorkout && showIntro && exercises.length > 0 && executionTimeline) {
-    console.log('✅ Rendering Intro Sheet');
 
     const firstBlock = executionTimeline.params;
     const blocks = [{
@@ -1324,7 +1313,6 @@ export default function WorkoutSessionPage() {
 
   // NEW: Show Preflight Weights Sheet for block workouts before starting
   if (isBlockWorkout && showPreflight && exercises.length > 0) {
-    console.log('✅ Rendering Preflight Sheet');
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
         <PreflightWeightsSheet
