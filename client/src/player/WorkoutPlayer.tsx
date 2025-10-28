@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { onEvent } from '@/coach/observer';
 import { seedResponses } from '@/coach/responseService';
 import { PreflightWeightsSheet } from '@/components/PreflightWeightsSheet';
+import { WorkoutIntroSheet } from '@/components/WorkoutIntroSheet';
+import type { ChatterLevel as IntroChatterLevel } from '@/components/WorkoutIntroSheet';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
 import { TimelinePlayer } from '@/runtime/TimelinePlayer';
 import { speakTTS } from '@/audio/ttsAdapter';
@@ -18,9 +20,10 @@ interface WorkoutPlayerProps {
 
 export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
   const [planned, setPlanned] = useState<Record<string, number|undefined>>({});
-  const [stage, setStage] = useState<'loading'|'preflight'|'playing'>('loading');
+  const [stage, setStage] = useState<'loading'|'intro'|'preflight'|'playing'>('loading');
   const [audioReady, setAudioReady] = useState(false);
-  const chatterLevel: ChatterLevel = 'minimal';
+  const [chatterLevel, setChatterLevel] = useState<ChatterLevel>('minimal');
+  const [repPaceSec, setRepPaceSec] = useState<number>(180);
 
   // Initialize AudioContext on first user gesture (iOS requirement)
   useEffect(() => {
@@ -124,10 +127,10 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     ] as any);
   }, []);
 
-  // Check if workout has a compiled timeline
+  // Check if workout has a compiled timeline - show intro first
   useEffect(() => {
     if (workout.executionTimeline) {
-      setStage('preflight');
+      setStage('intro');
     }
   }, [workout.executionTimeline]);
 
@@ -180,12 +183,56 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     );
   }
 
+  if (stage === 'intro') {
+    // Build blocks array from workout data
+    const blocks = workout.executionTimeline ? [{
+      id: 'block-1',
+      name: firstBlock?.name || 'Block 1',
+      params: {
+        pattern: firstBlock?.pattern || 'superset',
+        mode: firstBlock?.mode || 'reps',
+        setsPerExercise: firstBlock?.setsPerExercise || firstBlock?.rounds || 3,
+        workSec: firstBlock?.workSec,
+        restSec: firstBlock?.restSec,
+        roundRestSec: firstBlock?.roundRestSec,
+        durationSec: firstBlock?.durationSec,
+        targetReps: firstBlock?.targetReps || '8-12',
+        awaitReadyBeforeStart: firstBlock?.awaitReadyBeforeStart || false
+      },
+      exerciseIds: exercises.map(e => e.id)
+    }] : [];
+
+    return (
+      <WorkoutIntroSheet
+        workoutTitle={workout.name}
+        blocks={blocks}
+        exercises={exercises}
+        defaultChatter={chatterLevel as IntroChatterLevel}
+        defaultRepPaceSec={repPaceSec}
+        onChangeChatter={(c) => setChatterLevel(c as ChatterLevel)}
+        onChangeRepPace={setRepPaceSec}
+        onOpenPreflight={() => setStage('preflight')}
+        onBegin={() => {
+          // If there are rep blocks and user might want preflight, could route there
+          // For now, go straight to playing
+          const hasRepBlocks = blocks.some(b => b.params?.mode === 'reps');
+          if (hasRepBlocks) {
+            setStage('preflight');
+          } else {
+            setStage('playing');
+          }
+        }}
+      />
+    );
+  }
+
   if (stage === 'preflight') {
     return (
       <PreflightWeightsSheet
         exercises={exercises}
         lastLoads={{}} // No previous loads for testing
         onSave={(p) => { setPlanned(p); setStage('playing'); }}
+        onCancel={() => setStage('intro')}
       />
     );
   }
