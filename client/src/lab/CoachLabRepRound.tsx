@@ -6,6 +6,8 @@ import { PaceModel } from '@/coach/paceModel';
 import { beeps } from '@/coach/beeps';
 import { voiceBus } from '@/audio/voiceBus';
 import { speakTTS } from '@/audio/ttsAdapter';
+import { guardCaption } from '@/ui/captionAdapter';
+import { scheduleRoundOne } from '@/coach/roundOneScheduler';
 import { ROUND_END_TO_SPEECH_MS, ROUND_END_TO_COUNTDOWN_MS, getRoundCycleDuration } from '@/coach/roundBetweenScheduler';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
 
@@ -33,6 +35,10 @@ const EXS: Ex[] = [
 ];
 
 function useCtx(chatter: ChatterLevel): TimelineContext {
+  const guardedCaption = useMemo(() => 
+    guardCaption((t) => console.log('%c[CAPTION]', 'color:#607d8b', t))
+  , []);
+
   return useMemo(()=>({
     workoutId: 'lab-rep',
     pattern: 'superset',
@@ -48,10 +54,10 @@ function useCtx(chatter: ChatterLevel): TimelineContext {
       return e ? { id:e.id, name:e.name, cues:e.cues, estimatedTimeSec:e.estimatedTimeSec, unilateral: !!e.unilateral } : { id, name:'Exercise' };
     },
     speak: (t)=>speakTTS(t),
-    caption: (t)=>console.log('%c[CAPTION]', 'color:#607d8b', t),
+    caption: guardedCaption,
     beep: (kind)=>{ console.log('%c[BEEP]', 'color:#009688', kind); beeps.play(kind); },
     haptic: ()=>{}
-  }), [chatter]);
+  }), [chatter, guardedCaption]);
 }
 
 // Compute pacing windows for a 3:00 round given estimatedTimeSec and unilateral weighting
@@ -85,36 +91,40 @@ export default function CoachLabRepRound(){
   }, []);
 
   const ctx = useCtx(chatter);
-  const tos = useRef<number[]>([]);
+  const tos = useRef<Array<number | (() => void)>>([]);
   const running = useRef(false);
 
-  function clearAll(){ tos.current.forEach(clearTimeout); tos.current=[]; running.current=false; console.log('[LAB] cleared'); }
+  function clearAll(){ 
+    tos.current.forEach(t => typeof t === 'function' ? t() : clearTimeout(t)); 
+    tos.current=[]; 
+    running.current=false; 
+    console.log('[LAB] cleared'); 
+  }
   function schedule(ms:number, fn:()=>void){ const id=window.setTimeout(fn, ms); tos.current.push(id); }
   function emit(ev: Event){ onEvent(ctx, ev); }
 
   function playRound(roundIndex:number){
     const roundStartMs = Date.now();
 
-    // Preview timing:
-    // - Round 1: -1500ms (before beeps) to avoid countdown collision
-    // - Round 2+: +1000ms (during rest gap after round-rest voice)
-    const previewOffset = roundIndex === 0 ? -1500 : 1000;
-    schedule(Math.max(0, previewOffset), () => {
-      const first = EXS[0];
-      emit({ 
-        type:'EV_WORK_PREVIEW', 
-        exerciseId:first.id, 
-        roundIndex, 
-        totalRounds: rounds
+    // Round 2+ preview during rest gap
+    if (roundIndex > 0) {
+      schedule(1000, () => {
+        const first = EXS[0];
+        emit({ 
+          type:'EV_WORK_PREVIEW', 
+          exerciseId: first.id, 
+          roundIndex, 
+          totalRounds: rounds
+        });
       });
-    });
+    }
 
-    // 3-2-1 beeps then GO
+    // 3-2-1 beeps then GO (all rounds)
     schedule(0, ()=>ctx.beep?.('countdown'));
     schedule(1000, ()=>ctx.beep?.('countdown'));
     schedule(2000, ()=>ctx.beep?.('start'));
 
-    // Start cue (A1) shortly after GO
+    // Start cue (A1) shortly after GO (all rounds)
     schedule(2200, () => {
       emit({ type:'EV_WORK_START', exerciseId: EXS[0].id });
     });
@@ -166,11 +176,22 @@ export default function CoachLabRepRound(){
       { id:221,event_type:'halfway',pattern:'any',mode:'reps',chatter_level:'high',locale:'en-US',text_template:'Halfway — keep it smooth.',priority:5,cooldown_sec:10,active:true,usage_count:0,last_used_at:null },
     ] as any);
 
+    // Round 1 preview fires 1.5s BEFORE first beep
+    const first = EXS[0];
+    setTimeout(() => emit({ 
+      type:'EV_WORK_PREVIEW', 
+      exerciseId: first.id, 
+      roundIndex: 0, 
+      totalRounds: rounds
+    }), 0);
+
     // Schedule all rounds with canonical rest gap timing
     const cycleDuration = getRoundCycleDuration(roundSec);
     for (let r=0; r<rounds; r++){
       const offset = r * cycleDuration;
-      setTimeout(()=> playRound(r), offset);
+      // Round 1 starts at +1500ms (after preview gap)
+      const actualOffset = r === 0 ? 1500 : offset;
+      setTimeout(()=> playRound(r), actualOffset);
     }
 
     // Block end after all rounds complete

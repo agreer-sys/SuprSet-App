@@ -92,6 +92,7 @@ class BeepEngine {
   }
 
   play(kind: BeepKind){
+    voiceBus.notifyBeep();
     switch (kind){
       case 'countdown': return this.tone(this.F_SHORT, this.DUR_SHORT, this.PEAK_GAIN_SHORT);
       case 'start':     return this.tone(this.F_LONG,  this.DUR_LONG,  this.PEAK_GAIN_LONG);

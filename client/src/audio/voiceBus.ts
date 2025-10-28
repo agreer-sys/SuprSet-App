@@ -80,6 +80,23 @@ class VoiceBus {
     if (wait <= 0) return fn();
     setTimeout(fn, wait);
   }
+
+  /**
+   * Calculate earliest safe time to start voice/caption after last beep.
+   * Returns delay in ms (0 if safe now, >0 if must wait).
+   * Used by both TTS and caption adapters for unified collision avoidance.
+   */
+  guardStart(): number {
+    const since = Date.now() - this.lastBeepAt;
+    return Math.max(0, this.ttsCooldownMs - since);
+  }
+
+  /**
+   * Record that a beep occurred now (used by beep engine).
+   */
+  notifyBeep() {
+    this.lastBeepAt = Date.now();
+  }
 }
 
 export const voiceBus = new VoiceBus();
