@@ -19,10 +19,12 @@ import { useRealtimeVoice } from '@/hooks/useRealtimeVoice';
 import type { WorkoutSessionNew, SetLog, CoachingSession } from "@shared/schema";
 import { onEvent } from '@/coach/observer';
 import { seedResponses } from '@/coach/responseService';
+import { beeps } from '@/coach/beeps';
 import { PreflightWeightsSheet } from '@/components/PreflightWeightsSheet';
 import { WorkoutIntroSheet } from '@/components/WorkoutIntroSheet';
 import type { ChatterLevel as IntroChatterLevel } from '@/components/WorkoutIntroSheet';
 import type { TimelineContext, ChatterLevel, Event } from '@/types/coach';
+import { FLAGS } from '@/config/flags';
 
 export default function WorkoutSessionPage() {
   const [currentExercise, setCurrentExercise] = useState<'A' | 'B'>('A');
@@ -327,67 +329,7 @@ export default function WorkoutSessionPage() {
     }
   };
 
-  // Function to play short beep (for countdown 3, 2, 1)
-  const playShortBeep = () => {
-    if (!audioContextReady.current) {
-      console.warn('AudioContext not ready. Beep skipped.');
-      return;
-    }
-    
-    try {
-      const audioContext = getAudioContext();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.value = 440; // 440 Hz (A note - more audible)
-      oscillator.type = 'sine';
-      
-      const now = audioContext.currentTime;
-      gainNode.gain.setValueAtTime(1.0, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-      
-      oscillator.start(now);
-      oscillator.stop(now + 0.2); // 200ms short beep
-      
-      console.log('Short beep played at', new Date().toLocaleTimeString());
-    } catch (error) {
-      console.error('Error playing short beep:', error);
-    }
-  };
-
-  // Function to play long beep (for start and end of set)
-  const playLongBeep = () => {
-    if (!audioContextReady.current) {
-      console.warn('AudioContext not ready. Beep skipped.');
-      return;
-    }
-    
-    try {
-      const audioContext = getAudioContext();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.value = 523; // 523 Hz (C note - pleasant and audible)
-      oscillator.type = 'sine';
-      
-      const now = audioContext.currentTime;
-      gainNode.gain.setValueAtTime(1.0, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 1.0);
-      
-      oscillator.start(now);
-      oscillator.stop(now + 1.0); // 1 second long beep
-      
-      console.log('Long beep played at', new Date().toLocaleTimeString());
-    } catch (error) {
-      console.error('Error playing long beep:', error);
-    }
-  };
+  // Beeps now handled by softened beeps.ts module (earbud-optimized)
 
   // Fetch set logs for current session
   const { data: setLogs } = useQuery<SetLog[]>({
@@ -553,7 +495,7 @@ export default function WorkoutSessionPage() {
       }
     } else if (workTimer === 0 && isWorking && !isPaused) {
       // Play long beep at end of work period
-      playLongBeep();
+      beeps.play('end');
       
       // Work period ended - get rest time from exercise we just completed
       setIsWorking(false);
@@ -600,7 +542,7 @@ export default function WorkoutSessionPage() {
       
       // Play countdown beeps before next set starts (3, 2, 1)
       if (restTimer === 3 || restTimer === 2 || restTimer === 1) {
-        playShortBeep();
+        beeps.play('countdown');
       }
       
       // Coach announcements during rest period - only announce once per timer value
@@ -633,7 +575,7 @@ export default function WorkoutSessionPage() {
       }
     } else if (restTimer === 0 && isResting && !isPaused) {
       // Play long beep when set starts (rest ends, work begins)
-      playLongBeep();
+      beeps.play('start');
       
       setIsResting(false);
       // Rest ended - advance to NEXT exercise and start work
@@ -697,7 +639,7 @@ export default function WorkoutSessionPage() {
       
       // Play short beeps at 3, 2, 1
       if (countdown === 3 || countdown === 2 || countdown === 1) {
-        playShortBeep();
+        beeps.play('countdown');
       }
       
       interval = setInterval(() => {
@@ -705,7 +647,7 @@ export default function WorkoutSessionPage() {
       }, 1000);
     } else if (countdown === 0 && !isPaused) {
       // Play long beep at 0 (work starts)
-      playLongBeep();
+      beeps.play('start');
       
       setCountdown(null);
       // Reset to first exercise and start work timer
@@ -1194,13 +1136,13 @@ export default function WorkoutSessionPage() {
       // Only beep if next step is WORK (time-based)
       if (nextStep?.type === 'work') {
         if (timeRemaining === 3 && !hasPlayed(3) && canBeep) {
-          playShortBeep();
+          beeps.play('countdown');
           markPlayed(3);
         } else if (timeRemaining === 2 && !hasPlayed(2) && canBeep) {
-          playShortBeep();
+          beeps.play('countdown');
           markPlayed(2);
         } else if (timeRemaining === 1 && !hasPlayed(1) && canBeep) {
-          playLongBeep();
+          beeps.play('start');
           markPlayed(1);
         }
       }
@@ -1215,13 +1157,13 @@ export default function WorkoutSessionPage() {
       // Only beep if next step is WORK (time-based)
       if (nextStep?.type === 'work') {
         if (timeRemaining === 3 && !hasPlayed(3) && canBeep) {
-          playShortBeep();
+          beeps.play('countdown');
           markPlayed(3);
         } else if (timeRemaining === 2 && !hasPlayed(2) && canBeep) {
-          playShortBeep();
+          beeps.play('countdown');
           markPlayed(2);
         } else if (timeRemaining === 1 && !hasPlayed(1) && canBeep) {
-          playLongBeep();
+          beeps.play('start');
           markPlayed(1);
         }
       }
@@ -1230,7 +1172,7 @@ export default function WorkoutSessionPage() {
     // WORK beeps: 1 long beep at 1s remaining (end of set signal)
     if (currentStep.type === 'work') {
       if (timeRemaining === 1 && !hasPlayed(1) && canBeep) {
-        playLongBeep();
+        beeps.play('end');
         markPlayed(1);
       }
     }
