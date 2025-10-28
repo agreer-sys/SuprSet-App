@@ -67,6 +67,7 @@ export function WorkoutIntroSheet(props: WorkoutIntroProps) {
   const paceOptions = [150, 180, 210, 240]; // 2:30, 3:00, 3:30, 4:00
 
   function start() {
+    console.log('🚀 Start Workout button clicked, onBegin:', typeof onBegin);
     onBegin?.();
   }
 
@@ -134,7 +135,10 @@ export function WorkoutIntroSheet(props: WorkoutIntroProps) {
           </div>
           <Button 
             variant="outline" 
-            onClick={onOpenPreflight}
+            onClick={() => {
+              console.log('✈️ Preflight button clicked, onOpenPreflight:', typeof onOpenPreflight);
+              onOpenPreflight?.();
+            }}
             data-testid="button-preflight"
           >
             Preflight Weights
