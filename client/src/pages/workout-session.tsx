@@ -1305,7 +1305,7 @@ export default function WorkoutSessionPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Timeline-Based Workout (Block Workouts) */}
-      {isBlockWorkout && executionTimeline && (
+      {isBlockWorkout && executionTimeline && preflightCompleted && (
         <div className="space-y-6">
           <div className="flex justify-between items-start mb-4">
             <div>
