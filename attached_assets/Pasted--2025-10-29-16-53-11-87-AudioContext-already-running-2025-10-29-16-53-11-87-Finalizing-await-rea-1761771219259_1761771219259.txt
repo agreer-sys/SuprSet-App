@@ -1,0 +1,62 @@
+
+
+2025-10-29 16:53:11.87
+AudioContext already running
+2025-10-29 16:53:11.87
+⏸️ Finalizing await_ready pause: 3s (total paused: 3s)
+2025-10-29 16:53:11.87
+✅ Ready confirmed! Re-anchoring timeline from 1761771188179 to 1761771188313
+2025-10-29 16:53:11.87
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 1, isAwaitingReady: false, isPaused: false}
+2025-10-29 16:53:11.87
+⚠️ Interval drift detected: 3275ms (tolerance: ±250ms)
+2025-10-29 16:53:11.87
+🆕 New response started: resp_CW7SJR5ZTuVpNjcbtrRiE
+2025-10-29 16:53:13.16
+🎧 Response audio stream complete — starting playback
+2025-10-29 16:53:13.16
+🎧 Voice pipeline initialized (PCM16 Float32 path active)
+2025-10-29 16:53:13.16
+🔊 Playing PCM response (82800 samples)
+2025-10-29 16:53:13.16
+✅ Response fully completed
+2025-10-29 16:53:16.61
+✅ PCM playback finished
+2025-10-29 16:53:21.78
+📍 Step transition: 1 → 2 at 10s
+2025-10-29 16:53:21.78
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 2, isAwaitingReady: false, isPaused: false}
+2025-10-29 16:53:21.78
+📡 Sending event to AI (context only):
+EVENT: set_start {"exercise_id":801608340,"exercise_name":"Dumbbell Clean and Press","set_index":1,"work_s":30}
+2025-10-29 16:53:21.99
+[COACH CAPTION]
+Time to work. Clean dumbbells to shoulders
+2025-10-29 16:53:21.99
+🎯 NEW Coach TTS:
+Time to work. Clean dumbbells to shoulders
+2025-10-29 16:53:22.15
+🆕 New response started: resp_CW7STljttJUOuBMWycO0I
+2025-10-29 16:53:23.35
+🎧 Response audio stream complete — starting playback
+2025-10-29 16:53:23.35
+🔊 Playing PCM response (78000 samples)
+2025-10-29 16:53:23.35
+✅ Response fully completed
+2025-10-29 16:53:26.07
+📡 Sending event to AI (context only):
+EVENT: workout_complete {"total_duration_s":17}
+2025-10-29 16:53:26.07
+⏳ Waiting for coach farewell...
+2025-10-29 16:53:26.07
+✅ Coach farewell complete
+2025-10-29 16:53:26.07
+🔇 Stopped listening
+2025-10-29 16:53:26.07
+🔌 Disconnected from Realtime API
+2025-10-29 16:53:26.07
+🔌 Disconnected from Realtime API
+2025-10-29 16:53:26.07
+🔇 Stopped listening
