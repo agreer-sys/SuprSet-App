@@ -181,6 +181,10 @@ export function useRealtimeVoice({
 
   const startListening = useCallback(async () => {
     try {
+      // DISABLED: Microphone functionality removed for this phase
+      console.log('🎤 Microphone disabled - coach in TTS-only mode');
+      return;
+      
       // CRITICAL FIX: Only request getUserMedia if we don't already have a stream
       // Re-requesting on mobile triggers permission popup again
       if (!mediaStreamRef.current) {
@@ -486,7 +490,8 @@ export function useRealtimeVoice({
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContext();
       console.log("🎧 Voice pipeline initialized (PCM16 Float32 path active)");
-      runAudioSanityPing(audioContextRef.current);
+      // DISABLED: Audio sanity ping (deep beep at startup)
+      // runAudioSanityPing(audioContextRef.current);
     }
     if (audioContextRef.current.state === "suspended") {
       await audioContextRef.current.resume();
