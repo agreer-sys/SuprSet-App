@@ -1,0 +1,106 @@
+2025-10-29 15:39:15.05
+✅ Connected to Realtime API
+2025-10-29 15:39:15.05
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 0, isAwaitingReady: false, isPaused: false}
+2025-10-29 15:39:15.05
+📡 Sending event to AI (context only):
+EVENT: await_ready {"next_exercise":"Get organized and connect with your coach","exercise_id":801608340,"exercise_name":"Dumbbell Clean and Press","set_index":1}
+2025-10-29 15:39:15.05
+[COACH CAPTION]
+Alright. Block — 1 rounds at . We start with Dumbbell Clean and Press.
+2025-10-29 15:39:15.05
+🎯 NEW Coach TTS:
+Alright. Block — 1 rounds at . We start with Dumbbell Clean and Press.
+2025-10-29 15:39:15.05
+🎙️ Session ready
+2025-10-29 15:39:15.05
+⏸️ Reached await_ready step at 2s - waiting for user confirmation
+2025-10-29 15:39:15.05
+⏸️ Workout paused at
+2
+seconds
+2025-10-29 15:39:15.05
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 0, isAwaitingReady: true, isPaused: true}
+2025-10-29 15:39:15.05
+🆕 New response started: resp_CW6IkwlzNupvP1FeVGsQT
+2025-10-29 15:39:15.87
+🎤 Auto-activating microphone...
+2025-10-29 15:39:15.87
+🎤 Microphone disabled - coach in TTS-only mode
+2025-10-29 15:39:16.23
+🎧 Response audio stream complete — starting playback
+2025-10-29 15:39:16.23
+🎧 Voice pipeline initialized (PCM16 Float32 path active)
+2025-10-29 15:39:16.23
+🔊 Playing PCM response (91200 samples)
+2025-10-29 15:39:16.23
+✅ Response fully completed
+2025-10-29 15:39:20.08
+✅ PCM playback finished
+2025-10-29 15:39:20.08
+🎤 Mic needs restart after AI response...
+2025-10-29 15:39:30.47
+AudioContext resumed successfully, state:
+running
+2025-10-29 15:39:30.47
+⏸️ Finalizing await_ready pause: 15s (total paused: 15s)
+2025-10-29 15:39:30.47
+✅ Ready confirmed! Re-anchoring timeline from 1761766752359 to 1761766754835
+2025-10-29 15:39:30.47
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 1, isAwaitingReady: false, isPaused: false}
+2025-10-29 15:39:30.47
+⚠️ Interval drift detected: 15374ms (tolerance: ±250ms)
+2025-10-29 15:39:30.47
+🆕 New response started: resp_CW6J04qGE6uARXpO7aOBf
+2025-10-29 15:39:31.32
+🎧 Response audio stream complete — starting playback
+2025-10-29 15:39:31.32
+🔊 Playing PCM response (63600 samples)
+2025-10-29 15:39:31.32
+✅ Response fully completed
+2025-10-29 15:39:33.97
+✅ PCM playback finished
+2025-10-29 15:39:33.97
+🎤 Mic needs restart after AI response...
+2025-10-29 15:39:40.37
+📍 Step transition: 1 → 2 at 10s
+2025-10-29 15:39:40.37
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 2, isAwaitingReady: false, isPaused: false}
+2025-10-29 15:39:40.37
+📡 Sending event to AI (context only):
+EVENT: set_start {"exercise_id":801608340,"exercise_name":"Dumbbell Clean and Press","set_index":1,"work_s":30}
+2025-10-29 15:39:40.60
+[COACH CAPTION]
+Start Dumbbell Clean and Press. Clean dumbbells to shoulders
+2025-10-29 15:39:40.60
+🎯 NEW Coach TTS:
+Start Dumbbell Clean and Press. Clean dumbbells to shoulders
+2025-10-29 15:39:40.72
+🆕 New response started: resp_CW6JAH4fc1dkQ73PJ6Fwx
+2025-10-29 15:39:41.64
+🎧 Response audio stream complete — starting playback
+2025-10-29 15:39:41.64
+🔊 Playing PCM response (79200 samples)
+2025-10-29 15:39:41.64
+✅ Response fully completed
+2025-10-29 15:39:41.64
+🎤 Auto-restarting microphone after AI response...
+2025-10-29 15:39:41.64
+🎤 Microphone disabled - coach in TTS-only mode
+2025-10-29 15:39:44.93
+✅ PCM playback finished
+2025-10-29 15:39:44.93
+🎤 Mic needs restart after AI response...
+2025-10-29 15:39:45.34
+⏰ Resync validated at 15s - step 2 correct
+2025-10-29 15:39:55.42
+📡 Sending event to AI (context only):
+EVENT: set_midpoint {"exercise_id":801608340,"exercise_name":"Dumbbell Clean and Press","set_index":1}
+2025-10-29 15:39:59.30
+⏸️ Workout paused at
+28
+seconds

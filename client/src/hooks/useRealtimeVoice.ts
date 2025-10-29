@@ -551,15 +551,13 @@ export function useRealtimeVoice({
       // Process next queued event if any
       setTimeout(() => processQueuedEvent(), 100);
       
-      // CRITICAL FIX: Never auto-stop mic during workout - keep stream alive
-      // Just ensure processor exists (already handled by startListening reuse logic)
-      if (!processorRef.current) {
-        console.log('🎤 Mic needs restart after AI response...');
-        needsRestartRef.current = true;
-      } else {
-        console.log('🎤 Mic already active, continuing...');
-        // No auto-stop timeout - keep mic alive for entire workout
-      }
+      // DISABLED: Mic restart logic (TTS-only mode)
+      // if (!processorRef.current) {
+      //   console.log('🎤 Mic needs restart after AI response...');
+      //   needsRestartRef.current = true;
+      // } else {
+      //   console.log('🎤 Mic already active, continuing...');
+      // }
     };
   };
 
@@ -575,14 +573,14 @@ export function useRealtimeVoice({
     }
   };
 
-  // Effect to restart microphone after AI finishes speaking (if it was stopped)
-  useEffect(() => {
-    if (needsRestartRef.current && state.isConnected && !state.isListening && !state.isSpeaking) {
-      console.log('🎤 Auto-restarting microphone after AI response...');
-      needsRestartRef.current = false;
-      startListening();
-    }
-  }, [state.isConnected, state.isListening, state.isSpeaking, startListening]);
+  // DISABLED: Effect to restart microphone (TTS-only mode)
+  // useEffect(() => {
+  //   if (needsRestartRef.current && state.isConnected && !state.isListening && !state.isSpeaking) {
+  //     console.log('🎤 Auto-restarting microphone after AI response...');
+  //     needsRestartRef.current = false;
+  //     startListening();
+  //   }
+  // }, [state.isConnected, state.isListening, state.isSpeaking, startListening]);
 
   useEffect(() => {
     return () => {
