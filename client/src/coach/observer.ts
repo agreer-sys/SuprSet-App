@@ -68,8 +68,8 @@ function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
 }
 
 export async function onEvent(ctx: TimelineContext, ev: Event) {
-  // Ready gate
-  if (ev.type === 'EV_AWAIT_READY') { ctx.showReadyModal?.(); return; }
+  // Ready gate - DISABLED: No popup, workout UI handles Ready button
+  // if (ev.type === 'EV_AWAIT_READY') { ctx.showReadyModal?.(); return; }
 
   // Countdown voice policy
   if (ev.type === 'EV_COUNTDOWN' && COUNTDOWN_VOICE_OFF) return;

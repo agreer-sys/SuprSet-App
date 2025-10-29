@@ -1323,6 +1323,9 @@ export default function WorkoutSessionPage() {
                     // Resume AudioContext for beeps (required for browser autoplay policy)
                     await resumeAudioContext();
                     
+                    // Initialize beeps AudioContext (fixes laptop beep issue)
+                    beeps.init();
+                    
                     const now = Date.now();
                     setWorkoutStartEpochMs(now);
                     lastResyncMs.current = 0;

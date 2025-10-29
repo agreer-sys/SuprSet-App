@@ -91,6 +91,11 @@ class BeepEngine {
     this.duck(Math.round(dur * 1000));
   }
 
+  /** Initialize AudioContext (call on user interaction to fix laptop beeps) */
+  init(){
+    this.ensureCtx();
+  }
+
   play(kind: BeepKind){
     voiceBus.notifyBeep();
     switch (kind){
