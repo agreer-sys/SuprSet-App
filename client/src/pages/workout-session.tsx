@@ -1267,11 +1267,15 @@ export default function WorkoutSessionPage() {
             setShowPreflight(true);
           }}
           onBegin={() => {
+            console.log('🎬 onBegin callback triggered');
             setShowIntro(false);
             const hasRepBlocks = blocks.some(b => b.params?.mode === 'reps');
+            console.log('🔍 hasRepBlocks:', hasRepBlocks);
             if (hasRepBlocks) {
+              console.log('✅ Setting showPreflight = true');
               setShowPreflight(true);
             } else {
+              console.log('✅ Setting preflightCompleted = true');
               setPreflightCompleted(true);
             }
           }}
