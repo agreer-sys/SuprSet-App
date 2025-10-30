@@ -112,6 +112,12 @@ export function useRealtimeVoice({
           console.log("🎧 Response audio stream complete — starting playback");
           playPcmResponse(); // plays the merged buffer
         }
+        
+        // FALLBACK: Also trigger playback on response.done if audio.done never arrives
+        if (message.type === 'response.done' && audioQueueRef.current.length > 0 && !isPlayingRef.current) {
+          console.log("🎧 Response done with audio - triggering playback");
+          playPcmResponse();
+        }
 
         if (message.type === 'response.audio_transcript.delta' && message.delta) {
           onTranscript?.(message.delta, false);
