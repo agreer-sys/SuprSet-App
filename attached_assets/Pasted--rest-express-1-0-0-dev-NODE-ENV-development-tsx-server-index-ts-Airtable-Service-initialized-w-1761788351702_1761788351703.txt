@@ -1,0 +1,301 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+Airtable Service initialized with Base ID: apppI2s9...
+🎙️ OpenAI Realtime API relay configured on /realtime
+✅ Loaded 1 knowledge items from cache
+1:35:28 AM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 12 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+1:35:34 AM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+1:35:34 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+Search params: {
+  q: undefined,
+  category: undefined,
+  equipment: undefined,
+  muscleGroup: undefined
+}
+📋 Serving 83 equipment items from catalog
+1:35:34 AM [express] GET /api/exercises/equipment 304 in 6ms :: ["Abductor Machine","Adductor Machin…
+Successfully loaded 215 exercises from Airtable
+1:35:34 AM [express] GET /api/exercises/muscle-groups 304 in 661ms :: ["Accessory","Back","Biceps","…
+Successfully loaded 215 exercises from Airtable
+1:35:35 AM [express] GET /api/exercises 304 in 719ms :: [{"id":2093634808,"name":"Abductor Machine",…
+Successfully loaded 215 exercises from Airtable
+Returning 215 exercises
+1:35:35 AM [express] GET /api/exercises/search 304 in 764ms :: [{"id":2093634808,"name":"Abductor Ma…
+Successfully loaded 215 exercises from Airtable
+1:35:35 AM [express] GET /api/exercises/categories 304 in 815ms :: []
+1:35:35 AM [express] GET /api/block-workouts 304 in 194ms :: [{"id":56,"name":"3 Exercise Super Sets…
+1:35:37 AM [express] POST /api/block-workout-sessions 201 in 148ms :: {"id":235,"userId":"guest-user…
+1:35:37 AM [express] GET /api/block-workout-sessions/active 200 in 72ms :: {"id":235,"userId":"guest…
+1:35:37 AM [express] GET /api/workout-sessions 200 in 20ms
+1:35:37 AM [express] GET /api/coaching/235 200 in 51ms :: {"id":279,"sessionId":null,"blockWorkoutSe…
+1:35:43 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+1:35:43 AM [express] GET /api/block-workout-sessions/active 304 in 71ms :: {"id":235,"userId":"guest…
+1:35:43 AM [express] GET /api/workout-sessions 200 in 9ms
+1:35:43 AM [express] GET /api/coaching/235 304 in 40ms :: {"id":279,"sessionId":null,"blockWorkoutSe…
+🎙️ Realtime client connected
+1:35:50 AM [express] GET /api/coach-responses 304 in 38ms :: {"items":[{"id":2,"textTemplate":"{{pat…
+🔍 Timeline update check: {
+  sessionId: 235,
+  hadTimeline: false,
+  contextHasTimeline: true,
+  isMajorUpdate: true
+}
+📝 Updated session context (no instruction rebuild): 235
+1:35:50 AM [express] GET /api/coach-responses 200 in 35ms :: {"items":[{"id":46,"textTemplate":"Take…
+🔍 Timeline update check: {
+  sessionId: 235,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 235
+1:35:50 AM [express] POST /api/coach-responses/47/mark-used 200 in 47ms :: {"ok":true}
+✅ Connected to OpenAI Realtime API
+✅ Sent initial session config with workout timeline included: 235
+🔍 Timeline update check: {
+  sessionId: 235,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 235
+🎯 OpenAI response.created: {
+  response_id: 'resp_CWBrtfVn6kHgG51NfDb7m',
+  modalities: [ 'text', 'audio' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 32000 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CWBrtfVn6kHgG51NfDb7m',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 235,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 235
+1:36:03 AM [express] GET /api/coach-responses 200 in 142ms :: {"items":[{"id":15,"textTemplate":"Sta…
+🎯 OpenAI response.created: {
+  response_id: 'resp_CWBs3NsqrXRhOYAxqbdku',
+  modalities: [ 'text', 'audio' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 44800 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CWBs3NsqrXRhOYAxqbdku',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 235,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 235
+1:36:33 AM [express] GET /api/coach-responses 200 in 165ms :: {"items":[{"id":22,"textTemplate":"Goo…
+1:36:33 AM [express] POST /api/coach-responses/22/mark-used 200 in 35ms :: {"ok":true}
+1:36:33 AM [express] GET /api/coach-responses 200 in 141ms :: {"items":[{"id":46,"textTemplate":"Tak…
+🎯 OpenAI response.created: {
+  response_id: 'resp_CWBsX8lzCCNYG0jMMgNs2',
+  modalities: [ 'text', 'audio' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 25600 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CWBsX8lzCCNYG0jMMgNs2',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 235,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 235
+1:37:06 AM [express] GET /api/coach-responses 304 in 153ms :: {"items":[{"id":15,"textTemplate":"Sta…
+1:37:06 AM [express] POST /api/coach-responses/15/mark-used 200 in 33ms :: {"ok":true}
+🎯 OpenAI response.created: {
+  response_id: 'resp_CWBt4ouepfj64xHD0j0t1',
+  modalities: [ 'text', 'audio' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 44800 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CWBt4ouepfj64xHD0j0t1',
+  status: 'completed',
+  output_count: 1
+}
+👋 Client disconnected
+🔌 OpenAI connection closed
+1:37:30 AM [express] POST /api/workout-sessions/235/complete 200 in 253ms :: {"id":235,"userId":"gue…
+1:37:31 AM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+1:37:31 AM [express] GET /api/supersets 401 in 1ms :: {"message":"Unauthorized"}
+1:37:31 AM [express] GET /api/workouts 401 in 1ms :: {"message":"Unauthorized"}
+1:37:42 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+1:37:42 AM [express] GET /api/exercises/categories 304 in 1ms :: []
+1:37:42 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+1:37:42 AM [express] GET /api/exercises/muscle-groups 304 in 1ms :: ["Accessory","Back","Biceps","Ch…
+📋 Serving 83 equipment items from catalog
+1:37:42 AM [express] GET /api/exercises/equipment 304 in 2ms :: ["Abductor Machine","Adductor Machin…
+Search params: {
+  q: undefined,
+  category: undefined,
+  equipment: undefined,
+  muscleGroup: undefined
+}
+Returning 215 exercises
+1:37:42 AM [express] GET /api/exercises/search 304 in 5ms :: [{"id":2093634808,"name":"Abductor Mach…
+1:37:42 AM [express] GET /api/exercises 304 in 4ms :: [{"id":2093634808,"name":"Abductor Machine","a…
+1:37:53 AM [express] GET /api/block-workouts 304 in 204ms :: [{"id":56,"name":"3 Exercise Super Sets…
+1:37:55 AM [express] POST /api/block-workout-sessions 201 in 139ms :: {"id":236,"userId":"guest-user…
+1:37:55 AM [express] GET /api/block-workout-sessions/active 200 in 71ms :: {"id":236,"userId":"guest…
+1:37:55 AM [express] GET /api/workout-sessions 200 in 4ms
+1:37:55 AM [express] GET /api/coaching/236 200 in 34ms :: {"id":280,"sessionId":null,"blockWorkoutSe…
+1:38:02 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+1:38:02 AM [express] GET /api/block-workout-sessions/active 304 in 70ms :: {"id":236,"userId":"guest…
+1:38:02 AM [express] GET /api/workout-sessions 200 in 10ms
+1:38:02 AM [express] GET /api/coaching/236 304 in 42ms :: {"id":280,"sessionId":null,"blockWorkoutSe…
+🎙️ Realtime client connected
+1:38:09 AM [express] GET /api/coach-responses 304 in 37ms :: {"items":[{"id":2,"textTemplate":"{{pat…
+🔍 Timeline update check: {
+  sessionId: 236,
+  hadTimeline: false,
+  contextHasTimeline: true,
+  isMajorUpdate: true
+}
+📝 Updated session context (no instruction rebuild): 236
+1:38:09 AM [express] GET /api/coach-responses 304 in 34ms :: {"items":[{"id":46,"textTemplate":"Take…
+🔍 Timeline update check: {
+  sessionId: 236,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 236
+1:38:09 AM [express] POST /api/coach-responses/2/mark-used 200 in 34ms :: {"ok":true}
+1:38:09 AM [express] POST /api/coach-responses/46/mark-used 200 in 34ms :: {"ok":true}
+✅ Connected to OpenAI Realtime API
+✅ Sent initial session config with workout timeline included: 236
+🔍 Timeline update check: {
+  sessionId: 236,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 236
+🎯 OpenAI response.created: {
+  response_id: 'resp_CWBu9Hfqx8NbVO4HX2dTV',
+  modalities: [ 'audio', 'text' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 38400 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CWBu9Hfqx8NbVO4HX2dTV',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 236,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 236
+1:38:23 AM [express] GET /api/coach-responses 200 in 145ms :: {"items":[{"id":15,"textTemplate":"Sta…
+1:38:23 AM [express] POST /api/coach-responses/16/mark-used 200 in 36ms :: {"ok":true}
+🎯 OpenAI response.created: {
+  response_id: 'resp_CWBuJVRoKGNF0F0s3OUKj',
+  modalities: [ 'audio', 'text' ],
+  output: []
+}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 38400 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CWBuJVRoKGNF0F0s3OUKj',
+  status: 'completed',
+  output_count: 1
+}
+🔍 Timeline update check: {
+  sessionId: 236,
+  hadTimeline: true,
+  contextHasTimeline: true,
+  isMajorUpdate: false
+}
+📝 Updated session context (no instruction rebuild): 236
+1:38:53 AM [express] GET /api/coach-responses 200 in 162ms :: {"items":[{"id":22,"textTemplate":"Goo…
+1:38:53 AM [express] POST /api/coach-responses/22/mark-used 200 in 38ms :: {"ok":true}
+1:38:53 AM [express] GET /api/coach-responses 200 in 163ms :: {"items":[{"id":46,"textTemplate":"Tak…
+🎯 OpenAI response.created: {
+  response_id: 'resp_CWBunrpXlI7lkHzL1OoOA',
+  modalities: [ 'audio', 'text' ],
+  output: []
+}
+1:38:53 AM [express] POST /api/coach-responses/47/mark-used 200 in 34ms :: {"ok":true}
+🔊 Audio delta received (length: 6400 )
+🔊 Audio delta received (length: 9600 )
+🔊 Audio delta received (length: 16000 )
+🔊 Audio delta received (length: 16000 )
+✅ OpenAI response.done: {
+  response_id: 'resp_CWBunrpXlI7lkHzL1OoOA',
+  status: 'completed',
+  output_count: 1
+}
