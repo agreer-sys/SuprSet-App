@@ -161,7 +161,7 @@ export default function WorkoutSessionPage() {
     if (isBlockWorkout && exercises.length > 0 && !showIntro && !preflightCompleted) {
       setShowIntro(true);
     }
-  }, [isBlockWorkout, exercises.length, showIntro, preflightCompleted]);
+  }, [isBlockWorkout, exercises.length, preflightCompleted]);
 
   // OpenAI Realtime API setup (needs to be before coachContext)
   const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
@@ -1232,7 +1232,6 @@ export default function WorkoutSessionPage() {
   const progressPercentage = (completedSets / totalSets) * 100;
 
   // NEW: Show Intro Sheet for block workouts FIRST
-  console.log('🔍 Render check - Intro:', { isBlockWorkout, showIntro, exercisesCount: exercises.length, hasTimeline: !!executionTimeline });
   if (isBlockWorkout && showIntro && exercises.length > 0 && executionTimeline) {
 
     const firstBlock = executionTimeline.params;
@@ -1268,15 +1267,11 @@ export default function WorkoutSessionPage() {
             setShowPreflight(true);
           }}
           onBegin={() => {
-            console.log('🎬 onBegin callback triggered');
             setShowIntro(false);
             const hasRepBlocks = blocks.some(b => b.params?.mode === 'reps');
-            console.log('🔍 hasRepBlocks:', hasRepBlocks);
             if (hasRepBlocks) {
-              console.log('✅ Setting showPreflight = true');
               setShowPreflight(true);
             } else {
-              console.log('✅ Setting preflightCompleted = true');
               setPreflightCompleted(true);
             }
           }}
@@ -1286,7 +1281,6 @@ export default function WorkoutSessionPage() {
   }
 
   // NEW: Show Preflight Weights Sheet for block workouts before starting
-  console.log('🔍 Render check - Preflight:', { isBlockWorkout, showPreflight, exercisesCount: exercises.length });
   if (isBlockWorkout && showPreflight && exercises.length > 0) {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">

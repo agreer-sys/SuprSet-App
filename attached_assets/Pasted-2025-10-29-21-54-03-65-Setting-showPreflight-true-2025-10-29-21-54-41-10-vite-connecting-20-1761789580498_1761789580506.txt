@@ -1,0 +1,99 @@
+2025-10-29 21:54:03.65
+✅ Setting showPreflight = true
+2025-10-29 21:54:41.10
+[vite] connecting...
+2025-10-29 21:54:43.03
+{message: "The string did not match the expected pattern.", stack: "WebSocket@[native code] setupWebSocket@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:536:32 fallback@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:509:30 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:555:25 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:552:46"}
+2025-10-29 21:54:44.17
+Roboflow integration:
+Enabled
+2025-10-29 21:57:11.37
+[vite] connecting...
+2025-10-29 21:57:11.57
+{message: "The string did not match the expected pattern.", stack: "WebSocket@[native code] setupWebSocket@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:536:32 fallback@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:509:30 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:555:25 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:552:46"}
+2025-10-29 21:57:12.13
+Roboflow integration:
+Enabled
+2025-10-29 21:57:42.55
+[vite] connecting...
+2025-10-29 21:57:44.92
+{message: "The string did not match the expected pattern.", stack: "WebSocket@[native code] setupWebSocket@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:536:32 fallback@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:509:30 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:555:25 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:552:46"}
+2025-10-29 21:57:46.32
+Roboflow integration:
+Enabled
+2025-10-29 21:58:54.91
+🔍 Render check - Intro:
+{isBlockWorkout: true, showIntro: false, exercisesCount: 3, hasTimeline: true}
+2025-10-29 21:58:54.91
+🔍 Render check - Preflight:
+{isBlockWorkout: true, showPreflight: false, exercisesCount: 3}
+2025-10-29 21:58:54.91
+🔍 Block session data:
+{id: 240, hasSnapshot: true, hasBlockWorkout: true, hasBlockWorkoutTimeline: true, executionTimeline: "LOADED"}
+2025-10-29 21:58:54.91
+🔍 Render check - Intro:
+{isBlockWorkout: true, showIntro: true, exercisesCount: 3, hasTimeline: true}
+2025-10-29 21:58:55.02
+🔍 Render check - Intro:
+{isBlockWorkout: true, showIntro: true, exercisesCount: 3, hasTimeline: true}
+2025-10-29 21:58:59.85
+🔍 Render check - Intro:
+{isBlockWorkout: true, showIntro: true, exercisesCount: 3, hasTimeline: true}
+2025-10-29 21:59:02.16
+🎬 Start Workout button clicked
+2025-10-29 21:59:02.16
+🎬 onBegin callback triggered
+2025-10-29 21:59:02.16
+🔍 hasRepBlocks:
+true
+2025-10-29 21:59:02.16
+✅ Setting showPreflight = true
+2025-10-29 21:59:02.16
+🔍 Render check - Intro:
+{isBlockWorkout: true, showIntro: false, exercisesCount: 3, hasTimeline: true}
+2025-10-29 21:59:02.16
+🔍 Render check - Preflight:
+{isBlockWorkout: true, showPreflight: true, exercisesCount: 3}
+2025-10-29 21:59:02.16
+🔍 Render check - Intro:
+{isBlockWorkout: true, showIntro: true, exercisesCount: 3, hasTimeline: true}
+2025-10-29 21:59:10.65
+🎬 Start Workout button clicked
+2025-10-29 21:59:10.65
+🎬 onBegin callback triggered
+2025-10-29 21:59:10.65
+🔍 hasRepBlocks:
+true
+2025-10-29 21:59:10.65
+✅ Setting showPreflight = true
+2025-10-29 21:59:10.65
+🔍 Render check - Intro:
+{isBlockWorkout: true, showIntro: false, exercisesCount: 3, hasTimeline: true}
+2025-10-29 21:59:10.65
+🔍 Render check - Preflight:
+{isBlockWorkout: true, showPreflight: true, exercisesCount: 3}
+2025-10-29 21:59:10.65
+🔍 Render check - Intro:
+{isBlockWorkout: true, showIntro: true, exercisesCount: 3, hasTimeline: true}
+2025-10-29 21:59:12.59
+🎬 Start Workout button clicked
+2025-10-29 21:59:12.59
+🎬 onBegin callback triggered
+2025-10-29 21:59:12.59
+🔍 hasRepBlocks:
+true
+2025-10-29 21:59:12.59
+✅ Setting showPreflight = true
+2025-10-29 21:59:12.59
+🔍 Render check - Intro:
+{isBlockWorkout: true, showIntro: false, exercisesCount: 3, hasTimeline: true}
+isBlockWorkout: true
+showIntro: false
+exercisesCount: 3
+hasTimeline: true
+2025-10-29 21:59:12.59
+🔍 Render check - Preflight:
+{isBlockWorkout: true, showPreflight: true, exercisesCount: 3}
+2025-10-29 21:59:12.59
+🔍 Render check - Intro:
+{isBlockWorkout: true, showIntro: true, exercisesCount: 3, hasTimeline: true}
