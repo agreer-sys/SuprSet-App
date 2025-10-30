@@ -158,7 +158,9 @@ export default function WorkoutSessionPage() {
 
   // NEW: Auto-show intro when block workout is detected
   useEffect(() => {
+    console.log('🔍 useEffect INTRO AUTO-SHOW:', { isBlockWorkout, exercisesLength: exercises.length, showIntro, preflightCompleted });
     if (isBlockWorkout && exercises.length > 0 && !showIntro && !preflightCompleted) {
+      console.log('✅ AUTO-SETTING showIntro = true');
       setShowIntro(true);
     }
   }, [isBlockWorkout, exercises.length, preflightCompleted]);
@@ -1232,7 +1234,9 @@ export default function WorkoutSessionPage() {
   const progressPercentage = (completedSets / totalSets) * 100;
 
   // NEW: Show Intro Sheet for block workouts FIRST
+  console.log('🔍 INTRO CHECK:', { isBlockWorkout, showIntro, exercisesLength: exercises.length, hasTimeline: !!executionTimeline });
   if (isBlockWorkout && showIntro && exercises.length > 0 && executionTimeline) {
+    console.log('✅ SHOWING INTRO SCREEN');
 
     const firstBlock = executionTimeline.params;
     const blocks = [{
@@ -1281,7 +1285,9 @@ export default function WorkoutSessionPage() {
   }
 
   // NEW: Show Preflight Weights Sheet for block workouts before starting
+  console.log('🔍 PREFLIGHT CHECK:', { isBlockWorkout, showPreflight, exercisesLength: exercises.length });
   if (isBlockWorkout && showPreflight && exercises.length > 0) {
+    console.log('✅ SHOWING PREFLIGHT SCREEN');
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
         <PreflightWeightsSheet
