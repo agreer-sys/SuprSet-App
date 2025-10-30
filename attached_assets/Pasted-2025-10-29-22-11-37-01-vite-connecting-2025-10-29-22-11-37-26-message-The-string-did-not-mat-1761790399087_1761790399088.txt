@@ -1,0 +1,126 @@
+2025-10-29 22:11:37.01
+[vite] connecting...
+2025-10-29 22:11:37.26
+{message: "The string did not match the expected pattern.", stack: "WebSocket@[native code] setupWebSocket@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:536:32 fallback@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:509:30 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:555:25 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:552:46"}
+2025-10-29 22:11:37.78
+Roboflow integration:
+Enabled
+2025-10-29 22:11:52.84
+🔍 Block session data:
+{id: 244, hasSnapshot: true, hasBlockWorkout: true, hasBlockWorkoutTimeline: true, executionTimeline: "LOADED"}
+2025-10-29 22:11:58.88
+[vite] connecting...
+2025-10-29 22:11:59.04
+{message: "The string did not match the expected pattern.", stack: "WebSocket@[native code] setupWebSocket@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:536:32 fallback@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:509:30 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:555:25 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:552:46"}
+2025-10-29 22:11:59.58
+Roboflow integration:
+Enabled
+2025-10-29 22:11:59.72
+🔍 Block session data:
+{id: 244, hasSnapshot: true, hasBlockWorkout: true, hasBlockWorkoutTimeline: true, executionTimeline: "LOADED"}
+2025-10-29 22:12:25.10
+AudioContext resumed successfully, state:
+running
+2025-10-29 22:12:25.10
+🚀 Workout started at
+2025-10-30T02:12:24.730Z
+2025-10-29 22:12:25.10
+🎙️ Auto-connecting AI Coach...
+2025-10-29 22:12:25.10
+✅ AI Coach connected - ready for voice interaction
+2025-10-29 22:12:25.10
+✅ Connected to Realtime API
+2025-10-29 22:12:25.10
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 0, isAwaitingReady: false, isPaused: false}
+2025-10-29 22:12:25.10
+📡 Sending event to AI (context only):
+EVENT: await_ready {"next_exercise":"Get organized and connect with your coach","exercise_id":801608340,"exercise_name":"Dumbbell Clean and Press","set_index":1}
+2025-10-29 22:12:25.10
+⏸️ Reached await_ready step at 0s - waiting for user confirmation
+2025-10-29 22:12:25.10
+⏸️ Workout paused at
+0
+seconds
+2025-10-29 22:12:25.10
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 0, isAwaitingReady: true, isPaused: true}
+2025-10-29 22:12:25.10
+[COACH CAPTION]
+Block — 1 round • cadence 3:00. First up: Dumbbell Clean and Press.
+2025-10-29 22:12:25.10
+🎯 NEW Coach TTS:
+Block — 1 round • cadence 3:00. First up: Dumbbell Clean and Press.
+2025-10-29 22:12:25.36
+🎙️ Session ready
+2025-10-29 22:12:30.20
+AudioContext already running
+2025-10-29 22:12:30.20
+⏸️ Finalizing await_ready pause: 5s (total paused: 5s)
+2025-10-29 22:12:30.20
+✅ Ready confirmed! Re-anchoring timeline from 1761790344730 to 1761790344871
+2025-10-29 22:12:30.20
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 1, isAwaitingReady: false, isPaused: false}
+2025-10-29 22:12:30.20
+⚠️ Interval drift detected: 5050ms (tolerance: ±250ms)
+2025-10-29 22:12:30.20
+🆕 New response started: resp_CWCRK6FLR6FVHpH6DCfg9
+2025-10-29 22:12:31.39
+🎧 Response audio stream complete — starting playback
+2025-10-29 22:12:31.39
+🎧 Voice pipeline initialized (PCM16 Float32 path active)
+2025-10-29 22:12:31.39
+🔊 Playing PCM response (67200 samples)
+2025-10-29 22:12:31.39
+✅ Response fully completed
+2025-10-29 22:12:34.18
+✅ PCM playback finished
+2025-10-29 22:12:40.06
+📍 Step transition: 1 → 2 at 10s
+2025-10-29 22:12:40.06
+📡 Sending timeline context to Realtime API:
+{currentStepIndex: 2, isAwaitingReady: false, isPaused: false}
+2025-10-29 22:12:40.06
+📡 Sending event to AI (context only):
+EVENT: set_start {"exercise_id":801608340,"exercise_name":"Dumbbell Clean and Press","set_index":1,"work_s":30}
+2025-10-29 22:12:40.30
+[COACH CAPTION]
+Start Dumbbell Clean and Press. Clean dumbbells to shoulders
+2025-10-29 22:12:40.30
+🎯 NEW Coach TTS:
+Start Dumbbell Clean and Press. Clean dumbbells to shoulders
+2025-10-29 22:12:40.49
+🆕 New response started: resp_CWCRUwGYNZUHnhoSf2su8
+2025-10-29 22:12:41.63
+🎧 Response audio stream complete — starting playback
+2025-10-29 22:12:41.63
+🔊 Playing PCM response (82800 samples)
+2025-10-29 22:12:41.63
+✅ Response fully completed
+2025-10-29 22:12:45.16
+✅ PCM playback finished
+2025-10-29 22:12:45.16
+⏰ Resync validated at 15s - step 2 correct
+2025-10-29 22:12:47.51
+📡 Sending event to AI (context only):
+EVENT: workout_complete {"total_duration_s":22}
+2025-10-29 22:12:47.51
+⏳ Waiting for coach farewell...
+2025-10-29 22:12:47.51
+✅ Coach farewell complete
+2025-10-29 22:12:47.51
+🔇 Stopped listening
+2025-10-29 22:12:47.51
+🔌 Disconnected from Realtime API
+2025-10-29 22:12:47.51
+🔌 Disconnected from Realtime API
+2025-10-29 22:12:47.51
+🔇 Stopped listening
+2025-10-29 22:12:47.83
+[vite] connecting...
+2025-10-29 22:12:48.08
+{message: "The string did not match the expected pattern.", stack: "WebSocket@[native code] setupWebSocket@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:536:32 fallback@https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:509:30 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:555:25 @https://78592043-fdcc-45da-87fe-303af309bff1-00-mni5y4133ycz.picard.replit.dev:5000/@vite/client:552:46"}
+2025-10-29 22:12:48.57
+Roboflow integration:
+Enabled
