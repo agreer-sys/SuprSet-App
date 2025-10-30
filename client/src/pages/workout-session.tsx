@@ -185,6 +185,22 @@ export default function WorkoutSessionPage() {
     onError: handleRealtimeError,
   });
 
+  // NEW: Auto-connect Realtime API AFTER preflight is complete (not before)
+  useEffect(() => {
+    const connectAfterPreflight = async () => {
+      if (isBlockWorkout && preflightCompleted && !realtime.isConnected) {
+        console.log('✅ Preflight complete - connecting AI Coach...');
+        try {
+          await realtime.connect();
+          console.log('✅ AI Coach connected - ready for voice interaction');
+        } catch (error) {
+          console.error('Failed to connect AI Coach after preflight:', error);
+        }
+      }
+    };
+    connectAfterPreflight();
+  }, [isBlockWorkout, preflightCompleted, realtime]);
+
   // NEW: Build TimelineContext for the observer
   const coachContext = useMemo<TimelineContext>(() => {
     // Build blocks array from executionTimeline params
@@ -921,7 +937,7 @@ export default function WorkoutSessionPage() {
 
   // Send executionTimeline context to Realtime API (only on meaningful changes)
   useEffect(() => {
-    if (!realtime.isConnected || !isBlockWorkout || !executionTimeline) return;
+    if (!realtime.isConnected || !isBlockWorkout || !executionTimeline || !preflightCompleted) return;
 
     const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
       ? executionTimeline.executionTimeline[currentStepIndex]
@@ -941,14 +957,14 @@ export default function WorkoutSessionPage() {
 
     console.log('📡 Sending timeline context to Realtime API:', { currentStepIndex, isAwaitingReady, isPaused });
     realtime.updateContext(context);
-  }, [realtime.isConnected, isBlockWorkout, executionTimeline, currentStepIndex, isAwaitingReady, isPaused]);
+  }, [realtime.isConnected, isBlockWorkout, executionTimeline, currentStepIndex, isAwaitingReady, isPaused, preflightCompleted]);
 
   // AI Coach Voice Prompts - Event-driven model (host controls flow, AI observes)
   const previousStepIndexRef = useRef<number>(-1);
   const hasSpokenForStepRef = useRef<Set<number | string>>(new Set());
   
   useEffect(() => {
-    if (!realtime.isConnected || !realtime.sendEvent || !isBlockWorkout || !executionTimeline || !workoutStartEpochMs) return;
+    if (!realtime.isConnected || !realtime.sendEvent || !isBlockWorkout || !executionTimeline || !workoutStartEpochMs || !preflightCompleted) return;
     
     const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
       ? executionTimeline.executionTimeline[currentStepIndex]
@@ -1336,25 +1352,6 @@ export default function WorkoutSessionPage() {
                       type: 'EV_BLOCK_START', 
                       blockId: 'block-1'
                     });
-                    
-                    // Auto-connect AI Coach when workout starts
-                    try {
-                      if (!realtime.isConnected) {
-                        console.log('🎙️ Auto-connecting AI Coach...');
-                        await realtime.connect();
-                        console.log('✅ AI Coach connected - ready for voice interaction');
-                        
-                        // DISABLED: Auto-activate microphone (TTS-only mode)
-                        // setTimeout(async () => {
-                        //   if (!realtime.isListening) {
-                        //     console.log('🎤 Auto-activating microphone...');
-                        //     await realtime.startListening();
-                        //   }
-                        // }, 1000); // Wait 1s for connection to stabilize
-                      }
-                    } catch (error) {
-                      console.error('Failed to auto-connect AI Coach:', error);
-                    }
                   }}
                   data-testid="button-start-workout"
                 >
