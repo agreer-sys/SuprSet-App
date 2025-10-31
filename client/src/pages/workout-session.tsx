@@ -20,6 +20,7 @@ import type { WorkoutSessionNew, SetLog, CoachingSession } from "@shared/schema"
 import { onEvent } from '@/coach/observer';
 import { seedResponses } from '@/coach/responseService';
 import { beeps } from '@/coach/beeps';
+import { speakTTS } from '@/audio/ttsAdapter';
 import { PreflightWeightsSheet } from '@/components/PreflightWeightsSheet';
 import { WorkoutIntroSheet } from '@/components/WorkoutIntroSheet';
 import type { ChatterLevel as IntroChatterLevel } from '@/components/WorkoutIntroSheet';
@@ -189,12 +190,17 @@ export default function WorkoutSessionPage() {
   useEffect(() => {
     const connectAfterPreflight = async () => {
       if (isBlockWorkout && preflightCompleted && !realtime.isConnected) {
-        console.log('✅ Preflight complete - connecting AI Coach...');
-        try {
-          await realtime.connect();
-          console.log('✅ AI Coach connected - ready for voice interaction');
-        } catch (error) {
-          console.error('Failed to connect AI Coach after preflight:', error);
+        if (FLAGS.BROWSER_TTS) {
+          console.log('🔊 TTS Mode: Browser TTS (FREE - no OpenAI quota needed)');
+          console.log('💡 To use OpenAI Realtime API, remove ?browserTTS from URL');
+        } else {
+          console.log('✅ Preflight complete - connecting AI Coach...');
+          try {
+            await realtime.connect();
+            console.log('✅ AI Coach connected - ready for voice interaction (OpenAI Realtime API)');
+          } catch (error) {
+            console.error('Failed to connect AI Coach after preflight:', error);
+          }
         }
       }
     };
@@ -237,8 +243,15 @@ export default function WorkoutSessionPage() {
     beep: undefined, // Beeps handled by existing timeline player
     showReadyModal: () => new Promise<void>(res => { if (window.confirm('Ready?')) res(); }),
     speak: (text) => {
-      // NEW: Route to Realtime TTS instead of console
-      realtime.speakDirectly(text);
+      // Toggle between Browser TTS (free) and OpenAI Realtime API (high quality)
+      if (FLAGS.BROWSER_TTS) {
+        // Browser TTS mode: Free, no quota needed, good for testing
+        speakTTS(text);
+      } else {
+        // OpenAI Realtime API: High quality voice, conversational AI
+        realtime.speakDirectly(text);
+      }
+      
       // Also add to chat for visual feedback
       setChatMessages(prev => [...prev, { 
         role: 'assistant', 

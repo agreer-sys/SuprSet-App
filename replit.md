@@ -37,6 +37,25 @@ The AI receives pre-compiled workout timeline context including:
 
 ## Recent Changes
 
+### Browser TTS Toggle (Oct 31, 2025)
+Added feature flag to switch between free browser TTS and OpenAI Realtime API for easy testing without quota concerns:
+
+**Changes:**
+1. **Feature Flag**: Added `FLAGS.BROWSER_TTS` (defaults OFF, enable via `?browserTTS` URL param)
+2. **TTS Mode Toggle**: Workout session automatically uses Browser TTS when flag is enabled, OpenAI Realtime API when disabled
+3. **Console Indicators**: Clear logging shows which TTS mode is active on preflight completion
+4. **Zero Quota Testing**: Browser TTS mode provides free testing of all coach timing, events, and logic without API costs
+
+**Usage:**
+- **Browser TTS Mode** (free testing): Add `?browserTTS` to URL → Uses Web Speech API (robotic voice, no quota)
+- **OpenAI Realtime Mode** (production): Default behavior → Uses GPT-4o Realtime API (natural voice, costs quota)
+
+**Benefits:**
+- ✅ Test workout flow without OpenAI quota concerns
+- ✅ Develop and debug coach logic for free
+- ✅ Easy one-line toggle between modes
+- ✅ Same voice ducking and beep coordination in both modes
+
 ### Phase 3 Merge (Oct 28, 2025)
 Integrated Lab improvements into production app with COACH_V2 feature flag for safe rollback:
 
