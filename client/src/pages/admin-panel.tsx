@@ -260,7 +260,14 @@ export default function AdminPanel() {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [currentBlock, setCurrentBlock] = useState<Partial<Block>>({
     type: "custom_sequence",
-    params: { setsPerExercise: 3, workSec: 45, restSec: 10, roundRestSec: 0 },
+    params: { 
+      pattern: "superset", // DEFAULT: Required for custom_sequence
+      mode: "time", // DEFAULT: Required for custom_sequence
+      setsPerExercise: 3, 
+      workSec: 45, 
+      restSec: 10, 
+      roundRestSec: 0 
+    },
     exercises: []
   });
   const [selectedPattern, setSelectedPattern] = useState<WorkoutPattern>("superset");
