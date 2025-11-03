@@ -296,14 +296,22 @@ export default function AdminPanel() {
         throw new Error("Add at least one block");
       }
 
-      // Transform blocks to match backend API format
+      // Transform blocks to match backend DTO format
       const transformedBlocks = blocks.map(block => ({
-        id: block.id,
         name: block.name,
-        description: block.description,
         type: block.type,
-        params: block.params,
-        exercises: block.exercises.map(ex => ex.exerciseId) // Extract just the IDs
+        params: {
+          ...block.params,
+          type: block.type, // Add discriminator to params
+        },
+        exercises: block.exercises?.map(ex => ({
+          exerciseId: ex.exerciseId,
+          overrides: {
+            workSec: ex.workSec,
+            restSec: ex.restSec,
+            targetReps: ex.targetReps,
+          }
+        })),
       }));
 
       if (editingWorkoutId) {
