@@ -94,6 +94,7 @@ export async function compileBlockToTimeline(
   // Extract block params
   const {
     pattern = "circuit", // Default to circuit if not specified
+    mode, // "reps" for continuous rep-based flow (like lab), "time" or undefined for traditional
     setsPerExercise = 1,
     workSec = 30,
     restSec = 30,
@@ -190,8 +191,21 @@ export async function compileBlockToTimeline(
           const isLastSet = set === setsPerExercise;
           const isLastExercise = exIndex === block.exercises.length - 1;
           
-          // For rep-based exercises, await_ready REPLACES the rest period
-          if (isRepBased && (!isLastSet || !isLastExercise)) {
+          // For continuous rep-based blocks (mode: "reps"), use timed rest periods
+          // (straight sets don't use canonical round transitions - just normal rest)
+          if (mode === "reps" && (!isLastSet || !isLastExercise)) {
+            steps.push({
+              step: stepCounter++,
+              type: "rest",
+              text: isLastSet ? "Transition to next exercise" : `Rest before set ${set + 1}`,
+              atMs: currentTimeMs,
+              endMs: currentTimeMs + exerciseRestSec * 1000,
+              durationSec: exerciseRestSec,
+            });
+            currentTimeMs += exerciseRestSec * 1000;
+          }
+          // For legacy rep-based exercises (targetReps without mode: "reps"), await_ready REPLACES the rest period
+          else if (isRepBased && mode !== "reps" && (!isLastSet || !isLastExercise)) {
             steps.push({
               step: stepCounter++,
               type: "await_ready",
@@ -274,8 +288,53 @@ export async function compileBlockToTimeline(
           if (isLastExercise && isLastSet) {
             // No rest - workout complete
           }
-          // For rep-based exercises, await_ready REPLACES rest periods
-          else if (isRepBased) {
+          // For continuous rep-based blocks (mode: "reps"), use canonical round transitions
+          // This matches the lab flow: continuous rounds with beep→voice→countdown→GO
+          else if (mode === "reps" && isLastExercise && !isLastSet) {
+            // Canonical between-rounds timing for rep-round workouts:
+            // T0: Work ends (end beep 600ms triggered by client)
+            // T0+700ms: "Round rest" voice cue (after beep clears)
+            // T0+3000ms: First countdown pip (220ms)
+            // T0+4000ms: Second countdown pip (220ms) 
+            // T0+5000ms: GO beep (600ms long beep)
+            // T0+5600ms: Next work starts (after GO beep clears)
+            
+            // Add a short round_rest step for the voice cue
+            steps.push({
+              step: stepCounter++,
+              type: "round_rest",
+              label: "Round Complete",
+              durationSec: 0.1, // Minimal duration, just a marker for the event
+              atMs: currentTimeMs + ROUND_END_TO_SPEECH_MS,
+              endMs: currentTimeMs + ROUND_END_TO_SPEECH_MS + 100,
+            });
+            
+            // Add countdown steps (3-2-1, short pips 220ms each)
+            for (let i = 0; i < 2; i++) {
+              steps.push({
+                step: stepCounter++,
+                type: "countdown",
+                durationSec: 0.22, // Short pip duration
+                atMs: currentTimeMs + ROUND_END_TO_COUNTDOWN_MS + (i * COUNTDOWN_INTERVAL_MS),
+                endMs: currentTimeMs + ROUND_END_TO_COUNTDOWN_MS + (i * COUNTDOWN_INTERVAL_MS) + 220,
+              });
+            }
+            
+            // GO beep (long beep 600ms at T0+5000ms)
+            steps.push({
+              step: stepCounter++,
+              type: "countdown",
+              label: "GO",
+              durationSec: 0.6, // Long GO beep
+              atMs: currentTimeMs + GO_BEEP_OFFSET_MS,
+              endMs: currentTimeMs + GO_BEEP_OFFSET_MS + 600,
+            });
+            
+            // Advance time to work start (after GO beep completes)
+            currentTimeMs += WORK_START_OFFSET_MS;
+          }
+          // For legacy rep-based exercises (targetReps without mode: "reps"), await_ready REPLACES rest periods
+          else if (isRepBased && mode !== "reps") {
             steps.push({
               step: stepCounter++,
               type: "await_ready",

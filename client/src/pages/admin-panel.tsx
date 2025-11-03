@@ -1015,30 +1015,54 @@ export default function AdminPanel() {
                         params: { 
                           ...currentBlock.params, 
                           workSec: Number(e.target.value),
-                          targetReps: undefined // Clear reps when using time
+                          targetReps: undefined, // Clear reps when using time
+                          mode: "time" // Set mode for compiler
                         }
                       })}
                       placeholder="45"
                     />
                   </div>
                 ) : (
-                  <div>
-                    <Label htmlFor="target-reps">Target Reps (or range like "12-15")</Label>
-                    <Input
-                      id="target-reps"
-                      data-testid="input-target-reps"
-                      type="text"
-                      value={currentBlock.params?.targetReps || ""}
-                      onChange={(e) => setCurrentBlock({
-                        ...currentBlock,
-                        params: { 
-                          ...currentBlock.params, 
-                          targetReps: e.target.value,
-                          workSec: undefined // Clear time when using reps
-                        }
-                      })}
-                      placeholder="12 or 10-12"
-                    />
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="target-reps">Target Reps (or range like "12-15")</Label>
+                      <Input
+                        id="target-reps"
+                        data-testid="input-target-reps"
+                        type="text"
+                        value={currentBlock.params?.targetReps || ""}
+                        onChange={(e) => setCurrentBlock({
+                          ...currentBlock,
+                          params: { 
+                            ...currentBlock.params, 
+                            targetReps: e.target.value,
+                            mode: "reps" // Set mode for continuous flow
+                          }
+                        })}
+                        placeholder="12 or 10-12"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="round-duration">Round Duration (seconds)</Label>
+                      <Input
+                        id="round-duration"
+                        data-testid="input-round-duration"
+                        type="number"
+                        min="15"
+                        value={currentBlock.params?.workSec || ""}
+                        onChange={(e) => setCurrentBlock({
+                          ...currentBlock,
+                          params: { 
+                            ...currentBlock.params, 
+                            workSec: Number(e.target.value)
+                          }
+                        })}
+                        placeholder="180"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Fixed time window per round (e.g., 180s = 3:00 to complete your reps)
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
