@@ -143,8 +143,98 @@ export async function compileBlockToTimeline(
 
   // Main block compilation
   if (block.type === "custom_sequence") {
+    // REP-BASED ROUNDS: Single work step per round containing ALL exercises
+    // workSec defines the TOTAL round duration (not per-exercise)
+    if (mode === "reps" && (pattern === "superset" || pattern === "circuit")) {
+      const numRounds = setsPerExercise;
+      const roundDurationSec = workSec; // Total time for all exercises in the round
+
+      for (let round = 1; round <= numRounds; round++) {
+        const roundStartMs = currentTimeMs;
+
+        // Single work step containing ALL exercises
+        steps.push({
+          step: stepCounter++,
+          type: "work",
+          label: `Round ${round}`,
+          // Include all exercise metadata in a single step
+          exercise: {
+            id: block.exercises[0]?.exerciseId || 0, // Use first exercise ID
+            name: block.exercises.map(e => e.exerciseName).join(' + '),
+            cues: block.exercises.flatMap(e => {
+              const cues = e.coachingBulletPoints
+                ? e.coachingBulletPoints
+                    .split(/[\n;]/)
+                    .map((c) => c.trim().replace(/^[•\-\*]\s*/, ""))
+                    .filter((c) => c.length > 0)
+                : [];
+              return cues;
+            }),
+            equipment: Array.from(new Set(
+              block.exercises.flatMap(e => [
+                e.equipmentPrimary,
+                ...(e.equipmentSecondary || [])
+              ].filter(Boolean))
+            )) as string[],
+            muscleGroup: block.exercises.map(e => e.primaryMuscleGroup || "Unknown").join(', '),
+          },
+          atMs: roundStartMs,
+          endMs: roundStartMs + roundDurationSec * 1000,
+          durationSec: roundDurationSec,
+          set: round,
+          round,
+        });
+
+        currentTimeMs += roundDurationSec * 1000;
+
+        // Add round transition (except after last round)
+        const isLastRound = round === numRounds;
+        if (!isLastRound) {
+          // Canonical between-rounds timing:
+          // T0: Work ends (end beep 600ms triggered by client)
+          // T0+700ms: "Round rest" voice cue (after beep clears)
+          // T0+3000ms: First countdown pip (220ms)
+          // T0+4000ms: Second countdown pip (220ms)
+          // T0+5000ms: GO beep (600ms long beep)
+          // T0+5600ms: Next work starts (after GO beep clears)
+
+          steps.push({
+            step: stepCounter++,
+            type: "round_rest",
+            label: "Round Complete",
+            durationSec: 0.1,
+            atMs: currentTimeMs + ROUND_END_TO_SPEECH_MS,
+            endMs: currentTimeMs + ROUND_END_TO_SPEECH_MS + 100,
+          });
+
+          // Add countdown steps (3-2-1, short pips 220ms each)
+          for (let i = 0; i < 2; i++) {
+            steps.push({
+              step: stepCounter++,
+              type: "countdown",
+              durationSec: 0.22,
+              atMs: currentTimeMs + ROUND_END_TO_COUNTDOWN_MS + (i * COUNTDOWN_INTERVAL_MS),
+              endMs: currentTimeMs + ROUND_END_TO_COUNTDOWN_MS + (i * COUNTDOWN_INTERVAL_MS) + 220,
+            });
+          }
+
+          // GO beep (long beep 600ms at T0+5000ms)
+          steps.push({
+            step: stepCounter++,
+            type: "countdown",
+            label: "GO",
+            durationSec: 0.6,
+            atMs: currentTimeMs + GO_BEEP_OFFSET_MS,
+            endMs: currentTimeMs + GO_BEEP_OFFSET_MS + 600,
+          });
+
+          // Advance time to work start (after GO beep completes)
+          currentTimeMs += WORK_START_OFFSET_MS;
+        }
+      }
+    }
     // STRAIGHT SETS: Complete all sets of one exercise before moving to next
-    if (pattern === "straight_sets") {
+    else if (pattern === "straight_sets") {
       for (let exIndex = 0; exIndex < block.exercises.length; exIndex++) {
         const exercise = block.exercises[exIndex];
         const exerciseWorkSec = exercise.workSec || workSec;

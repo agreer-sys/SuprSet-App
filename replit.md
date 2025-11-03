@@ -9,6 +9,37 @@ SuprSet is a React-based web application providing intelligent exercise superset
 - **Testing Requirements**: Always confirm all adjustments work properly on mobile browser before reporting completion - mobile-first validation mandatory
 - **Strategic Vision**: Build community-driven AI model rather than relying on generic solutions - create competitive moat through proprietary datasets
 
+## Recent Changes
+
+### Rep-Based Round Flow (Nov 3, 2025)
+Aligned admin-created rep-based workouts with lab flow for continuous round execution:
+
+**Key Insight:**
+- `workSec: 180` = **TOTAL duration for the entire round** (A1 + A2 + A3 combined)
+- NOT 180s per exercise (which would be 540s for 3 exercises)
+- User completes all exercises within the single round window at their own pace
+
+**Changes:**
+1. **Timeline Compiler**: Single work step per round containing ALL exercises
+2. **Canonical Round Transitions**: Between rounds uses beep→voice→countdown→GO sequence (T0+5.6s)
+3. **Admin UI**: Added "Round Duration" field for rep-based blocks
+4. **Backward Compatible**: Legacy await_ready flow still available for non-`mode: "reps"` blocks
+
+**Example Timeline:**
+```
+Round 1: 180s total (Bench Press + Barbell Row combined)
+  → End beep
+  → "Round rest" voice (T0+700ms)
+  → Countdown pips (T0+3s, T0+4s)
+  → GO beep (T0+5s)
+Round 2: 180s total (starts at T0+5.6s)
+```
+
+### Browser TTS Toggle (Oct 31, 2025)
+Added feature flag to switch between free browser TTS and OpenAI Realtime API:
+- **Usage**: Add `?browserTTS` to URL for free testing
+- **Benefits**: Unlimited testing without API quota, same coaching logic
+
 ## System Architecture
 The application uses a client-server architecture with a React frontend and an Express.js backend, built for bulletproof reliability and graceful degradation. The AI coach responsibility is split: the local Replit app handles all timing, beeps, coaching intelligence, and workout execution, while the remote OpenAI Realtime API handles voice synthesis ONLY.
 
