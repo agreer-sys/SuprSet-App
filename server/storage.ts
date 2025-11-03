@@ -140,12 +140,20 @@ export interface IStorage {
     name: string;
     description?: string;
     blocks: Array<{
-      id: string;
+      id?: string;
       name: string;
-      description: string;
-      type?: string;
+      description?: string;
+      type: string;
       params: any;
-      exercises: number[];
+      exercises?: Array<{
+        exerciseId: number;
+        overrides?: {
+          workSec?: number;
+          restSec?: number;
+          targetReps?: string;
+          notes?: string;
+        };
+      }>;
     }>;
     createdBy: string;
   }): Promise<BlockWorkout>;
@@ -1090,21 +1098,30 @@ export class DatabaseStorage implements IStorage {
     name: string;
     description?: string;
     blocks: Array<{
-      id: string;
+      id?: string;
       name: string;
-      description: string;
+      description?: string;
+      type: string;
       params: any;
-      exercises: number[];
+      exercises?: Array<{
+        exerciseId: number;
+        overrides?: {
+          workSec?: number;
+          restSec?: number;
+          targetReps?: string;
+          notes?: string;
+        };
+      }>;
     }>;
     createdBy: string;
   }): Promise<BlockWorkout> {
     // Refresh cache to ensure we have latest exercise data
     await this.refreshCache();
     
-    // Collect all unique exercise IDs
+    // Collect all unique exercise IDs (extract from ExerciseRef objects)
     const allExerciseIds = new Set<number>();
     data.blocks.forEach(block => {
-      block.exercises.forEach(exId => allExerciseIds.add(exId));
+      block.exercises?.forEach(exRef => allExerciseIds.add(exRef.exerciseId));
     });
 
     // Validate all exercises exist
@@ -1149,15 +1166,16 @@ export class DatabaseStorage implements IStorage {
       createdBlockIds.push(block.id);
 
       // Create block exercises with snapshot data
-      for (let j = 0; j < blockData.exercises.length; j++) {
-        const exerciseId = blockData.exercises[j];
-        const exercise = this.exerciseCache.get(exerciseId)!;
+      for (let j = 0; j < (blockData.exercises?.length || 0); j++) {
+        const exRef = blockData.exercises![j];
+        const exercise = this.exerciseCache.get(exRef.exerciseId)!;
         
         console.log('🔧 Creating block exercise:', {
           blockId: block.id,
           exerciseId: exercise.id,
           exerciseName: exercise.name,
-          orderIndex: j
+          orderIndex: j,
+          overrides: exRef.overrides
         });
         
         await db.insert(blockExercises).values({
@@ -1171,7 +1189,8 @@ export class DatabaseStorage implements IStorage {
           equipmentSecondary: exercise.equipmentSecondary || [],
           coachingBulletPoints: exercise.coachingBulletPoints || undefined,
           videoUrl: exercise.videoUrl || undefined,
-          imageUrl: exercise.imageUrl || undefined
+          imageUrl: exercise.imageUrl || undefined,
+          overrides: exRef.overrides || undefined, // NEW: Save overrides to JSONB column
         });
       }
 
