@@ -7,6 +7,9 @@ export const FLAGS = {
   COACH_V2: typeof window !== 'undefined' && new URLSearchParams(location.search).has('coachV2'),
   
   // Browser TTS: Use free browser TTS instead of OpenAI Realtime API
-  // Enable via ?browserTTS URL param (useful for testing without API quota)
-  BROWSER_TTS: typeof window !== 'undefined' && new URLSearchParams(location.search).has('browserTTS'),
+  // Default: TRUE for testing without API quota
+  // Add ?realtimeAPI to switch back to OpenAI when needed
+  BROWSER_TTS: typeof window !== 'undefined' 
+    ? !new URLSearchParams(location.search).has('realtimeAPI')
+    : true,
 };

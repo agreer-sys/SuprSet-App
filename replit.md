@@ -60,10 +60,11 @@ Round 1: 180s total (Bench Press + Barbell Row combined)
 Round 2: 180s total (starts at T0+5.6s)
 ```
 
-### Browser TTS Toggle (Oct 31, 2025)
-Added feature flag to switch between free browser TTS and OpenAI Realtime API:
-- **Usage**: Add `?browserTTS` to URL for free testing
-- **Benefits**: Unlimited testing without API quota, same coaching logic
+### Browser TTS Default (Nov 3, 2025)
+Browser TTS is now the default for all testing to avoid API quota issues:
+- **Default**: Free browser TTS (unlimited testing, same coaching logic)
+- **Switch to OpenAI**: Add `?realtimeAPI` to URL when needed
+- **Benefits**: No API quota consumption during development and testing
 
 ## System Architecture
 The application uses a client-server architecture with a React frontend and an Express.js backend, built for bulletproof reliability and graceful degradation. The AI coach responsibility is split: the local Replit app handles all timing, beeps, coaching intelligence, and workout execution, while the remote OpenAI Realtime API handles voice synthesis ONLY.
