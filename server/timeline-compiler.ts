@@ -150,6 +150,9 @@ function compileCustomSequence(
   if (mode === "reps" && (pattern === "superset" || pattern === "circuit")) {
     const exercisesArray = block.exercises.map(extractExerciseMeta);
     const numRounds = setsPerExercise;
+    
+    // Determine rest duration: roundRestSec for circuit rounds, restSec otherwise
+    const roundRestDuration = roundRestSec > 0 ? roundRestSec : restSec;
 
     for (let round = 1; round <= numRounds; round++) {
       // Single work step containing all exercises
@@ -166,9 +169,27 @@ function compileCustomSequence(
 
       currentTimeMs += workSec * 1000;
 
-      // Add canonical round transition (except after last round)
+      // Add canonical transition + additional rest (except after last round)
       if (round < numRounds) {
+        // CRITICAL FIX: Canonical transition (5.6s) is REQUIRED, then add extra rest if needed
+        // Flow: Work ends → Canonical transition (5.6s) → Extra rest (if roundRestDuration > 5.6s) → Next work
+        
+        // Step 1: Add canonical transition (beep→voice→countdown→GO) - FIXED 5.6s
         currentTimeMs = addRoundTransition(steps, stepCounter, currentTimeMs);
+        
+        // Step 2: Add ADDITIONAL rest if roundRestDuration > 5.6s
+        // (Canonical transition already provides 5.6s of recovery)
+        const additionalRestSec = Math.max(0, roundRestDuration - (WORK_START_OFFSET_MS / 1000));
+        if (additionalRestSec > 0) {
+          steps.push({
+            step: stepCounter.value++,
+            type: "rest",
+            durationSec: additionalRestSec,
+            atMs: currentTimeMs,
+            endMs: currentTimeMs + additionalRestSec * 1000,
+          });
+          currentTimeMs += additionalRestSec * 1000;
+        }
       }
     }
   }
