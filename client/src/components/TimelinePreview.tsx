@@ -84,15 +84,19 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
       case 'round_rest':
         return <MessageSquare className="w-4 h-4" />;
       case 'countdown':
-        return <Play className="w-4 h-4" />;
+        return <Play className="w-4 h-4 text-green-600" />;
       case 'await_ready':
         return <Play className="w-4 h-4" />;
       case 'form_cue':
         return <MessageSquare className="w-4 h-4" />;
       case 'transition':
         return <AlertCircle className="w-4 h-4" />;
+      case 'instruction':
+        return <MessageSquare className="w-4 h-4" />;
+      case 'hold':
+        return <Clock className="w-4 h-4" />;
       default:
-        return null;
+        return <AlertCircle className="w-4 h-4" />;
     }
   };
 
@@ -105,15 +109,19 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
       case 'round_rest':
         return 'outline';
       case 'countdown':
-        return 'outline';
+        return 'default'; // Different from rest/await to stand out
       case 'await_ready':
         return 'outline';
       case 'form_cue':
         return 'outline';
       case 'transition':
         return 'secondary';
+      case 'instruction':
+        return 'outline';
+      case 'hold':
+        return 'secondary';
       default:
-        return 'default';
+        return 'outline';
     }
   };
 
@@ -203,14 +211,22 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
                         )}
                         
                         {/* Canonical transition labels */}
-                        {step.type === 'countdown' && step.label === 'GO' && (
+                        {step.type === 'countdown' && step.label?.toUpperCase() === 'GO' && (
                           <p className="font-medium text-green-600">▶ GO!</p>
                         )}
-                        {step.type === 'countdown' && step.label !== 'GO' && (
+                        {step.type === 'countdown' && step.label?.toUpperCase() !== 'GO' && (
                           <p className="text-sm text-muted-foreground">Countdown pip</p>
                         )}
                         {step.type === 'round_rest' && (
                           <p className="text-sm text-muted-foreground">🔊 "Round rest" voice cue</p>
+                        )}
+                        
+                        {/* Legacy step types */}
+                        {step.type === 'instruction' && (
+                          <p className="text-sm text-muted-foreground">{step.message || step.text || "Instruction"}</p>
+                        )}
+                        {step.type === 'hold' && (
+                          <p className="text-sm text-muted-foreground">Hold position</p>
                         )}
                         
                         {(step.message || step.text || (step.label && step.type !== 'countdown')) && (
