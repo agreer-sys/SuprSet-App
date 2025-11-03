@@ -207,15 +207,20 @@ export default function CoachLabRepRound(){
 
   return (
     <div style={{padding:16, maxWidth:820}}>
-      <h2 style={{fontWeight:700, fontSize:18, marginBottom:8}}>Coach Lab — Rep Round (3:00 style)</h2>
+      <h2 style={{fontWeight:700, fontSize:18, marginBottom:8}}>Coach Lab — Rep Round (Canonical Pacing)</h2>
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:12}}>
         <label>Chatter
           <select value={chatter} onChange={e=>setChatter(e.target.value as ChatterLevel)} style={{display:'block', width:'100%'}}>
             {['silent','minimal','high'].map(l=><option key={l} value={l}>{l}</option>)}
           </select>
         </label>
-        <label>Round length (s)
-          <input type="number" value={roundSec} onChange={e=>setRoundSec(Number(e.target.value||180))} style={{display:'block', width:'100%'}} />
+        <label>Pace
+          <select value={roundSec} onChange={e=>setRoundSec(Number(e.target.value))} style={{display:'block', width:'100%'}}>
+            <option value={150}>2:30</option>
+            <option value={180}>3:00</option>
+            <option value={210}>3:30</option>
+            <option value={240}>4:00</option>
+          </select>
         </label>
         <label>Rounds
           <input type="number" value={rounds} onChange={e=>setRounds(Number(e.target.value||4))} style={{display:'block', width:'100%'}} />
