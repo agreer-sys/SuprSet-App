@@ -1325,59 +1325,54 @@ export default function AdminPanel() {
           </Card>
         </div>
 
-      {/* Exercise Picker Modal */}
-      {showExercisePicker && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-            <CardHeader>
-              <CardTitle>Select Exercise</CardTitle>
-              <CardDescription>
-                Choose an exercise from Airtable catalog
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-hidden flex flex-col">
-              <Input
-                placeholder="Search exercises..."
-                value={exerciseSearch}
-                onChange={(e) => setExerciseSearch(e.target.value)}
-                className="mb-4"
-                data-testid="input-exercise-search"
-              />
-              <div className="flex-1 overflow-y-auto space-y-2">
-                {loadingExercises ? (
-                  <p className="text-center py-8">Loading exercises...</p>
-                ) : filteredExercises && filteredExercises.length > 0 ? (
-                  filteredExercises.map((exercise) => (
-                    <div
-                      key={exercise.id}
-                      className="p-3 border rounded hover:bg-muted cursor-pointer transition-colors"
-                      onClick={() => addExerciseToBlock(exercise.id)}
-                      data-testid={`exercise-item-${exercise.id}`}
-                    >
-                      <h4 className="font-medium">{exercise.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {exercise.primaryMuscleGroup} • {exercise.equipmentPrimary || exercise.equipment}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-center py-8 text-muted-foreground">No exercises found</p>
-                )}
-              </div>
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setShowExercisePicker(false)}
-                  data-testid="button-close-picker"
-                >
-                  Close
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Exercise Picker Dialog */}
+      <Dialog open={showExercisePicker} onOpenChange={setShowExercisePicker}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Select Exercise</DialogTitle>
+            <DialogDescription>
+              Choose an exercise from Airtable catalog
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 flex-1 min-h-0">
+            <Input
+              placeholder="Search exercises..."
+              value={exerciseSearch}
+              onChange={(e) => setExerciseSearch(e.target.value)}
+              data-testid="input-exercise-search"
+            />
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+              {loadingExercises ? (
+                <p className="text-center py-8">Loading exercises...</p>
+              ) : filteredExercises && filteredExercises.length > 0 ? (
+                filteredExercises.map((exercise) => (
+                  <div
+                    key={exercise.id}
+                    className="p-3 border rounded hover:bg-muted cursor-pointer transition-colors"
+                    onClick={() => addExerciseToBlock(exercise.id)}
+                    data-testid={`exercise-item-${exercise.id}`}
+                  >
+                    <h4 className="font-medium">{exercise.name}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {exercise.primaryMuscleGroup} • {exercise.equipmentPrimary || exercise.equipment}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center py-8 text-muted-foreground">No exercises found</p>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowExercisePicker(false)}
+              data-testid="button-close-picker"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       </TabsContent>
 
       <TabsContent value="manage" className="mt-6">
