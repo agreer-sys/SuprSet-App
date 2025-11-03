@@ -64,7 +64,7 @@ export interface TimelineStep {
   type: StepType;
   atMs: number;
   endMs: number;
-  durationSec: number;
+  durationSec?: number;
   label?: string;
   text?: string;
   set?: number;

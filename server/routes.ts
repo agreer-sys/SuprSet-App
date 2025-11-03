@@ -161,40 +161,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Admin: Create block workout (PROTECTED)
+  // Admin: Create block workout (PROTECTED) - Canonical v2 with Zod validation
   app.post('/api/admin/block-workouts', isAdmin, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { name, description, blocks: blocksData } = req.body;
-
-      console.log('🔧 Received workout data:', {
-        name,
-        blockCount: blocksData?.length,
-        blocks: blocksData?.map((b: any) => ({
-          name: b.name,
-          type: b.type,
-          exerciseCount: b.exercises?.length,
-          exercises: b.exercises
-        }))
-      });
-
-      if (!name || !blocksData || !Array.isArray(blocksData) || blocksData.length === 0) {
+      
+      // Zod validation
+      const { WorkoutDTO } = await import("@shared/dto");
+      const result = WorkoutDTO.safeParse(req.body);
+      
+      if (!result.success) {
         return res.status(400).json({ 
-          message: "Workout name and blocks array required" 
+          message: "Invalid workout data",
+          errors: result.error.errors
         });
       }
+
+      const { name, description, blocks: blocksData } = result.data;
+
+      console.log('🔧 Received workout data (validated):', {
+        name,
+        blockCount: blocksData.length,
+        blocks: blocksData.map((b) => ({
+          name: b.name,
+          type: b.type,
+          exerciseCount: b.exercises?.length || 0,
+        }))
+      });
 
       // Save workout with blocks
       const workout = await storage.createBlockWorkout({
         name,
         description,
-        blocks: blocksData,
+        blocks: blocksData as any,
         createdBy: userId
       });
+
+      // Audit logging
+      const { logAdminAction } = await import("./admin-audit");
+      await logAdminAction(userId, "create", "workout", workout.id, null, { name, description });
 
       res.status(201).json({
         id: workout.id,
         name: workout.name,
+        status: "draft",
         message: "Workout created successfully"
       });
     } catch (error) {
@@ -268,7 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: Update block workout (PROTECTED)
+  // Admin: Update block workout (PROTECTED) - Canonical v2 with Zod validation
   app.patch('/api/admin/block-workouts/:id', isAdmin, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -276,13 +286,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid workout ID" });
       }
 
-      const { name, description, blocks } = req.body;
+      const userId = req.user.claims.sub;
+
+      // Fetch current state (for audit before)
+      const before = await storage.getBlockWorkout(id);
+      if (!before) {
+        return res.status(404).json({ message: "Workout not found" });
+      }
+
+      // Zod validation (partial update)
+      const { WorkoutDTO } = await import("@shared/dto");
+      const result = WorkoutDTO.partial().safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid workout data",
+          errors: result.error.errors
+        });
+      }
+
+      const { name, description, blocks } = result.data;
       
       const workout = await storage.updateBlockWorkout(id, {
         name,
         description,
-        blocks
+        blocks: blocks as any
       });
+
+      // Audit logging
+      const { logAdminAction } = await import("./admin-audit");
+      await logAdminAction(
+        userId,
+        "update",
+        "workout",
+        id,
+        { name: before.name, description: before.description },
+        { name: workout.name, description: workout.description }
+      );
       
       res.json(workout);
     } catch (error) {
@@ -313,20 +353,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: Toggle publish status (PROTECTED)
+  // Admin: Publish workout with preflight validation (PROTECTED) - Canonical v2
   app.patch('/api/admin/block-workouts/:id/publish', isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid workout ID" });
       }
+
+      const userId = req.user.claims.sub;
+
+      // Fetch workout with blocks
+      const workoutData = await storage.getBlockWorkoutWithBlocks(id);
+      if (!workoutData) {
+        return res.status(404).json({ message: "Workout not found" });
+      }
+
+      // If already published, just unpublish (toggle off)
+      if (workoutData.isPublished) {
+        const workout = await storage.togglePublishBlockWorkout(id);
+        
+        // Audit logging
+        const { logAdminAction } = await import("./admin-audit");
+        await logAdminAction(userId, "unpublish", "workout", id, 
+          { isPublished: true }, { isPublished: false });
+        
+        return res.json(workout);
+      }
+
+      // Preflight validation: Compile timeline
+      const { compileWorkoutTimeline, validateTimeline } = await import("./timeline-compiler");
       
+      let compiledTimeline;
+      try {
+        compiledTimeline = await compileWorkoutTimeline(workoutData.blocks, workoutData.name);
+      } catch (error) {
+        return res.status(400).json({
+          message: "Failed to compile workout timeline",
+          error: error instanceof Error ? error.message : "Unknown error",
+          hint: "Check block parameters and exercise data"
+        });
+      }
+
+      // Validate compiled timeline
+      const validation = validateTimeline(compiledTimeline);
+      if (!validation.valid) {
+        return res.status(400).json({
+          message: "Compiled timeline validation failed",
+          errors: validation.errors
+        });
+      }
+
+      // Save compiled timeline and publish
       const workout = await storage.togglePublishBlockWorkout(id);
-      res.json(workout);
+      
+      // Audit logging
+      const { logAdminAction } = await import("./admin-audit");
+      await logAdminAction(userId, "publish", "workout", id, 
+        { isPublished: false }, { isPublished: true, timelineSteps: compiledTimeline.executionTimeline.length });
+
+      res.json({
+        ...workout,
+        timeline: {
+          totalDurationSec: compiledTimeline.workoutHeader.totalDurationSec,
+          steps: compiledTimeline.executionTimeline.length,
+          structure: compiledTimeline.workoutHeader.structure
+        }
+      });
     } catch (error) {
-      console.error("Error toggling publish status:", error);
+      console.error("Error publishing workout:", error);
       res.status(500).json({ 
-        message: "Failed to toggle publish status",
+        message: "Failed to publish workout",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
