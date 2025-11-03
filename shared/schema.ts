@@ -442,9 +442,11 @@ export type WorkoutExercise = typeof workoutExercises.$inferSelect;
 // Blocks - Core building units with flexible parameter-based configuration
 export const blocks = pgTable("blocks", {
   id: serial("id").primaryKey(),
+  workoutId: integer("workout_id").references(() => blockWorkouts.id), // Link to workout (NEW)
   name: text("name").notNull(), // "9-Min Strength Block", "Tabata Cardio", etc.
   description: text("description"),
   type: text("type").notNull(), // "custom_sequence", "transition", "amrap_loop", "emom_window", etc.
+  orderIndex: integer("order_index").notNull().default(0), // Block order within workout (NEW)
   
   // Flexible parameters (JSON) - defines the timing/structure
   params: jsonb("params").$type<{
@@ -496,10 +498,18 @@ export const blockExercises = pgTable("block_exercises", {
   exerciseId: integer("exercise_id").notNull(), // References Airtable exercise ID
   orderIndex: integer("order_index").notNull(),
   
-  // Exercise-specific overrides (optional)
-  workSec: integer("work_sec"), // Override block-level timing
+  // Exercise-specific overrides (NEW - Canonical Admin: consolidated into JSONB)
+  overrides: jsonb("overrides").$type<{
+    workSec?: number;
+    restSec?: number;
+    targetReps?: string;
+    notes?: string;
+  }>(),
+  
+  // DEPRECATED (kept for backward compatibility, use overrides instead)
+  workSec: integer("work_sec"),
   restSec: integer("rest_sec"),
-  targetReps: text("target_reps"), // Override block-level reps (e.g., "12-15", "10 each leg")
+  targetReps: text("target_reps"),
   notes: text("notes"),
   
   // Snapshot of exercise data from Airtable (for coach context)
@@ -532,6 +542,10 @@ export const blockWorkouts = pgTable("block_workouts", {
     blockId: number;
     orderIndex: number;
   }>>().notNull().default([]),
+  
+  // Status & versioning (NEW - Canonical Admin)
+  status: text("status").notNull().default("draft"), // "draft" | "published"
+  updatedBy: varchar("updated_by").references(() => users.id),
   
   // Compiled execution timeline (snapshot at publish time)
   executionTimeline: jsonb("execution_timeline").$type<{
@@ -652,3 +666,26 @@ export type InsertBlockWorkout = z.infer<typeof insertBlockWorkoutSchema>;
 export type BlockWorkout = typeof blockWorkouts.$inferSelect;
 export type InsertBlockWorkoutSession = z.infer<typeof insertBlockWorkoutSessionSchema>;
 export type BlockWorkoutSession = typeof blockWorkoutSessions.$inferSelect;
+
+// ============================================================================
+// ADMIN AUDIT LOG (Canonical Admin)
+// ============================================================================
+
+export const adminAudit = pgTable("admin_audit", {
+  id: serial("id").primaryKey(),
+  actorId: varchar("actor_id").references(() => users.id),
+  action: text("action").notNull(), // "create" | "update" | "delete" | "publish" | "unpublish"
+  entity: text("entity").notNull(), // "workout" | "block" | "block_exercise"
+  entityId: integer("entity_id").notNull(),
+  before: jsonb("before"),
+  after: jsonb("after"),
+  at: timestamp("at").notNull().defaultNow(),
+});
+
+export const insertAdminAuditSchema = createInsertSchema(adminAudit).omit({
+  id: true,
+  at: true,
+});
+
+export type InsertAdminAudit = z.infer<typeof insertAdminAuditSchema>;
+export type AdminAudit = typeof adminAudit.$inferSelect;
