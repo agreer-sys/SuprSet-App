@@ -143,49 +143,70 @@ export async function compileBlockToTimeline(
 
   // Main block compilation
   if (block.type === "custom_sequence") {
-    // REP-BASED ROUNDS: Single work step per round containing ALL exercises
-    // workSec defines the TOTAL round duration (not per-exercise)
+    // REP-BASED ROUNDS: Separate work step per exercise with proportional timing
+    // workSec defines the TOTAL round duration (split across all exercises)
     if (mode === "reps" && (pattern === "superset" || pattern === "circuit")) {
       const numRounds = setsPerExercise;
       const roundDurationSec = workSec; // Total time for all exercises in the round
+      const totalRoundMs = roundDurationSec * 1000;
+
+      // Calculate proportional durations based on exercise heuristics
+      const estimatedDurations = block.exercises.map((ex) => {
+        // Default base time: 40s per exercise
+        const baseTime = 40;
+        
+        // Detect unilateral exercises by name
+        const isUnilateral = /(single|one[- ]?arm|one[- ]?leg|curtsy|split|side)/i.test(ex.exerciseName || '');
+        const unilateralFactor = isUnilateral ? 1.5 : 1; // 50% more time for unilateral
+        
+        return baseTime * unilateralFactor;
+      });
+
+      const totalEstimate = estimatedDurations.reduce((sum, t) => sum + t, 0);
+
+      // Scale durations to fit round time
+      const durationsMs = estimatedDurations.map((t) => 
+        Math.round((t / totalEstimate) * totalRoundMs)
+      );
 
       for (let round = 1; round <= numRounds; round++) {
         const roundStartMs = currentTimeMs;
 
-        // Single work step containing ALL exercises
-        steps.push({
-          step: stepCounter++,
-          type: "work",
-          label: `Round ${round}`,
-          // Include all exercise metadata in a single step
-          exercise: {
-            id: block.exercises[0]?.exerciseId || 0, // Use first exercise ID
-            name: block.exercises.map(e => e.exerciseName).join(' + '),
-            cues: block.exercises.flatMap(e => {
-              const cues = e.coachingBulletPoints
-                ? e.coachingBulletPoints
-                    .split(/[\n;]/)
-                    .map((c) => c.trim().replace(/^[•\-\*]\s*/, ""))
-                    .filter((c) => c.length > 0)
-                : [];
-              return cues;
-            }),
-            equipment: Array.from(new Set(
-              block.exercises.flatMap(e => [
-                e.equipmentPrimary,
-                ...(e.equipmentSecondary || [])
-              ].filter(Boolean))
-            )) as string[],
-            muscleGroup: block.exercises.map(e => e.primaryMuscleGroup || "Unknown").join(', '),
-          },
-          atMs: roundStartMs,
-          endMs: roundStartMs + roundDurationSec * 1000,
-          durationSec: roundDurationSec,
-          set: round,
-          round,
+        // Emit separate work step for each exercise
+        block.exercises.forEach((exercise, exIndex) => {
+          const cues = exercise.coachingBulletPoints
+            ? exercise.coachingBulletPoints
+                .split(/[\n;]/)
+                .map((c) => c.trim().replace(/^[•\-\*]\s*/, ""))
+                .filter((c) => c.length > 0)
+            : [];
+
+          steps.push({
+            step: stepCounter++,
+            type: "work",
+            exercise: {
+              id: exercise.exerciseId,
+              name: exercise.exerciseName,
+              cues,
+              equipment: [
+                exercise.equipmentPrimary,
+                ...(exercise.equipmentSecondary || []),
+              ].filter(Boolean) as string[],
+              muscleGroup: exercise.primaryMuscleGroup || "Unknown",
+              videoUrl: exercise.videoUrl || undefined,
+              imageUrl: exercise.imageUrl || undefined,
+            },
+            atMs: currentTimeMs,
+            endMs: currentTimeMs + durationsMs[exIndex],
+            durationSec: durationsMs[exIndex] / 1000,
+            set: round,
+            round,
+          });
+
+          currentTimeMs += durationsMs[exIndex];
         });
 
-        currentTimeMs += roundDurationSec * 1000;
+        // currentTimeMs is now at end of all exercises in this round
 
         // Add round transition (except after last round)
         const isLastRound = round === numRounds;
