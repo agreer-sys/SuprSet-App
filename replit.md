@@ -11,6 +11,31 @@ SuprSet is a React-based web application providing intelligent exercise superset
 
 ## Recent Changes
 
+### Per-Exercise Work Steps in Rep-Based Rounds (Nov 3, 2025)
+Fixed timeline compiler to emit separate work steps per exercise instead of merging all exercises into one combined step:
+
+**Problem:**
+- Previously, all exercises in a rep-based round were merged into a single work step (e.g., "Frontal Raise + Row")
+- This broke individual exercise tracking, weight inputs, per-exercise cues, and accurate coaching
+
+**Solution:**
+1. **Separate Work Steps**: Each exercise now gets its own work step with individual `exerciseId`
+2. **Proportional Timing**: Total round duration split across exercises using heuristics:
+   - Base time: 40s per exercise
+   - Unilateral factor: 1.5x (60s) for exercises detected by name patterns
+3. **Preserved Transitions**: Canonical round transitions (beep→voice→countdown→GO) remain between rounds only
+
+**Example Timeline (180s round with 2 exercises):**
+```
+Round 1:
+  Step 1: Bench Press (90s) - exerciseId: 123
+  Step 2: Barbell Row (90s) - exerciseId: 456
+  → End beep + round transition (5.6s)
+Round 2:
+  Step 3: Bench Press (90s) - exerciseId: 123
+  Step 4: Barbell Row (90s) - exerciseId: 456
+```
+
 ### Rep-Based Round Flow (Nov 3, 2025)
 Aligned admin-created rep-based workouts with lab flow for continuous round execution:
 
