@@ -15,7 +15,7 @@ interface ExecutionStep {
   step?: number;
   atMs: number;
   endMs: number;
-  type: 'work' | 'rest' | 'await_ready' | 'form_cue' | 'transition' | 'instruction' | 'hold';
+  type: 'work' | 'rest' | 'await_ready' | 'form_cue' | 'transition' | 'instruction' | 'hold' | 'countdown' | 'round_rest';
   blockId?: string;
   blockName?: string;
   text?: string;
@@ -34,6 +34,13 @@ interface ExecutionStep {
     equipment: string[];
     muscleGroup: string;
   };
+  exercises?: Array<{
+    id: number;
+    name: string;
+    cues: string[];
+    equipment: string[];
+    muscleGroup: string;
+  }>;
   coachContext?: {
     primaryMuscleGroup?: string;
     movementPattern?: string;
@@ -74,6 +81,10 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
         return <Dumbbell className="w-4 h-4" />;
       case 'rest':
         return <Clock className="w-4 h-4" />;
+      case 'round_rest':
+        return <MessageSquare className="w-4 h-4" />;
+      case 'countdown':
+        return <Play className="w-4 h-4" />;
       case 'await_ready':
         return <Play className="w-4 h-4" />;
       case 'form_cue':
@@ -91,6 +102,10 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
         return 'default';
       case 'rest':
         return 'secondary';
+      case 'round_rest':
+        return 'outline';
+      case 'countdown':
+        return 'outline';
       case 'await_ready':
         return 'outline';
       case 'form_cue':
@@ -161,7 +176,22 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
                           </span>
                         </div>
                         
-                        {(step.exerciseName || step.exercise?.name) && (
+                        {/* Rep-round workouts: Show exercises array */}
+                        {step.exercises && step.exercises.length > 0 && (
+                          <div>
+                            <p className="font-medium">
+                              {step.exercises.map(ex => ex.name).join(' + ')}
+                            </p>
+                            {step.round && (
+                              <p className="text-xs text-muted-foreground">
+                                Round {step.round}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Traditional workouts: Single exercise */}
+                        {!step.exercises && (step.exerciseName || step.exercise?.name) && (
                           <div>
                             <p className="font-medium">{step.exerciseName || step.exercise?.name}</p>
                             {(step.set || step.round) && (
@@ -171,7 +201,19 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
                             )}
                           </div>
                         )}
-                        {(step.message || step.text || step.label) && (
+                        
+                        {/* Canonical transition labels */}
+                        {step.type === 'countdown' && step.label === 'GO' && (
+                          <p className="font-medium text-green-600">▶ GO!</p>
+                        )}
+                        {step.type === 'countdown' && step.label !== 'GO' && (
+                          <p className="text-sm text-muted-foreground">Countdown pip</p>
+                        )}
+                        {step.type === 'round_rest' && (
+                          <p className="text-sm text-muted-foreground">🔊 "Round rest" voice cue</p>
+                        )}
+                        
+                        {(step.message || step.text || (step.label && step.type !== 'countdown')) && (
                           <p className="text-sm text-muted-foreground">
                             {step.message || step.text || step.label}
                           </p>
@@ -214,7 +256,32 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
                       </div>
                     </div>
 
-                    {(step.exerciseName || step.exercise) && (
+                    {/* Rep-round: Show exercises array */}
+                    {step.exercises && step.exercises.length > 0 && (
+                      <>
+                        <div>
+                          <p className="text-sm font-medium mb-1">Exercises (Rep-Round)</p>
+                          <div className="space-y-2">
+                            {step.exercises.map((ex, idx) => (
+                              <div key={idx} className="p-2 bg-muted rounded">
+                                <p className="font-semibold">{ex.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  ID: {ex.id} • {ex.muscleGroup}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                          {step.round && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                              Round {step.round}
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Traditional: Single exercise */}
+                    {!step.exercises && (step.exerciseName || step.exercise) && (
                       <>
                         <div>
                           <p className="text-sm font-medium mb-1">Exercise</p>
