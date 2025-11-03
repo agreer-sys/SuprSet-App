@@ -1,0 +1,750 @@
+PR: Canonical Admin + Compiler v2 + Coach Event Bus
+
+Summary: Discriminated params, strict DTO validation with Zod, compiler v2 with rep-round steps, event bus, lab harness hooks, publish preflight, and minimal DB migration.
+
+⸻
+
+0) Dependencies
+
+package.json (delta)
+
+   "dependencies": {
++    "zod": "^3.23.8",
++    "eventemitter3": "^5.0.1"
+   }
+
+
+⸻
+
+1) Database / Schema
+
+Use your ORM of choice (Prisma/Drizzle/SQL). Below shows SQL then Prisma.
+
+migrations/2025-11-03_admin_canonical.sql
+
+-- Workouts status + version
+ALTER TABLE workouts
+  ADD COLUMN status TEXT NOT NULL DEFAULT 'draft',
+  ADD COLUMN version INTEGER NOT NULL DEFAULT 1,
+  ADD COLUMN created_by INTEGER,
+  ADD COLUMN updated_by INTEGER,
+  ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE DEFAULT now();
+
+-- Blocks order index
+ALTER TABLE blocks
+  ADD COLUMN order_index INTEGER NOT NULL DEFAULT 0;
+
+-- Block exercises overrides jsonb
+ALTER TABLE block_exercises
+  ADD COLUMN overrides JSONB;
+
+-- Admin audit log
+CREATE TABLE IF NOT EXISTS admin_audit (
+  id SERIAL PRIMARY KEY,
+  actor_id INTEGER,
+  action TEXT NOT NULL,
+  entity TEXT NOT NULL CHECK (entity IN ('workout','block','block_exercise')),
+  entity_id INTEGER NOT NULL,
+  before JSONB,
+  after JSONB,
+  at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+prisma/schema.prisma (delta)
+
+ model Workout {
+   id          Int      @id @default(autoincrement())
+   name        String
+   description String?
++  status      String   @default("draft") // 'draft' | 'published'
++  version     Int      @default(1)
++  created_by  Int?
++  updated_by  Int?
++  updated_at  DateTime @default(now())
+   blocks      Block[]
+ }
+ 
+ model Block {
+   id        Int    @id @default(autoincrement())
+   workout   Workout @relation(fields: [workoutId], references: [id])
+   workoutId Int
+   name      String
+   type      String // 'custom_sequence' | 'transition' | 'amrap_loop' | 'emom_window'
+   params    Json
++  order_index Int @default(0)
+   exercises BlockExercise[]
+ }
+ 
+ model BlockExercise {
+   id         Int   @id @default(autoincrement())
+   block      Block @relation(fields: [blockId], references: [id])
+   blockId    Int
+   exerciseId Int
+   orderIndex Int
+-  // per-exercise overrides
+-  // workSec?, restSec?, targetReps?, notes?
++  overrides  Json?
+ }
+ 
+ model AdminAudit {
+   id        Int      @id @default(autoincrement())
+   actor_id  Int?
+   action    String
+   entity    String
+   entity_id Int
+   before    Json?
+   after     Json?
+   at        DateTime @default(now())
+ }
+
+
+⸻
+
+2) Types — Discriminated Params & DTOs
+
+src/types/timeline.ts
+
+import { z } from "zod";
+
+export const Pattern = z.enum(["superset","straight_sets","circuit","custom"]);
+export const Mode = z.enum(["time","reps"]);
+
+const Common = {
+  setsPerExercise: z.number().int().positive().default(3),
+  workSec: z.number().int().positive().default(30),
+  restSec: z.number().int().nonnegative().default(30),
+  roundRestSec: z.number().int().nonnegative().default(0),
+  transitionSec: z.number().int().nonnegative().default(0),
+  targetReps: z.string().optional(),
+  awaitReadyBeforeStart: z.boolean().default(false),
+  postCardio: z.object({ exercise: z.string(), durationSec: z.number().int().positive() }).optional(),
+  minuteMarks: z.array(z.number().int().positive()).optional(),
+  maxDuration: z.number().int().positive().optional(),
+};
+
+export const CustomSequenceParams = z.object({
+  type: z.literal("custom_sequence"),
+  pattern: Pattern,
+  mode: Mode,
+  ...Common,
+});
+
+export const TransitionParams = z.object({
+  type: z.literal("transition"),
+  durationSec: z.number().int().nonnegative(),
+});
+
+export const AmrapParams = z.object({
+  type: z.literal("amrap_loop"),
+  maxDuration: z.number().int().positive(),
+});
+
+export const EmomParams = z.object({
+  type: z.literal("emom_window"),
+  minuteMarks: z.array(z.number().int().nonnegative()),
+});
+
+export const BlockParams = z.discriminatedUnion("type", [
+  CustomSequenceParams,
+  TransitionParams,
+  AmrapParams,
+  EmomParams,
+]);
+
+export type BlockParamsT = z.infer<typeof BlockParams>;
+
+export type StepType = "countdown" | "work" | "rest" | "await_ready" | "transition" | "amrap" | "emom";
+
+export interface ExerciseMeta {
+  id: number;
+  name: string;
+  equipment?: string[];
+  muscles?: string[];
+}
+
+export interface TimelineStep {
+  step: number;
+  type: StepType;
+  atMs: number;
+  endMs: number;
+  durationSec: number;
+  label?: string;
+  set?: number;
+  round?: number;
+  exercise?: ExerciseMeta;
+  exercises?: ExerciseMeta[];
+  coachPrompt?: string;
+  meta?: Record<string, any>;
+}
+
+export interface CompileOptions {
+  startAtMs?: number;
+  countdownSec?: number;
+  guardGapsMs?: { postBeepToVoice: number; voiceToNextCountdown: number };
+}
+
+src/types/dto.ts
+
+import { z } from "zod";
+import { BlockParams } from "./timeline";
+
+export const ExerciseRef = z.object({
+  exerciseId: z.number().int(),
+  overrides: z.object({
+    workSec: z.number().int().positive().optional(),
+    restSec: z.number().int().nonnegative().optional(),
+    targetReps: z.string().optional(),
+    notes: z.string().optional(),
+  }).optional(),
+});
+
+export const BlockDTO = z.object({
+  name: z.string(),
+  type: z.enum(["custom_sequence","transition","amrap_loop","emom_window"]),
+  params: BlockParams,
+  exercises: z.array(ExerciseRef).optional(),
+  order_index: z.number().int().nonnegative().optional(),
+});
+
+export const WorkoutDTO = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  blocks: z.array(BlockDTO).min(1),
+});
+
+export type WorkoutDTOType = z.infer<typeof WorkoutDTO>;
+
+
+⸻
+
+3) Middleware — Admin Gate
+
+src/middleware/isAdmin.ts
+
+import type { RequestHandler } from "express";
+
+export const isAdmin: RequestHandler = (req: any, res, next) => {
+  if (!req.user) return res.status(401).end();
+  if (!req.user.isAdmin) return res.status(403).end();
+  next();
+};
+
+
+⸻
+
+4) Admin API — Create/Update/Publish with Validation & Audit
+
+src/api/admin/block-workouts.ts
+
+import { WorkoutDTO } from "@/types/dto";
+import { BlockParams } from "@/types/timeline";
+import { prisma } from "@/server/db"; // adjust to your ORM helper
+import { compileWorkoutToTimeline } from "@/server/timeline-compiler";
+import { isAdmin } from "@/middleware/isAdmin";
+import type { Request, Response } from "express";
+
+export const createWorkout = [isAdmin, async (req: Request, res: Response) => {
+  const parsed = WorkoutDTO.parse(req.body);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const workout = await tx.workout.create({ data: {
+      name: parsed.name,
+      description: parsed.description ?? null,
+      status: "draft",
+    }});
+
+    for (const [i, b] of parsed.blocks.entries()) {
+      BlockParams.parse(b.params); // hard validate
+      const block = await tx.block.create({ data: {
+        workoutId: workout.id,
+        name: b.name,
+        type: b.type,
+        params: b.params,
+        order_index: b.order_index ?? i,
+      }});
+
+      if (b.exercises?.length) {
+        for (const [j, ex] of b.exercises.entries()) {
+          await tx.blockExercise.create({ data: {
+            blockId: block.id,
+            exerciseId: ex.exerciseId,
+            orderIndex: j,
+            overrides: ex.overrides ?? null,
+          }});
+        }
+      }
+    }
+
+    await tx.adminAudit.create({ data: {
+      actor_id: (req as any).user?.id ?? null,
+      action: "create",
+      entity: "workout",
+      entity_id: workout.id,
+      before: null,
+      after: parsed as any,
+    }});
+
+    return workout.id;
+  });
+
+  res.json({ id: result });
+}];
+
+export const publishWorkout = [isAdmin, async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const workout = await prisma.workout.findUnique({
+    where: { id },
+    include: { blocks: { include: { exercises: true }, orderBy: { order_index: "asc" } } },
+  });
+  if (!workout) return res.status(404).end();
+
+  // Preflight compile (fails = 400)
+  try {
+    await compileWorkoutToTimeline(workout as any, { countdownSec: 3 });
+  } catch (e: any) {
+    return res.status(400).json({ error: "compile_failed", message: e?.message });
+  }
+
+  const updated = await prisma.workout.update({ where: { id }, data: {
+    status: "published",
+    version: { increment: 1 },
+    updated_by: (req as any).user?.id ?? null,
+  }});
+
+  await prisma.adminAudit.create({ data: {
+    actor_id: (req as any).user?.id ?? null,
+    action: "publish",
+    entity: "workout",
+    entity_id: id,
+    before: null,
+    after: { status: updated.status, version: updated.version },
+  }});
+
+  res.json({ ok: true, version: updated.version });
+}];
+
+Routes wiring (example):
+
+src/api/index.ts
+
+import express from "express";
+import { createWorkout, publishWorkout } from "./admin/block-workouts";
+
+export const router = express.Router();
+router.post("/api/admin/block-workouts", ...createWorkout);
+router.post("/api/admin/block-workouts/:id/publish", ...publishWorkout);
+
+
+⸻
+
+5) Compiler v2 — Rep-Round Steps + Absolute Timestamps
+
+src/server/timeline-compiler.ts
+
+import { BlockParamsT, TimelineStep, StepType, CompileOptions, CustomSequenceParams, EmomParams } from "@/types/timeline";
+import { getExerciseMetaForBlock } from "@/server/util/exercise-cache";
+
+function step(step: number, type: StepType, atMs: number, durationSec: number, extra: Partial<TimelineStep> = {}): TimelineStep {
+  return { step, type, atMs, endMs: atMs + durationSec*1000, durationSec, ...extra } as TimelineStep;
+}
+
+function isAwaitReady(p: any): boolean { return !!p?.awaitReadyBeforeStart; }
+
+function a2Eligible(exList: any[], durationSec: number): boolean {
+  return exList.length >= 2 && durationSec >= 25;
+}
+
+export async function compileWorkoutToTimeline(workout: any, opts: CompileOptions = {}): Promise<TimelineStep[]> {
+  const start = opts.startAtMs ?? 0;
+  const steps: TimelineStep[] = [];
+  let t = start; let n = 1;
+
+  const blocks = [...(workout.blocks ?? [])].sort((a,b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+  for (const block of blocks) {
+    const params = block.params as BlockParamsT;
+
+    if (isAwaitReady(params)) {
+      steps.push(step(n++, "await_ready", t, 0, { label: "Ready?" }));
+    }
+
+    const c = (opts.countdownSec ?? 3);
+    steps.push(step(n++, "countdown", t, c, { label: "3-2-1" }));
+    t += c*1000;
+
+    if (params.type === "transition") {
+      steps.push(step(n++, "transition", t, (params as any).durationSec, { label: "Transition" }));
+      t += (params as any).durationSec * 1000;
+    }
+
+    if (params.type === "custom_sequence") {
+      const p = params as unknown as z.infer<typeof CustomSequenceParams>;
+      const exList = await getExerciseMetaForBlock(block);
+
+      if (p.mode === "reps") {
+        const rounds = p.setsPerExercise ?? 3;
+        for (let r = 1; r <= rounds; r++) {
+          const windowSec = p.workSec;
+          steps.push(step(n++, "work", t, windowSec, {
+            exercises: exList,
+            round: r,
+            label: `${block.name} — Round ${r}`,
+            meta: { a2Eligible: a2Eligible(exList, windowSec) }
+          }));
+          t += windowSec*1000;
+
+          const rest = p.restSec ?? 0;
+          if (rest) { steps.push(step(n++, "rest", t, rest)); t += rest*1000; }
+
+          if (p.pattern === "circuit" && p.roundRestSec) {
+            steps.push(step(n++, "rest", t, p.roundRestSec, { label: "Round Rest" }));
+            t += p.roundRestSec*1000;
+          }
+        }
+      } else {
+        // TIME mode: expand per-exercise work/rest across rounds
+        const rounds = p.setsPerExercise ?? 3;
+        for (let r = 1; r <= rounds; r++) {
+          for (const em of exList) {
+            steps.push(step(n++, "work", t, p.workSec, { exercise: em, round: r }));
+            t += p.workSec*1000;
+            const rest = p.restSec ?? 0;
+            if (rest) { steps.push(step(n++, "rest", t, rest)); t += rest*1000; }
+          }
+          if (p.pattern === "circuit" && p.roundRestSec) {
+            steps.push(step(n++, "rest", t, p.roundRestSec, { label: "Round Rest" }));
+            t += p.roundRestSec*1000;
+          }
+        }
+      }
+
+      if ((p as any).postCardio) {
+        const pc = (p as any).postCardio;
+        steps.push(step(n++, "work", t, pc.durationSec, { label: `Finisher: ${pc.exercise}` }));
+        t += pc.durationSec*1000;
+      }
+    }
+
+    if (params.type === "amrap_loop") {
+      const exList = await getExerciseMetaForBlock(block);
+      const d = (params as any).maxDuration;
+      steps.push(step(n++, "amrap", t, d, { label: block.name, exercises: exList }));
+      t += d*1000;
+    }
+
+    if (params.type === "emom_window") {
+      const exList = await getExerciseMetaForBlock(block);
+      const marks = (params as unknown as z.infer<typeof EmomParams>).minuteMarks ?? [];
+      for (let i = 0; i < marks.length; i++) {
+        const sec = (i === 0 ? marks[0] : marks[i] - marks[i-1]) * 60;
+        const em = exList[i % exList.length];
+        steps.push(step(n++, "emom", t, sec, { label: `Minute ${i+1}`, exercise: em }));
+        t += sec*1000;
+      }
+    }
+
+    const trx = (params as any).transitionSec ?? 0;
+    if (trx) { steps.push(step(n++, "transition", t, trx)); t += trx*1000; }
+  }
+
+  attachCoachCues(steps, {
+    postBeepToVoice: opts.guardGapsMs?.postBeepToVoice ?? 700,
+    voiceToNextCountdown: opts.guardGapsMs?.voiceToNextCountdown ?? 3000,
+  });
+
+  return steps;
+}
+
+export function attachCoachCues(steps: TimelineStep[], gaps: { postBeepToVoice: number; voiceToNextCountdown: number }) {
+  for (const s of steps) {
+    (s.meta ??= {}).coach = {
+      endBeepAt: s.endMs,
+      voiceAt: s.endMs + gaps.postBeepToVoice,
+      nextCountdownAt: s.endMs + gaps.voiceToNextCountdown,
+    };
+  }
+}
+
+src/server/util/exercise-cache.ts
+
+// Replace with actual cache (SQLite/Prisma). This mock shows the shape.
+import type { ExerciseMeta } from "@/types/timeline";
+
+export async function getExerciseMetaForBlock(block: any): Promise<ExerciseMeta[]> {
+  const list = block.exercises?.length ? block.exercises : [];
+  // TODO: read from exercise_cache table, not Airtable at runtime
+  return list.map((be: any) => ({ id: be.exerciseId, name: `Exercise ${be.exerciseId}` }));
+}
+
+
+⸻
+
+6) Event Bus + Player Hooks
+
+src/server/events.ts
+
+import EventEmitter from "eventemitter3";
+import type { TimelineStep } from "@/types/timeline";
+
+export type TimelineEvent =
+  | { type: "step_started"; step: TimelineStep }
+  | { type: "step_ending_soon"; step: TimelineStep; etaMs: number }
+  | { type: "step_ended"; step: TimelineStep }
+  | { type: "beep"; atMs: number }
+  | { type: "coach_voice_slot"; atMs: number }
+  | { type: "countdown_slot"; atMs: number };
+
+export const eventBus = new EventEmitter<TimelineEvent>();
+
+src/server/player/timelinePlayer.ts
+
+import { eventBus } from "@/server/events";
+import type { TimelineStep } from "@/types/timeline";
+
+export function playTimeline(steps: TimelineStep[], speed = 1) {
+  const t0 = Date.now();
+  const time = (ms: number) => setTimeout as unknown as (cb: () => void, ms: number) => any;
+
+  for (const s of steps) {
+    const startDelay = (s.atMs) / speed;
+    const endDelay = (s.endMs) / speed;
+
+    time(startDelay)(() => eventBus.emit({ type: "step_started", step: s } as any), startDelay);
+    time(endDelay)(() => {
+      eventBus.emit({ type: "step_ended", step: s } as any);
+      eventBus.emit({ type: "beep", atMs: s.endMs } as any);
+      eventBus.emit({ type: "coach_voice_slot", atMs: (s.meta as any)?.coach?.voiceAt ?? s.endMs } as any);
+      eventBus.emit({ type: "countdown_slot", atMs: (s.meta as any)?.coach?.nextCountdownAt ?? s.endMs } as any);
+    }, endDelay);
+  }
+}
+
+
+⸻
+
+7) Coach Prompt Formatter (Pure Function)
+
+src/server/coach/formatPrompt.ts
+
+import type { TimelineStep } from "@/types/timeline";
+
+export interface CoachContext {
+  chatter: "Low" | "High";
+  round: number;
+  confidence: number; // 0..1
+}
+
+export function formatPrompt(step: TimelineStep, ctx: CoachContext): string | null {
+  if (step.type !== "work") return null;
+
+  const a2 = Boolean(step.meta?.a2Eligible) && ctx.chatter === "High" && (ctx.round ?? 1) >= 2 && ctx.confidence >= 0.7 && step.durationSec >= 25;
+
+  if (a2 && step.exercises && step.exercises.length >= 2) {
+    const a2Name = step.exercises[1].name;
+    return `Tech hint for A2 (${a2Name}) coming up—keep elbows close and drive evenly.`;
+  }
+
+  if (step.exercises?.length) {
+    const names = step.exercises.map(e => e.name).join(" + ");
+    return `Round ${step.round}: ${names}. Work steady; quality reps.`;
+  }
+
+  if (step.exercise) {
+    return `${step.exercise.name} now. Focus on form.`;
+  }
+
+  return null;
+}
+
+
+⸻
+
+8) Admin UI Deltas
+
+src/components/admin/BlockForm.tsx (delta)
+
+- // Generic form
++ // Discriminated param smart-form
++ // When type changes, render only valid fields. Prevents invalid combos at creation time.
+
+src/components/admin/TimelinePreview.tsx
+
+import type { TimelineStep } from "@/types/timeline";
+
+export function TimelinePreview({ steps }: { steps: TimelineStep[] }) {
+  return (
+    <div className="space-y-2">
+      {steps.map(s => (
+        <div key={s.step} className="border rounded p-2 flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium">#{s.step} • {s.type.toUpperCase()} • {s.label ?? ""}</div>
+            <div className="text-xs opacity-70">
+              {Math.round(s.atMs/1000)}s → {Math.round(s.endMs/1000)}s ({s.durationSec}s)
+            </div>
+            {s.exercises && (
+              <div className="text-xs mt-1">{s.exercises.map(e => e.name).join(" • ")}</div>
+            )}
+            {s.exercise && (
+              <div className="text-xs mt-1">{s.exercise.name}</div>
+            )}
+          </div>
+          <div className="text-[10px] text-right opacity-70">
+            <div>beep: {Math.round((s.meta as any)?.coach?.endBeepAt/1000)}s</div>
+            <div>voice: {Math.round((s.meta as any)?.coach?.voiceAt/1000)}s</div>
+            <div>next ct: {Math.round((s.meta as any)?.coach?.nextCountdownAt/1000)}s</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+⸻
+
+9) Publish Preflight
+
+src/server/publish/preflight.ts
+
+import { compileWorkoutToTimeline } from "@/server/timeline-compiler";
+
+export async function publishPreflight(workout: any) {
+  // basic structural lints
+  for (const b of workout.blocks) {
+    if (b.type !== "transition" && (!b.exercises || b.exercises.length === 0)) {
+      throw new Error(`Block "${b.name}": missing exercises`);
+    }
+    if (b.params?.type === "custom_sequence" && b.params.mode === "reps" && b.params.workSec < 15) {
+      throw new Error(`Block "${b.name}": rep-round window too short (<15s)`);
+    }
+  }
+  // compile must succeed
+  await compileWorkoutToTimeline(workout, { countdownSec: 3 });
+}
+
+
+⸻
+
+10) Lab Harness Hooks
+
+src/lab/index.ts
+
+import { playTimeline } from "@/server/player/timelinePlayer";
+import { eventBus } from "@/server/events";
+import { formatPrompt } from "@/server/coach/formatPrompt";
+
+export function runLab(steps: any[], speed = 2) {
+  eventBus.on("step_started", (e: any) => console.log("started", e.step.step));
+  eventBus.on("step_ended", (e: any) => console.log("ended", e.step.step));
+  eventBus.on("coach_voice_slot", (e: any) => {
+    const prompt = formatPrompt(e.step, { chatter: "High", round: e.step.round ?? 1, confidence: 0.8 });
+    if (prompt) console.log("VOICE:", prompt);
+  });
+  playTimeline(steps, speed);
+}
+
+
+⸻
+
+11) Example Payloads (for QA)
+
+examples/superset_reps.json
+
+{
+  "name": "Push/Pull Superset",
+  "description": "Rep-round windows; A1→A2 self-paced.",
+  "blocks": [{
+    "name": "Superset Block",
+    "type": "custom_sequence",
+    "params": {
+      "type": "custom_sequence",
+      "pattern": "superset",
+      "mode": "reps",
+      "setsPerExercise": 4,
+      "workSec": 180,
+      "restSec": 20,
+      "targetReps": "12-15",
+      "awaitReadyBeforeStart": true
+    },
+    "exercises": [
+      { "exerciseId": 1638050019 },
+      { "exerciseId": 761510030 }
+    ]
+  }]
+}
+
+examples/circuit_time.json
+
+{
+  "name": "Full Body Circuit",
+  "blocks": [{
+    "name": "Circuit Block",
+    "type": "custom_sequence",
+    "params": {
+      "type": "custom_sequence",
+      "pattern": "circuit",
+      "mode": "time",
+      "setsPerExercise": 3,
+      "workSec": 40,
+      "restSec": 10,
+      "roundRestSec": 90
+    },
+    "exercises": [
+      { "exerciseId": 123 },
+      { "exerciseId": 456 },
+      { "exerciseId": 789 }
+    ]
+  }]
+}
+
+examples/multi_block.json
+
+{
+  "name": "Strength + Cardio Finisher",
+  "blocks": [
+    {
+      "name": "Strength",
+      "type": "custom_sequence",
+      "params": {
+        "type": "custom_sequence",
+        "pattern": "straight_sets",
+        "mode": "reps",
+        "setsPerExercise": 5,
+        "restSec": 90,
+        "targetReps": "5"
+      },
+      "exercises": [{ "exerciseId": 111 }]
+    },
+    {
+      "name": "Rest",
+      "type": "transition",
+      "params": { "type": "transition", "durationSec": 120 }
+    },
+    {
+      "name": "Cardio Finisher",
+      "type": "amrap_loop",
+      "params": { "type": "amrap_loop", "maxDuration": 300 },
+      "exercises": [{ "exerciseId": 222 }, { "exerciseId": 333 }]
+    }
+  ]
+}
+
+
+⸻
+
+12) README (Ops Notes)
+
+docs/admin-canonical.md
+
+# Admin Canonical Rollout
+
+1. Install deps: `npm i zod eventemitter3`
+2. Run migration
+3. Deploy API and update Admin UI forms to use discriminated params
+4. Enable publish preflight
+5. Switch Coach to consume `eventBus` and `formatPrompt`
+6. QA with `examples/*.json` via `POST /api/admin/block-workouts`, then `POST /:id/publish`
+
+
+⸻
+
+End of PR.
