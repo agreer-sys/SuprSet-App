@@ -136,11 +136,27 @@ export default function WorkoutSessionPage() {
     enabled: !!session?.id,
   });
 
-  // NEW: Extract exercises from timeline for coach context
+  // NEW: Extract exercises from timeline for coach context (handles both single exercise and exercises array)
   const exercises = useMemo(() => {
     if (!executionTimeline) return [];
     const exerciseMap = new Map();
     executionTimeline.executionTimeline?.forEach((step: any) => {
+      // Handle canonical rep-based rounds with exercises array
+      if (step.exercises) {
+        step.exercises.forEach((ex: any) => {
+          exerciseMap.set(ex.id.toString(), {
+            id: ex.id.toString(),
+            name: ex.name,
+            cues: ex.cues || [],
+            equipment: ex.equipment || [],
+            muscleGroup: ex.muscleGroup || '',
+            videoUrl: ex.videoUrl,
+            imageUrl: ex.imageUrl,
+            estimatedTimeSec: ex.estimatedTimeSec || 45
+          });
+        });
+      }
+      // Handle traditional single exercise steps
       if (step.exercise) {
         exerciseMap.set(step.exercise.id.toString(), {
           id: step.exercise.id.toString(),
@@ -1043,17 +1059,25 @@ export default function WorkoutSessionPage() {
         blockId: session?.id?.toString() || 'block-1' 
       });
     } else if (currentStep.type === 'work') {
-      const exerciseName = currentStep.exercise?.name || 'Exercise';
+      // Handle both canonical rep-based (exercises array) and traditional (single exercise)
+      const exerciseName = currentStep.exercises?.[0]?.name || currentStep.exercise?.name || 'Exercise';
+      const exerciseId = currentStep.exercises?.[0]?.id || currentStep.exercise?.id || 'unknown';
       const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
+      
+      // For rep-based rounds with multiple exercises, announce all exercises
+      const allExercises = currentStep.exercises 
+        ? currentStep.exercises.map((ex: any) => ex.name).join(' + ')
+        : exerciseName;
+      
       realtime.sendEvent('set_start', {
-        exercise_id: currentStep.exercise?.id || 'unknown',
-        exercise_name: exerciseName,
+        exercise_id: exerciseId,
+        exercise_name: allExercises,
         set_index: currentStep.set || 1,
         work_s: duration,
       });
       emitCoachEvent({ 
         type: 'EV_WORK_START', 
-        exerciseId: currentStep.exercise?.id?.toString() || 'unknown' 
+        exerciseId: exerciseId?.toString() || 'unknown' 
       });
     } else if (currentStep.type === 'rest') {
       const duration = Math.ceil((currentStep.endMs - currentStep.atMs) / 1000);
@@ -1100,9 +1124,12 @@ export default function WorkoutSessionPage() {
     // Trigger midpoint encouragement at 50% of work duration (once per step)
     const midpoint = Math.floor(stepDuration / 2);
     if (elapsedInSet >= midpoint && midpointStepRef.current !== currentStepIndex && stepDuration >= 20) {
+      const exerciseId = currentStep.exercises?.[0]?.id || currentStep.exercise?.id || 'unknown';
+      const exerciseName = currentStep.exercises?.[0]?.name || currentStep.exercise?.name || 'Exercise';
+      
       realtime.sendEvent('set_midpoint', {
-        exercise_id: currentStep.exercise?.id || 'unknown',
-        exercise_name: currentStep.exercise?.name || 'Exercise',
+        exercise_id: exerciseId,
+        exercise_name: exerciseName,
         set_index: currentStep.set || 1,
       });
       // Note: No canonical coach event for midpoint - realtime API only
@@ -1111,9 +1138,12 @@ export default function WorkoutSessionPage() {
     
     // Trigger 10-second warning once per step (context only - no AI response)
     if (timeRemaining === 10 && tenSecWarningStepRef.current !== currentStepIndex) {
+      const exerciseId = currentStep.exercises?.[0]?.id || currentStep.exercise?.id || 'unknown';
+      const exerciseName = currentStep.exercises?.[0]?.name || currentStep.exercise?.name || 'Exercise';
+      
       realtime.sendEvent('set_10s_remaining', {
-        exercise_id: currentStep.exercise?.id || 'unknown',
-        exercise_name: currentStep.exercise?.name || 'Exercise',
+        exercise_id: exerciseId,
+        exercise_name: exerciseName,
         set_index: currentStep.set || 1,
       });
       tenSecWarningStepRef.current = currentStepIndex;
@@ -1507,6 +1537,11 @@ export default function WorkoutSessionPage() {
                       </div>
                       <div className="flex-1">
                         <div className="font-medium capitalize">{step.type}</div>
+                        {step.exercises && step.exercises.length > 0 && (
+                          <div className="text-sm text-muted-foreground">
+                            {step.exercises.map((ex: any, i: number) => ex.name).join(' + ')}
+                          </div>
+                        )}
                         {step.exercise?.name && (
                           <div className="text-sm text-muted-foreground">{step.exercise.name}</div>
                         )}

@@ -11,54 +11,51 @@ SuprSet is a React-based web application providing intelligent exercise superset
 
 ## Recent Changes
 
-### Per-Exercise Work Steps in Rep-Based Rounds (Nov 3, 2025)
-Fixed timeline compiler to emit separate work steps per exercise instead of merging all exercises into one combined step:
+### ✅ Canonical Architecture Migration (Nov 3, 2025)
+Migrated to ChatGPT's canonical event-driven architecture for cleaner, modular coaching system:
 
-**Problem:**
-- Previously, all exercises in a rep-based round were merged into a single work step (e.g., "Frontal Raise + Row")
-- This broke individual exercise tracking, weight inputs, per-exercise cues, and accurate coaching
+**Why This Change:**
+- Resolved architectural drift between ChatGPT patches and Replit implementation
+- Established single source of truth for timeline compilation and coaching logic
+- Improved maintainability and future extensibility
 
-**Solution:**
-1. **Separate Work Steps**: Each exercise now gets its own work step with individual `exerciseId`
-2. **Proportional Timing**: Total round duration split across exercises using heuristics:
-   - Base time: 40s per exercise
-   - Unilateral factor: 1.5x (60s) for exercises detected by name patterns
-3. **Preserved Transitions**: Canonical round transitions (beep→voice→countdown→GO) remain between rounds only
+**What Changed:**
+1. **Timeline Compiler (server/timeline-compiler.ts)**:
+   - ✅ Rep-based rounds now emit **single work step with exercises array** instead of separate steps per exercise
+   - Format: `{ type: "work", exercises: [...], round: N, durationSec: 180 }`
+   - User completes all exercises within round window at their own pace
+   - Canonical round transitions preserved (beep→voice→countdown→GO at T0+5.6s)
+
+2. **Workout Player (client/src/pages/workout-session.tsx)**:
+   - ✅ Updated to handle both `exercise` (single) and `exercises` (array) formats
+   - Exercise extraction for coach context supports both patterns
+   - Timeline display shows combined exercises (e.g., "Bench Press + Barbell Row")
+   - Event emission extracts first exercise ID for canonical coach events
+
+3. **Observer & Voice System**:
+   - Already aligned with canonical event-driven pattern
+   - Database-backed response selection with cooldown tracking
+   - VoiceBus with ducking and TTS guard window
 
 **Example Timeline (180s round with 2 exercises):**
 ```
 Round 1:
-  Step 1: Bench Press (90s) - exerciseId: 123
-  Step 2: Barbell Row (90s) - exerciseId: 456
-  → End beep + round transition (5.6s)
-Round 2:
-  Step 3: Bench Press (90s) - exerciseId: 123
-  Step 4: Barbell Row (90s) - exerciseId: 456
-```
-
-### Rep-Based Round Flow (Nov 3, 2025)
-Aligned admin-created rep-based workouts with lab flow for continuous round execution:
-
-**Key Insight:**
-- `workSec: 180` = **TOTAL duration for the entire round** (A1 + A2 + A3 combined)
-- NOT 180s per exercise (which would be 540s for 3 exercises)
-- User completes all exercises within the single round window at their own pace
-
-**Changes:**
-1. **Timeline Compiler**: Single work step per round containing ALL exercises
-2. **Canonical Round Transitions**: Between rounds uses beep→voice→countdown→GO sequence (T0+5.6s)
-3. **Admin UI**: Added "Round Duration" field for rep-based blocks
-4. **Backward Compatible**: Legacy await_ready flow still available for non-`mode: "reps"` blocks
-
-**Example Timeline:**
-```
-Round 1: 180s total (Bench Press + Barbell Row combined)
+  Step 1: [Bench Press + Barbell Row] (180s total) - exercises: [{id:123}, {id:456}]
   → End beep
   → "Round rest" voice (T0+700ms)
   → Countdown pips (T0+3s, T0+4s)
   → GO beep (T0+5s)
-Round 2: 180s total (starts at T0+5.6s)
+Round 2:
+  Step 2: [Bench Press + Barbell Row] (180s total, starts at T0+5.6s)
 ```
+
+**Backward Compatibility:**
+- Traditional time-based and straight-sets workouts use `exercise` (single) format
+- Await_ready flow available for non-rep modes
+- All existing database, admin UI, and Airtable integrations preserved
+
+**Backup:**
+- Previous implementation backed up to `backup_replit_implementation_2025-11-03/`
 
 ### Browser TTS Default (Nov 3, 2025)
 Browser TTS is now the default for all testing to avoid API quota issues:

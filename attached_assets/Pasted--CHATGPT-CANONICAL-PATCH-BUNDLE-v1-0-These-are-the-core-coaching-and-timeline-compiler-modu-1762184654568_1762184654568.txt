@@ -1,0 +1,127 @@
+// ✅ CHATGPT-CANONICAL PATCH BUNDLE — v1.0
+// These are the core coaching and timeline compiler modules with clean, unified logic
+
+// FILE: server/timeline-compiler.ts
+export function compileTimeline(blocks, params) {
+  const timeline = [];
+  let currentTimeMs = 0;
+  const ROUND_END_TO_SPEECH_MS = 700;
+  const ROUND_END_TO_COUNTDOWN_MS = 3000;
+  const WORK_START_OFFSET_MS = 5600;
+
+  for (let b = 0; b < blocks.length; b++) {
+    const block = blocks[b];
+    const isRepBased = block.params?.mode === "reps" && block.params?.workSec;
+    const sets = block.params?.setsPerExercise || 1;
+
+    for (let s = 0; s < sets; s++) {
+      const roundIndex = s + 1;
+
+      if (isRepBased) {
+        // ✅ Canonical rep-round structure
+        timeline.push({
+          type: "work",
+          exercises: block.exercises,
+          set: roundIndex,
+          round: roundIndex,
+          atMs: currentTimeMs,
+          endMs: currentTimeMs + block.params.workSec * 1000,
+          durationSec: block.params.workSec,
+        });
+
+        currentTimeMs += block.params.workSec * 1000;
+
+        if (roundIndex < sets) {
+          // Insert transition cues between rounds
+          timeline.push({
+            type: "round_rest",
+            atMs: currentTimeMs + ROUND_END_TO_SPEECH_MS,
+            endMs: currentTimeMs + ROUND_END_TO_SPEECH_MS + 100,
+            label: "Round Complete"
+          });
+          timeline.push({ type: "countdown", atMs: currentTimeMs + ROUND_END_TO_COUNTDOWN_MS });
+          timeline.push({ type: "countdown", atMs: currentTimeMs + ROUND_END_TO_COUNTDOWN_MS + 1000 });
+          timeline.push({ type: "countdown", atMs: currentTimeMs + ROUND_END_TO_COUNTDOWN_MS + 2000, label: "GO" });
+
+          currentTimeMs += WORK_START_OFFSET_MS;
+        }
+      } else {
+        // 🟡 Default time-based or await_ready fallback
+        for (let i = 0; i < block.exercises.length; i++) {
+          const ex = block.exercises[i];
+
+          timeline.push({
+            type: "work",
+            exercise: ex,
+            set: s + 1,
+            atMs: currentTimeMs,
+            endMs: currentTimeMs + (ex.workSec || block.params.workSec || 45) * 1000,
+          });
+
+          currentTimeMs += (ex.workSec || block.params.workSec || 45) * 1000;
+
+          // Optional await_ready (legacy flow)
+          if (block.params?.mode !== "reps") {
+            timeline.push({
+              type: "await_ready",
+              label: `Finished ${ex.targetReps || "your set"}?`,
+              atMs: currentTimeMs,
+              endMs: currentTimeMs,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return { timeline };
+}
+
+
+// FILE: client/src/coach/voiceBus.ts
+export const voiceBus = {
+  ctx: null,
+  ttsBusy: false,
+  gainNode: null,
+  init(ctx) {
+    this.ctx = ctx;
+    this.gainNode = ctx.createGain();
+    this.gainNode.connect(ctx.destination);
+  },
+  duck() {
+    if (this.gainNode) this.gainNode.gain.value = 0.5;
+  },
+  unduck() {
+    if (this.gainNode) this.gainNode.gain.value = 1;
+  },
+  guardTTSStart(callback) {
+    if (this.ttsBusy) return;
+    this.ttsBusy = true;
+    callback();
+    setTimeout(() => (this.ttsBusy = false), 3000);
+  }
+};
+
+
+// FILE: client/src/coach/observer.ts
+export function makeObserver({ ctx, speak, beep, responsePool }) {
+  const history = [];
+
+  function onEvent(event) {
+    if (event.type === "EV_WORK_START") {
+      const cue = responsePool.pick("work_start", event.exerciseId);
+      if (cue) speak(cue);
+    }
+
+    if (event.type === "EV_ROUND_REST_START") {
+      const line = responsePool.pick("round_rest");
+      if (line) speak(line);
+    }
+
+    if (event.type === "countdown") {
+      beep("countdown");
+    }
+  }
+
+  return { onEvent };
+}

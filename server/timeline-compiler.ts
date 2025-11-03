@@ -47,6 +47,15 @@ export interface TimelineStep {
     videoUrl?: string;
     imageUrl?: string;
   };
+  exercises?: Array<{
+    id: number;
+    name: string;
+    cues: string[];
+    equipment: string[];
+    muscleGroup: string;
+    videoUrl?: string;
+    imageUrl?: string;
+  }>;
   atMs: number;
   endMs: number;
   durationSec?: number;
@@ -143,72 +152,51 @@ export async function compileBlockToTimeline(
 
   // Main block compilation
   if (block.type === "custom_sequence") {
-    // REP-BASED ROUNDS: Separate work step per exercise with proportional timing
-    // workSec defines the TOTAL round duration (split across all exercises)
+    // ✅ CANONICAL REP-BASED ROUNDS: Single work step with exercises array
+    // workSec defines the TOTAL round duration (user completes all exercises within this time)
     if (mode === "reps" && (pattern === "superset" || pattern === "circuit")) {
       const numRounds = setsPerExercise;
       const roundDurationSec = workSec; // Total time for all exercises in the round
-      const totalRoundMs = roundDurationSec * 1000;
 
-      // Calculate proportional durations based on exercise heuristics
-      const estimatedDurations = block.exercises.map((ex) => {
-        // Default base time: 40s per exercise
-        const baseTime = 40;
-        
-        // Detect unilateral exercises by name
-        const isUnilateral = /(single|one[- ]?arm|one[- ]?leg|curtsy|split|side)/i.test(ex.exerciseName || '');
-        const unilateralFactor = isUnilateral ? 1.5 : 1; // 50% more time for unilateral
-        
-        return baseTime * unilateralFactor;
+      // Build exercises array with metadata
+      const exercisesArray = block.exercises.map((exercise) => {
+        const cues = exercise.coachingBulletPoints
+          ? exercise.coachingBulletPoints
+              .split(/[\n;]/)
+              .map((c) => c.trim().replace(/^[•\-\*]\s*/, ""))
+              .filter((c) => c.length > 0)
+          : [];
+
+        return {
+          id: exercise.exerciseId,
+          name: exercise.exerciseName,
+          cues,
+          equipment: [
+            exercise.equipmentPrimary,
+            ...(exercise.equipmentSecondary || []),
+          ].filter(Boolean) as string[],
+          muscleGroup: exercise.primaryMuscleGroup || "Unknown",
+          videoUrl: exercise.videoUrl || undefined,
+          imageUrl: exercise.imageUrl || undefined,
+        };
       });
 
-      const totalEstimate = estimatedDurations.reduce((sum, t) => sum + t, 0);
-
-      // Scale durations to fit round time
-      const durationsMs = estimatedDurations.map((t) => 
-        Math.round((t / totalEstimate) * totalRoundMs)
-      );
-
       for (let round = 1; round <= numRounds; round++) {
-        const roundStartMs = currentTimeMs;
-
-        // Emit separate work step for each exercise
-        block.exercises.forEach((exercise, exIndex) => {
-          const cues = exercise.coachingBulletPoints
-            ? exercise.coachingBulletPoints
-                .split(/[\n;]/)
-                .map((c) => c.trim().replace(/^[•\-\*]\s*/, ""))
-                .filter((c) => c.length > 0)
-            : [];
-
-          steps.push({
-            step: stepCounter++,
-            type: "work",
-            exercise: {
-              id: exercise.exerciseId,
-              name: exercise.exerciseName,
-              cues,
-              equipment: [
-                exercise.equipmentPrimary,
-                ...(exercise.equipmentSecondary || []),
-              ].filter(Boolean) as string[],
-              muscleGroup: exercise.primaryMuscleGroup || "Unknown",
-              videoUrl: exercise.videoUrl || undefined,
-              imageUrl: exercise.imageUrl || undefined,
-            },
-            atMs: currentTimeMs,
-            endMs: currentTimeMs + durationsMs[exIndex],
-            durationSec: durationsMs[exIndex] / 1000,
-            set: round,
-            round,
-          });
-
-          currentTimeMs += durationsMs[exIndex];
+        // ✅ Single work step containing all exercises
+        steps.push({
+          step: stepCounter++,
+          type: "work",
+          exercises: exercisesArray,
+          atMs: currentTimeMs,
+          endMs: currentTimeMs + roundDurationSec * 1000,
+          durationSec: roundDurationSec,
+          set: round,
+          round,
         });
 
-        // currentTimeMs is now at end of all exercises in this round
+        currentTimeMs += roundDurationSec * 1000;
 
-        // Add round transition (except after last round)
+        // Add canonical round transition (except after last round)
         const isLastRound = round === numRounds;
         if (!isLastRound) {
           // Canonical between-rounds timing:
