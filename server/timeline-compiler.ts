@@ -42,8 +42,9 @@ function parseBlockParams(block: Block): BlockParamsT {
 
 /**
  * Helper: Extract exercise metadata from BlockExercise
+ * Optionally includes targetReps for rep-based workouts
  */
-function extractExerciseMeta(exercise: BlockExercise): ExerciseMeta {
+function extractExerciseMeta(exercise: BlockExercise, includeTargetReps?: string): ExerciseMeta {
   const cues = exercise.coachingBulletPoints
     ? exercise.coachingBulletPoints
         .split(/[\n;]/)
@@ -54,6 +55,7 @@ function extractExerciseMeta(exercise: BlockExercise): ExerciseMeta {
   return {
     id: exercise.exerciseId,
     name: exercise.exerciseName,
+    targetReps: includeTargetReps, // For rep-round workouts
     cues,
     equipment: [
       exercise.equipmentPrimary,
@@ -148,7 +150,8 @@ function compileCustomSequence(
 
   // ✅ CANONICAL REP-BASED ROUNDS: Single work step with exercises array
   if (mode === "reps" && (pattern === "superset" || pattern === "circuit")) {
-    const exercisesArray = block.exercises.map(extractExerciseMeta);
+    const targetReps = params.targetReps; // Get target reps from block params
+    const exercisesArray = block.exercises.map(ex => extractExerciseMeta(ex, targetReps));
     const numRounds = setsPerExercise;
     
     // Determine rest duration: roundRestSec for circuit rounds, restSec otherwise

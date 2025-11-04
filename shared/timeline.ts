@@ -52,6 +52,7 @@ export type StepType = "countdown" | "work" | "rest" | "round_rest" | "await_rea
 export interface ExerciseMeta {
   id: number;
   name: string;
+  targetReps?: string; // For rep-based workouts (e.g., "8-12" or "5")
   cues?: string[];
   equipment?: string[];
   muscleGroup?: string;
