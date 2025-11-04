@@ -47,28 +47,43 @@ class BeepEngine {
         const audio = new Audio();
         audio.src = file;
         audio.preload = 'auto';
-        audio.volume = 0.001; // Nearly silent for unlock
         
-        // Play at near-zero volume to unlock browser autoplay
-        const playPromise = audio.play();
+        // Wait for audio to actually load before trying to play
+        audio.addEventListener('canplaythrough', () => {
+          // Now that it's loaded, play at near-zero volume to unlock
+          audio.volume = 0.001;
+          const playPromise = audio.play();
+          
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.volume = 0.5; // Restore normal volume
+                this.preloadedAudio.set(file, audio);
+                console.log(`[BEEP] ✅ Unlocked: ${file}`);
+                resolve();
+              })
+              .catch((err) => {
+                console.warn(`[BEEP] ⚠️ Unlock failed for ${file}:`, err.name);
+                resolve(); // Continue even if one fails
+              });
+          } else {
+            console.warn(`[BEEP] ⚠️ No play promise for ${file}`);
+            resolve();
+          }
+        }, { once: true });
         
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              audio.pause();
-              audio.currentTime = 0;
-              audio.volume = 0.5; // Restore normal volume
-              this.preloadedAudio.set(file, audio);
-              console.log(`[BEEP] ✅ Unlocked: ${file}`);
-              resolve();
-            })
-            .catch((err) => {
-              console.warn(`[BEEP] ⚠️ Unlock failed for ${file}:`, err.name);
-              resolve(); // Continue even if one fails
-            });
-        } else {
-          resolve();
-        }
+        // Fallback timeout in case loading fails
+        setTimeout(() => {
+          if (!this.preloadedAudio.has(file)) {
+            console.warn(`[BEEP] ⏱️ Timeout waiting for ${file}`);
+            resolve();
+          }
+        }, 3000);
+        
+        // Start loading
+        audio.load();
       });
     });
     
