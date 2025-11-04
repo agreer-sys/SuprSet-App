@@ -302,12 +302,14 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
 
   if (stage === 'preflight') {
     return (
-      <PreflightWeightsSheet
-        exercises={exercises}
-        lastLoads={{}} // No previous loads for testing
-        onSave={(p) => { setPlanned(p); setStage('playing'); }}
-        onCancel={() => setStage('intro')}
-      />
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <PreflightWeightsSheet
+          exercises={exercises}
+          lastLoads={{}} // No previous loads for testing
+          onSave={(p) => { setPlanned(p); setStage('playing'); }}
+          onCancel={() => setStage('intro')}
+        />
+      </div>
     );
   }
 
