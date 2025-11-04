@@ -1,0 +1,25 @@
+Returning 215 exercises
+5:42:56 PM [express] GET /api/exercises/search 200 in 14ms :: [{"id":2093634808,"name":"Abductor Mac…
+5:42:56 PM [express] GET /api/exercises 200 in 7ms :: [{"id":2093634808,"name":"Abductor Machine","a…
+5:42:56 PM [express] GET /api/exercises/muscle-groups 200 in 1ms :: ["Accessory","Back","Biceps","Ch…
+📋 Serving 83 equipment items from catalog
+5:42:56 PM [express] GET /api/exercises/equipment 304 in 4ms :: ["Abductor Machine","Adductor Machin…
+5:42:56 PM [express] GET /api/exercises/categories 200 in 2ms :: []
+5:42:59 PM [express] GET /api/block-workouts 200 in 181ms :: [{"id":74,"name":"Super Set 2","descrip…
+5:43:01 PM [express] POST /api/block-workout-sessions 201 in 143ms :: {"id":305,"userId":"guest-user…
+5:43:01 PM [express] GET /api/block-workout-sessions/active 200 in 67ms :: {"id":305,"userId":"guest…
+5:43:01 PM [express] GET /api/workout-sessions 200 in 4ms
+5:43:01 PM [express] GET /api/coaching/305 200 in 34ms :: {"id":349,"sessionId":null,"blockWorkoutSe…
+5:43:13 PM [express] GET /api/coach-responses 200 in 158ms :: {"items":[]}
+5:43:16 PM [express] GET /api/coach-responses 200 in 33ms :: {"items":[{"id":15,"textTemplate":"Star…
+5:43:16 PM [express] POST /api/coach-responses/15/mark-used 200 in 38ms :: {"ok":true}
+5:43:38 PM [express] GET /api/coach-responses 200 in 155ms :: {"items":[]}
+5:44:01 PM [express] GET /api/coach-responses 200 in 154ms :: {"items":[{"id":22,"textTemplate":"Goo…
+5:44:01 PM [express] POST /api/coach-responses/22/mark-used 200 in 34ms :: {"ok":true}
+5:44:02 PM [express] GET /api/coach-responses 200 in 34ms :: {"items":[{"id":33,"textTemplate":"Quic…
+5:44:02 PM [express] POST /api/coach-responses/33/mark-used 200 in 34ms :: {"ok":true}
+5:44:04 PM [express] GET /api/coach-responses 200 in 34ms :: {"items":[]}
+5:44:05 PM [express] GET /api/coach-responses 304 in 34ms :: {"items":[]}
+5:44:06 PM [express] GET /api/coach-responses 304 in 33ms :: {"items":[]}
+5:44:08 PM [express] GET /api/coach-responses 304 in 33ms :: {"items":[]}
+5:44:11 PM [express] GET /api/coach-responses 200 in 35ms :: {"items":[{"id":15,"textTemplate":"Star…

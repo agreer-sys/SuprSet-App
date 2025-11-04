@@ -329,11 +329,51 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     );
   }
 
+  // Build current round info from timeline
+  const currentRound = useMemo(() => {
+    if (!workout.executionTimeline?.executionTimeline) return null;
+    const workSteps = workout.executionTimeline.executionTimeline.filter((s: any) => s.type === 'work');
+    return {
+      total: workSteps.length,
+      current: 1, // TODO: Track actual progress
+      exercises: exercises.map(e => e.name).join(' + ')
+    };
+  }, [workout.executionTimeline, exercises]);
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="text-center">
-        <div className="text-2xl font-bold mb-2">▶️ {workout.name}</div>
-        <div className="text-lg text-muted-foreground">Workout running… (see console for Coach output)</div>
+      <div className="text-center max-w-2xl">
+        <div className="mb-8">
+          <div className="text-3xl font-bold mb-2">▶️ {workout.name}</div>
+          {currentRound && (
+            <div className="text-lg text-muted-foreground">
+              Round {currentRound.current} of {currentRound.total}
+            </div>
+          )}
+        </div>
+
+        {exercises.length > 0 && (
+          <div className="mb-8">
+            <div className="text-sm font-medium text-muted-foreground mb-2">EXERCISES</div>
+            <div className="space-y-2">
+              {exercises.map((ex) => (
+                <div 
+                  key={ex.id}
+                  className="p-4 rounded-lg bg-card border text-left"
+                >
+                  <div className="font-semibold">{ex.name}</div>
+                  {ex.muscleGroup && (
+                    <div className="text-sm text-muted-foreground mt-1">{ex.muscleGroup}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="text-sm text-muted-foreground">
+          🎧 Listen for voice coaching cues and beeps
+        </div>
       </div>
     </div>
   );
