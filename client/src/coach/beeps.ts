@@ -80,10 +80,11 @@ class BeepEngine {
   play(kind: BeepKind) {
     console.log(`[BEEP] play(${kind}) - chatter: ${this.chatterLevel}`);
     
-    // Silent mode: skip most beeps (only keep critical ones via chatter-aware scheduling)
-    // Minimal: all beeps, no voice
-    // High: all beeps + voice
-    // No suppression needed here - scheduling handles it
+    // High chatter: voice cues are clear, skip beeps (no layering needed)
+    if (this.chatterLevel === 'high') {
+      console.log(`[BEEP] Suppressed (high chatter - voice cues sufficient)`);
+      return;
+    }
 
     voiceBus.notifyBeep();
 
