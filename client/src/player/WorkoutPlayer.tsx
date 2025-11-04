@@ -30,9 +30,9 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
   useEffect(() => {
     if (audioReady) return;
     
-    const initAudio = () => {
+    const initAudio = async () => {
       voiceBus.ensure(); // Initialize AudioContext
-      beeps.init(); // Initialize beep system and unlock audio
+      await beeps.init(); // Initialize beep system and unlock audio (async)
       setAudioReady(true);
       console.log('🎧 Audio system initialized');
       

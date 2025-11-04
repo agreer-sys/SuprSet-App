@@ -28,49 +28,53 @@ class BeepEngine {
     return this.ctx!;
   }
 
-  init() {
+  async init() {
     this.ensureCtx();
     // Preload all audio files and unlock playback
-    this.preloadAndUnlock();
+    await this.preloadAndUnlock();
   }
 
-  private preloadAndUnlock() {
+  private async preloadAndUnlock() {
     if (this.audioUnlocked) return;
     
     console.log('[BEEP] Preloading audio files...');
     
     // Preload all unique audio files
-    const uniqueFiles = new Set(Object.values(soundMap));
+    const uniqueFiles = Array.from(new Set(Object.values(soundMap)));
     
-    uniqueFiles.forEach(file => {
-      const audio = new Audio();
-      audio.src = file;
-      audio.preload = 'auto';
-      audio.volume = 0.5;
-      
-      // Load the file
-      audio.load();
-      
-      // Play at 0 volume to unlock (browser requires play() during user gesture)
-      audio.volume = 0.001;
-      const playPromise = audio.play();
-      
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            audio.pause();
-            audio.currentTime = 0;
-            audio.volume = 0.5; // Restore normal volume
-            this.preloadedAudio.set(file, audio);
-            console.log(`[BEEP] ✅ Unlocked: ${file}`);
-          })
-          .catch((err) => {
-            console.warn(`[BEEP] ⚠️ Unlock failed for ${file}:`, err.name);
-          });
-      }
+    const promises = uniqueFiles.map(file => {
+      return new Promise<void>((resolve) => {
+        const audio = new Audio();
+        audio.src = file;
+        audio.preload = 'auto';
+        audio.volume = 0.001; // Nearly silent for unlock
+        
+        // Play at near-zero volume to unlock browser autoplay
+        const playPromise = audio.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              audio.pause();
+              audio.currentTime = 0;
+              audio.volume = 0.5; // Restore normal volume
+              this.preloadedAudio.set(file, audio);
+              console.log(`[BEEP] ✅ Unlocked: ${file}`);
+              resolve();
+            })
+            .catch((err) => {
+              console.warn(`[BEEP] ⚠️ Unlock failed for ${file}:`, err.name);
+              resolve(); // Continue even if one fails
+            });
+        } else {
+          resolve();
+        }
+      });
     });
     
+    await Promise.all(promises);
     this.audioUnlocked = true;
+    console.log('[BEEP] 🎵 All audio files ready');
   }
 
   setChatterLevel(level: 'silent'|'minimal'|'high') {
