@@ -1,0 +1,99 @@
+// PATCH: coachRoundScheduler.ts - Round Coaching + Beep Reduction
+
+import { schedule } from './timelineUtils';
+import { emit } from './eventBus';
+import { ctx } from './audioContext';
+import { getCoachChatterLevel } from './coachSettings';
+import { pickCoachCue } from './coachCues';
+
+export function scheduleRepRound({
+  roundIndex,
+  totalRounds,
+  roundDurationMs,
+  exercise,
+  cueConfidence,
+  scheduleAtMs = 0
+}: {
+  roundIndex: number,
+  totalRounds: number,
+  roundDurationMs: number,
+  exercise: ExerciseMeta,
+  cueConfidence: number,
+  scheduleAtMs?: number
+}) {
+  const chatter = getCoachChatterLevel();
+  const roundStart = scheduleAtMs;
+  const roundEnd = roundStart + roundDurationMs;
+
+  // 1. PREVIEW cue (A1)
+  schedule(roundStart - 4000, () => emit({
+    type: 'EV_WORK_PREVIEW',
+    exerciseId: exercise.id
+  }));
+
+  // 2. 3-2-1 GO beeps
+  schedule(roundStart - 3000, () => ctx.beep('countdown'));
+  schedule(roundStart - 2000, () => ctx.beep('countdown'));
+  schedule(roundStart - 1000, () => ctx.beep('start'));
+
+  // 3. Start work
+  schedule(roundStart, () => emit({
+    type: 'EV_WORK_START',
+    exerciseId: exercise.id
+  }));
+
+  // 4. Optional HALFWAY cue
+  if (chatter === 'high') {
+    schedule(roundStart + roundDurationMs / 2, () => {
+      emit({
+        type: 'EV_COACH_CUE',
+        caption: 'Halfway — keep it smooth.'
+      });
+    });
+  }
+
+  // 5. Optional A2 TECHNICAL cue (Round 2+, High Chatter, confidence ≥ 70%)
+  const showTechCue = chatter === 'high' && roundIndex >= 1 && cueConfidence >= 0.7;
+  if (showTechCue && roundDurationMs >= 25000) {
+    schedule(roundStart + (roundDurationMs * 0.6), () => {
+      emit({
+        type: 'EV_COACH_CUE',
+        caption: exercise.cues?.[1] || 'Stay controlled — use full range.'
+      });
+    });
+  }
+
+  // 6. Last 10s → Coach cue OR beep
+  if (chatter === 'high') {
+    schedule(roundEnd - 10000, () => {
+      emit({
+        type: 'EV_COACH_CUE',
+        caption: '10 seconds — finish strong.'
+      });
+    });
+  } else {
+    // Replace 10-beep loop with single ping
+    schedule(roundEnd - 10000, () => ctx.beep('ping'));
+  }
+
+  // 7. END beep
+  schedule(roundEnd, () => ctx.beep('end'));
+
+  // 8. Between-round coaching (700ms after end)
+  const betweenRoundCues = [
+    'Round complete — nice work.',
+    'Shake it out. Next one coming up.',
+    'Deep breath — we go again soon.'
+  ];
+  if (roundIndex < totalRounds - 1) {
+    schedule(roundEnd + 700, () => {
+      const message = pickCoachCue(betweenRoundCues, 'round');
+      emit({ type: 'EV_COACH_CUE', caption: message });
+    });
+  }
+
+  // 9. Next round countdown
+  schedule(roundEnd + 3000, () => ctx.beep('countdown'));
+  schedule(roundEnd + 4000, () => ctx.beep('countdown'));
+  schedule(roundEnd + 5000, () => ctx.beep('start'));
+}
