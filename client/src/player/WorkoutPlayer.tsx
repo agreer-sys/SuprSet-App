@@ -9,6 +9,7 @@ import { TimelinePlayer } from '@/runtime/TimelinePlayer';
 import { speakTTS } from '@/audio/ttsAdapter';
 import { beeps } from '@/coach/beeps';
 import { voiceBus } from '@/audio/voiceBus';
+import { scheduleRepRound, formatRoundLabel } from '@/coach/coachRoundScheduler';
 
 interface WorkoutPlayerProps {
   workout: {
@@ -136,9 +137,82 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
 
   // Wire the real timeline player → observer + beeps
   const playerRef = useRef<TimelinePlayer | null>(null);
+  const roundCancelsRef = useRef<Array<() => void>>([]);
+  
   useEffect(() => {
     if (stage !== 'playing' || !workout.executionTimeline) return;
     
+    const isRepRound = mode === 'reps';
+    
+    // ===== REP-ROUND MODE: Use canonical round scheduler =====
+    if (isRepRound) {
+      console.log('🏋️ Starting rep-round workout with canonical scheduler');
+      
+      // Extract work steps from timeline (each represents a round)
+      const workSteps = workout.executionTimeline.executionTimeline.filter(
+        (step: any) => step.type === 'work'
+      );
+      
+      const totalRounds = workSteps.length;
+      console.log(`📊 ${totalRounds} rounds detected`);
+      
+      // Helper to get exercise cue
+      const getCue = (exerciseId: string): string | null => {
+        const meta = ctx.getExerciseMeta?.(exerciseId);
+        return meta?.cues?.[0] || null;
+      };
+      
+      // Schedule each round
+      workSteps.forEach((workStep: any, roundIndex: number) => {
+        // Extract exercises from work step
+        const roundExercises = workStep.exercises || (workStep.exercise ? [workStep.exercise] : []);
+        const exerciseList = roundExercises.map((ex: any) => ({
+          id: ex.id.toString(),
+          name: ex.name || ctx.getExerciseName(ex.id.toString())
+        }));
+        
+        // Calculate round duration from step timing
+        const roundSec = Math.floor((workStep.endMs - workStep.atMs) / 1000);
+        
+        // Find the rest step after this work step to get roundRestSec
+        const allSteps = workout.executionTimeline.executionTimeline;
+        const workStepIndex = allSteps.indexOf(workStep);
+        const restStep = allSteps.slice(workStepIndex + 1).find((s: any) => s.type === 'rest');
+        const roundRestSec = restStep ? Math.floor((restStep.endMs - restStep.atMs) / 1000) : 90;
+        
+        // Schedule this round (delayed to start at correct time)
+        const roundStartDelay = workStep.atMs - 3000; // Subtract 3s for pre-round countdown
+        
+        const timeoutId = window.setTimeout(() => {
+          console.log(`🔔 ${formatRoundLabel(roundIndex + 1, totalRounds)} starting (${roundSec}s work, ${roundRestSec}s rest)`);
+          
+          const cancelRound = scheduleRepRound({
+            ctx,
+            roundIndex,
+            roundSec,
+            roundRestSec,
+            exercises: exerciseList,
+            totalRounds,
+            emit: (ev: Event) => onEvent(ctx, ev),
+            getCue,
+            debug: (msg) => console.log(`[Round ${roundIndex + 1}]`, msg)
+          });
+          
+          roundCancelsRef.current.push(cancelRound);
+        }, Math.max(0, roundStartDelay));
+        
+        roundCancelsRef.current.push(() => clearTimeout(timeoutId));
+      });
+      
+      return () => {
+        console.log('🛑 Stopping rep-round workout');
+        roundCancelsRef.current.forEach(cancel => cancel());
+        roundCancelsRef.current = [];
+      };
+    }
+    
+    // ===== TIME-BASED MODE: Use legacy timeline player =====
+    console.log('⏱️ Starting time-based workout with timeline player');
     const player = new TimelinePlayer();
     playerRef.current = player;
     
@@ -173,7 +247,7 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
       unsub();
       unsubBeeps();
     };
-  }, [stage, ctx, workout.executionTimeline]);
+  }, [stage, ctx, workout.executionTimeline, mode]);
 
   if (stage === 'loading') {
     return (

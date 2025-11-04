@@ -24,14 +24,15 @@ export type Event =
   | { type:'EV_BLOCK_START'; blockId:string }
   | { type:'EV_AWAIT_READY'; blockId:string }
   | { type:'EV_COUNTDOWN'; sec:number }
+  | { type:'EV_ROUND_COUNTDOWN'; sec:number }
   | { type:'EV_WORK_PREVIEW'; exerciseId:string; setIndex?: number; totalSets?: number; roundIndex?: number; totalRounds?: number }
-  | { type:'EV_WORK_START'; exerciseId:string }
+  | { type:'EV_WORK_START'; exerciseId:string; setIndex?: number; roundIndex?: number }
   | { type:'EV_TECH_HINT'; exerciseId:string; source:'a2_predicted'|'generic' }
   | { type:'EV_HALFWAY'; exerciseId?:string }
-  | { type:'EV_WORK_END'; exerciseId:string }
+  | { type:'EV_WORK_END'; exerciseId:string; roundIndex?: number }
   | { type:'EV_REST_START'; sec:number; reason?:string }
   | { type:'EV_REST_END' }
-  | { type:'EV_ROUND_REST_START'; sec:number }
+  | { type:'EV_ROUND_REST_START'; sec:number; roundIndex?: number }
   | { type:'EV_ROUND_REST_END' }
   | { type:'EV_BLOCK_END'; blockId:string }
   | { type:'EV_WORKOUT_END' };
