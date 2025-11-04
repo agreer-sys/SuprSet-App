@@ -94,6 +94,17 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
   const mode = firstBlock?.mode ?? 'reps' as const;
 
   // Build a TimelineContext the observer can use
+  // Build current round info from timeline - MUST be before conditional returns
+  const currentRound = useMemo(() => {
+    if (!workout.executionTimeline?.executionTimeline) return null;
+    const workSteps = workout.executionTimeline.executionTimeline.filter((s: any) => s.type === 'work');
+    return {
+      total: workSteps.length,
+      current: 1, // TODO: Track actual progress
+      exercises: exercises.map(e => e.name).join(' + ')
+    };
+  }, [workout.executionTimeline, exercises]);
+
   const ctx = useMemo<TimelineContext>(() => ({
     workoutId: workout.id.toString(),
     pattern,
@@ -328,17 +339,6 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
       </div>
     );
   }
-
-  // Build current round info from timeline
-  const currentRound = useMemo(() => {
-    if (!workout.executionTimeline?.executionTimeline) return null;
-    const workSteps = workout.executionTimeline.executionTimeline.filter((s: any) => s.type === 'work');
-    return {
-      total: workSteps.length,
-      current: 1, // TODO: Track actual progress
-      exercises: exercises.map(e => e.name).join(' + ')
-    };
-  }, [workout.executionTimeline, exercises]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
