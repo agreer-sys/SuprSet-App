@@ -1,25 +1,13 @@
 // client/src/coach/beeps.ts
-// 📦 PATCH: Smart Audio Cues by Event Type
-// Chatter-aware beep system with differentiated tones
+// Beep system using Web Audio API oscillators (no file loading needed)
 
 import { voiceBus } from '@/audio/voiceBus';
 
 export type BeepKind = 'countdown'|'start'|'last5'|'end'|'confirm'|'10s';
 
-const soundMap: Record<string, string> = {
-  start: '/audio/beep_start.mp3',     // mid-tone for 3-2-1-GO
-  '10s': '/audio/beep_10s.mp3',       // high-tone ping
-  end: '/audio/beep_end.mp3',         // low-tone chime
-  countdown: '/audio/beep_start.mp3', // reuse start for countdown
-  last5: '/audio/beep_10s.mp3',       // reuse 10s for last5
-  confirm: '/audio/beep_start.mp3',   // reuse start for confirm
-};
-
 class BeepEngine {
   private ctx?: AudioContext;
   private chatterLevel: 'silent'|'minimal'|'high' = 'minimal';
-  private audioUnlocked = false;
-  private preloadedAudio: Map<string, HTMLAudioElement> = new Map();
 
   ensureCtx() {
     if (!this.ctx) {
@@ -28,68 +16,9 @@ class BeepEngine {
     return this.ctx!;
   }
 
-  async init() {
+  init() {
     this.ensureCtx();
-    // Preload all audio files and unlock playback
-    await this.preloadAndUnlock();
-  }
-
-  private async preloadAndUnlock() {
-    if (this.audioUnlocked) return;
-    
-    console.log('[BEEP] Preloading audio files...');
-    
-    // Preload all unique audio files
-    const uniqueFiles = Array.from(new Set(Object.values(soundMap)));
-    
-    const promises = uniqueFiles.map(file => {
-      return new Promise<void>((resolve) => {
-        const audio = new Audio();
-        audio.src = file;
-        audio.preload = 'auto';
-        
-        // Wait for audio to actually load before trying to play
-        audio.addEventListener('canplaythrough', () => {
-          // Now that it's loaded, play at near-zero volume to unlock
-          audio.volume = 0.001;
-          const playPromise = audio.play();
-          
-          if (playPromise !== undefined) {
-            playPromise
-              .then(() => {
-                audio.pause();
-                audio.currentTime = 0;
-                audio.volume = 0.5; // Restore normal volume
-                this.preloadedAudio.set(file, audio);
-                console.log(`[BEEP] ✅ Unlocked: ${file}`);
-                resolve();
-              })
-              .catch((err) => {
-                console.warn(`[BEEP] ⚠️ Unlock failed for ${file}:`, err.name);
-                resolve(); // Continue even if one fails
-              });
-          } else {
-            console.warn(`[BEEP] ⚠️ No play promise for ${file}`);
-            resolve();
-          }
-        }, { once: true });
-        
-        // Fallback timeout in case loading fails
-        setTimeout(() => {
-          if (!this.preloadedAudio.has(file)) {
-            console.warn(`[BEEP] ⏱️ Timeout waiting for ${file}`);
-            resolve();
-          }
-        }, 3000);
-        
-        // Start loading
-        audio.load();
-      });
-    });
-    
-    await Promise.all(promises);
-    this.audioUnlocked = true;
-    console.log('[BEEP] 🎵 All audio files ready');
+    console.log('[BEEP] 🎵 Web Audio API ready');
   }
 
   setChatterLevel(level: 'silent'|'minimal'|'high') {
@@ -97,47 +26,60 @@ class BeepEngine {
   }
 
   play(kind: BeepKind) {
-    console.log(`[BEEP] play(${kind})`);
-    
     voiceBus.notifyBeep();
-
-    const file = soundMap[kind] || soundMap.start;
     
-    // Try to use preloaded audio first (already unlocked)
-    let audio = this.preloadedAudio.get(file);
+    const ctx = this.ensureCtx();
+    const now = ctx.currentTime;
     
-    if (audio) {
-      // Reset and play preloaded audio
-      audio.currentTime = 0;
-      audio.volume = 0.5;
-      console.log(`[BEEP] Playing preloaded: ${file}`);
+    // Create oscillator for beep tone
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    // Beep characteristics based on type
+    if (kind === 'countdown') {
+      // Short pip: 800Hz, 100ms
+      osc.frequency.value = 800;
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } else if (kind === 'start') {
+      // GO beep: 1000Hz, 150ms
+      osc.frequency.value = 1000;
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } else if (kind === '10s' || kind === 'last5') {
+      // Warning: 900Hz, 200ms
+      osc.frequency.value = 900;
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } else if (kind === 'end') {
+      // End chime: two-tone, 600ms total
+      osc.frequency.value = 1200;
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.15, now + 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
       
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log(`[BEEP] ✅ Played successfully: ${file}`);
-          })
-          .catch((err) => {
-            console.error(`[BEEP] ❌ Play failed: ${file}`, err.name, err.message);
-          });
-      }
+      // Drop to lower frequency at 300ms
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.setValueAtTime(800, now + 0.3);
+      
+      osc.start(now);
+      osc.stop(now + 0.6);
     } else {
-      // Fallback: create new Audio (may be blocked by autoplay)
-      console.warn(`[BEEP] ⚠️ Audio not preloaded, creating new: ${file}`);
-      audio = new Audio(file);
-      audio.volume = 0.5;
-      
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log(`[BEEP] ✅ Played successfully (fallback): ${file}`);
-          })
-          .catch((err) => {
-            console.error(`[BEEP] ❌ Autoplay blocked: ${file}`, err.name, err.message);
-          });
-      }
+      // Default confirm beep
+      osc.frequency.value = 800;
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.1);
     }
   }
 
@@ -151,7 +93,7 @@ class BeepEngine {
     return () => tids.forEach(clearTimeout);
   }
 
-  // Legacy ducking support (no-op for now since audio files handle this)
+  // Legacy ducking support (no-op for now)
   setDucker(_fn: any) {}
   setSignalsVolume(_mult: number) {}
 }
