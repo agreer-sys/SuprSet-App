@@ -148,23 +148,16 @@ export function scheduleRepRound(opts: RoundSchedulerOpts): CancelFn {
     cancelFns.push(cancelTech);
   }
 
-  // Last-10s countdown - chatter-aware to reduce beep overload
+  // Last-10s countdown - chatter-aware per patch
   if (ctx.chatterLevel === 'high') {
-    // High chatter: Voice cue instead of beeps
+    // High chatter: Voice cue only (beeps auto-suppressed in beeps.ts)
     tids.push(window.setTimeout(() => {
       emit({ type: 'EV_LAST_10S', roundIndex });
     }, 3000 + (roundSec - 10) * 1000));
-  } else if (ctx.chatterLevel === 'minimal') {
-    // Minimal: 3 strategic beeps (10s, 5s, 1s)
-    [10, 5, 1].forEach(secBefore => {
-      tids.push(window.setTimeout(() => {
-        beeps.play('last5');
-      }, 3000 + (roundSec - secBefore) * 1000));
-    });
   } else {
-    // Silent: Single ping at 10s
+    // Minimal & Silent: Single ping at 10s
     tids.push(window.setTimeout(() => {
-      beeps.play('last5');
+      beeps.play('10s');
     }, 3000 + (roundSec - 10) * 1000));
   }
 

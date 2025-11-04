@@ -1,0 +1,86 @@
+// 📦 PATCH: Smart Audio Cues by Event Type (Lab + App Ready)
+// -----------------------------------------------------------
+// This patch introduces differentiated tones per event and chatter-aware behavior.
+// Beeps are suppressed in High Chatter mode and replaced with coach voice cues.
+
+// ✅ FILE 1: client/src/audio/beeps.ts
+// Replace with multi-tone-aware beep system
+
+const audioContext = new AudioContext();
+
+const soundMap = {
+  start: 'beep_start.mp3',  // mid-tone
+  '10s': 'beep_10s.mp3',    // high-tone
+  end: 'beep_end.mp3',      // low-tone
+};
+
+export function playBeep(type: 'start' | '10s' | 'end') {
+  if (window.SUPRSET_CTX?.chatter === 'high') return; // skip beeps in high chatter
+
+  const file = soundMap[type];
+  const url = `/audio/${file}`;
+
+  const audio = new Audio(url);
+  audio.volume = 0.5; // softer default
+  audio.play();
+}
+
+
+// ✅ FILE 2: client/src/lab/coachRoundScheduler.ts
+// Replace last-10s beeps with one ping or coach cue
+
+// OLD:
+// for (let i = 10; i > 0; i--) {
+//   schedule(roundMs - i * 1000, () => playBeep('end'));
+// }
+
+// NEW:
+if (chatter === 'high') {
+  // Voice cue only
+  schedule(roundMs - 10000, () => coach.say('10 seconds left.'));
+} else {
+  // Single ping
+  schedule(roundMs - 10000, () => playBeep('10s'));
+}
+
+// End of round
+schedule(roundMs, () => playBeep('end'));
+
+
+// ✅ FILE 3: coach/speechPools.ts (or wherever cues are stored)
+export const roundCoachCues = {
+  high: {
+    end: ["Great round.", "Strong work — get ready.", "Round complete."]
+  },
+  default: {
+    end: [] // no coach cue, beeps handle this
+  }
+};
+
+// ✅ FILE 4: coachRoundScheduler.ts (end of round cue)
+schedule(roundMs + 700, () => {
+  if (chatter === 'high') speakFromPool(roundCoachCues.high.end);
+});
+
+
+// ✅ FILE 5: /public/audio/
+// Add sound files
+// - beep_start.mp3  ← Soft mid-tone
+// - beep_10s.mp3    ← Soft high ping
+// - beep_end.mp3    ← Low chime
+
+
+// 🧪 To test in /lab/coach-rep-round:
+// - Set chatter to "high" → No beeps, all coach
+// - Set chatter to "minimal" or silent → Pings only
+// - Set round duration to 30s and listen for 10s cue + end
+
+
+// 🧱 Replit Dev Notes:
+// 1. Replace legacy last-10s loop in lab + app
+// 2. Add sound files to public/audio
+// 3. Confirm volume and tone feel good in earbuds
+// 4. Coach speaks 10s left + end cue ONLY in high chatter
+// 5. Minimal and silent modes get fewer and softer pings
+
+// 🚀 Result: Minimalist, non-fatiguing, chatter-aware cue system ready for production.

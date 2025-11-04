@@ -50,6 +50,11 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     };
   }, [audioReady]);
 
+  // Update beeps engine when chatter level changes
+  useEffect(() => {
+    beeps.setChatterLevel(chatterLevel);
+  }, [chatterLevel]);
+
   // Extract exercises from the compiled timeline
   const exercises = useMemo(() => {
     if (!workout.executionTimeline) return [];
