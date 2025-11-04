@@ -1,0 +1,21 @@
+{
+  "name": "Upper Body Time-Based Superset",
+  "description": "4 rounds of 45s work / 15s rest for shoulders and back",
+  "blocks": [
+    {
+      "type": "custom_sequence",
+      "params": {
+        "pattern": "superset",
+        "mode": "time",
+        "setsPerExercise": 4,
+        "workSec": 45,
+        "restSec": 15,
+        "roundRestSec": 60
+      },
+      "exercises": [
+        { "exerciseId": 2093634810 },
+        { "exerciseId": 2093634811 }
+      ]
+    }
+  ]
+}

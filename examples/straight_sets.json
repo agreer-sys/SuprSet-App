@@ -1,0 +1,21 @@
+{
+  "name": "Squat Focus - Straight Sets",
+  "description": "5 sets of squats with 2 min rest between sets",
+  "blocks": [
+    {
+      "type": "custom_sequence",
+      "params": {
+        "pattern": "straight_sets",
+        "mode": "reps",
+        "setsPerExercise": 5,
+        "workSec": 120,
+        "restSec": 120,
+        "roundRestSec": 0,
+        "targetReps": "5"
+      },
+      "exercises": [
+        { "exerciseId": 2093634812 }
+      ]
+    }
+  ]
+}

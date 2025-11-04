@@ -1,0 +1,22 @@
+{
+  "name": "Chest & Back Superset (Reps)",
+  "description": "3 rounds of push/pull superset using rep-based tracking",
+  "blocks": [
+    {
+      "type": "custom_sequence",
+      "params": {
+        "pattern": "superset",
+        "mode": "reps",
+        "setsPerExercise": 3,
+        "workSec": 180,
+        "restSec": 0,
+        "roundRestSec": 90,
+        "targetReps": "8-12"
+      },
+      "exercises": [
+        { "exerciseId": 2093634808 },
+        { "exerciseId": 2093634809 }
+      ]
+    }
+  ]
+}
