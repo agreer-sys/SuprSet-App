@@ -128,45 +128,115 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
 
   const totalDuration = steps.length > 0 ? steps[steps.length - 1].endMs : 0;
   
-  // Group canonical transition steps (round_rest + countdowns + rest) into single panels
-  const groupedSteps: Array<ExecutionStep | { type: 'round_transition', steps: ExecutionStep[], atMs: number, endMs: number }> = [];
-  let i = 0;
-  while (i < steps.length) {
-    const step = steps[i];
-    
-    // Detect canonical transition sequence: round_rest → countdown(s) → rest
-    if (step.type === 'round_rest' && i + 1 < steps.length) {
-      const transitionSteps: ExecutionStep[] = [step];
-      let j = i + 1;
+  // Get detailed description for step with coach/beep annotations
+  const getStepDescription = (step: ExecutionStep): { primary: string, details: string[], icon: string } => {
+    switch (step.type) {
+      case 'round_rest':
+        return {
+          primary: '🔊 End beep plays',
+          details: [
+            'Duration: 600ms',
+            'At T0+700ms: Voice announces "Round rest"',
+            'Signals work period has ended'
+          ],
+          icon: '🔊'
+        };
       
-      // Collect all countdown steps
-      while (j < steps.length && steps[j].type === 'countdown') {
-        transitionSteps.push(steps[j]);
-        j++;
-      }
+      case 'countdown':
+        if (step.label?.toLowerCase().includes('go')) {
+          return {
+            primary: '🔊 GO beep (final countdown)',
+            details: [
+              'Duration: 600ms',
+              'Signals rest period about to start',
+              'Last sound before rest begins'
+            ],
+            icon: '▶️'
+          };
+        }
+        return {
+          primary: '🔊 Countdown pip',
+          details: [
+            `Duration: ${Math.floor((step.endMs - step.atMs) / 1000)}s`,
+            'Part of 3-2-1 countdown sequence',
+            'Prepares user for upcoming rest'
+          ],
+          icon: '⏱️'
+        };
       
-      // If followed by rest, include it in the group
-      if (j < steps.length && steps[j].type === 'rest') {
-        transitionSteps.push(steps[j]);
-        j++;
-      }
+      case 'rest':
+        const duration = Math.floor((step.endMs - step.atMs) / 1000);
+        return {
+          primary: `💬 Rest period (${duration}s)`,
+          details: [
+            'Coach responds to EV_REST_START',
+            'AI provides encouragement and feedback',
+            'User recovers between rounds',
+            'No beeps during this period'
+          ],
+          icon: '💬'
+        };
       
-      // Only group if we found at least round_rest + countdown
-      if (transitionSteps.length > 1) {
-        groupedSteps.push({
-          type: 'round_transition',
-          steps: transitionSteps,
-          atMs: transitionSteps[0].atMs,
-          endMs: transitionSteps[transitionSteps.length - 1].endMs
-        });
-        i = j;
-        continue;
-      }
+      case 'work':
+        const workDuration = Math.floor((step.endMs - step.atMs) / 1000);
+        if (step.exercises && step.exercises.length > 0) {
+          return {
+            primary: `💪 Rep-based work (${workDuration}s total)`,
+            details: [
+              ...step.exercises.map(ex => `${ex.name}${ex.targetReps ? ` - ${ex.targetReps} reps` : ''}`),
+              step.round ? `Round ${step.round}` : '',
+              'Coach emits EV_WORK_START',
+              'User completes exercises at own pace'
+            ].filter(Boolean),
+            icon: '💪'
+          };
+        }
+        return {
+          primary: step.label || 'Work',
+          details: [
+            `Duration: ${workDuration}s`,
+            'Coach emits EV_WORK_START'
+          ],
+          icon: '💪'
+        };
+      
+      case 'await_ready':
+        return {
+          primary: '⏸️ Waiting for user ready signal',
+          details: [
+            'Timeline paused',
+            'User must tap "I\'m Ready" to continue',
+            'No time pressure'
+          ],
+          icon: '⏸️'
+        };
+      
+      case 'form_cue':
+        return {
+          primary: '💬 Form cue announcement',
+          details: [
+            step.label || 'Technical coaching hint',
+            'Voice speaks during work period',
+            'Helps improve exercise technique'
+          ],
+          icon: '💬'
+        };
+      
+      case 'instruction':
+        return {
+          primary: '📢 Instruction',
+          details: [step.label || 'Workout instruction'],
+          icon: '📢'
+        };
+      
+      default:
+        return {
+          primary: step.label || step.type,
+          details: [],
+          icon: '•'
+        };
     }
-    
-    groupedSteps.push(step);
-    i++;
-  }
+  };
   
   // Track block changes for visual separators
   let lastBlockId: string | undefined = undefined;
@@ -184,91 +254,8 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
       <CardContent>
         <ScrollArea className="h-[500px] pr-4">
           <div className="space-y-2">
-            {groupedSteps.map((item, index) => {
-              // Handle grouped round transitions
-              if ('type' in item && item.type === 'round_transition') {
-                const totalDuration = Math.floor((item.endMs - item.atMs) / 1000);
-                const restStep = item.steps.find(s => s.type === 'rest');
-                const restDuration = restStep ? Math.floor((restStep.endMs - restStep.atMs) / 1000) : 0;
-                
-                return (
-                  <Dialog key={index}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left h-auto py-3 px-4 hover:bg-accent border-l-4 border-amber-500"
-                        data-testid={`timeline-transition-${index}`}
-                      >
-                        <div className="flex items-start gap-3 w-full">
-                          <div className="flex items-center gap-2 min-w-[80px]">
-                            <Clock className="w-4 h-4 text-amber-600" />
-                            <span className="text-xs text-muted-foreground">
-                              {formatTime(item.atMs)}
-                            </span>
-                          </div>
-                          
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline" className="text-xs border-amber-500">
-                                Round Transition
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {totalDuration}s
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              🔊 Beep → Voice → Countdown → GO → Rest ({restDuration}s)
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              💬 Coach speaks during rest period
-                            </p>
-                          </div>
-                        </div>
-                      </Button>
-                    </DialogTrigger>
-                    
-                    <DialogContent className="max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle>Round Transition Details</DialogTitle>
-                      </DialogHeader>
-                      
-                      <div className="space-y-4">
-                        <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded border border-amber-200 dark:border-amber-800">
-                          <p className="text-sm font-medium mb-2">Canonical Transition Sequence (5.6s + rest)</p>
-                          <div className="space-y-1 text-sm">
-                            <p>• Work ends → End beep (600ms)</p>
-                            <p>• T0+700ms: "Round rest" voice cue</p>
-                            <p>• T0+3s, T0+4s, T0+5s: Countdown pips</p>
-                            <p>• T0+5.6s: Rest period begins ({restDuration}s)</p>
-                            <p className="text-amber-700 dark:text-amber-400 font-medium mt-2">
-                              💬 Coach responds to EV_REST_START during rest period
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <p className="text-sm font-medium mb-2">Internal Steps:</p>
-                          <div className="space-y-1">
-                            {item.steps.map((s, idx) => (
-                              <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-muted rounded">
-                                <Badge variant="outline">{s.type}</Badge>
-                                <span className="text-muted-foreground">
-                                  {formatTime(s.atMs)} - {formatTime(s.endMs)} 
-                                  ({Math.floor((s.endMs - s.atMs) / 1000)}s)
-                                </span>
-                                {s.label && <span>• {s.label}</span>}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                );
-              }
-              
-              // Handle regular steps
-              const step = item as ExecutionStep;
+            {steps.map((step, index) => {
+              const stepDesc = getStepDescription(step);
               // Check for block change
               const isNewBlock = step.blockId && step.blockId !== lastBlockId;
               if (step.blockId) {
@@ -309,57 +296,16 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
                           </span>
                         </div>
                         
-                        {/* Rep-round workouts: Show exercises array */}
-                        {step.exercises && step.exercises.length > 0 && (
-                          <div className="space-y-1">
-                            {step.exercises.map((ex, idx) => (
-                              <p key={idx} className="font-medium">
-                                {ex.name}{ex.targetReps ? ` - ${ex.targetReps} reps` : ''}
-                              </p>
+                        {/* Primary description with coach/beep details */}
+                        <p className="font-medium text-sm mb-1">{stepDesc.primary}</p>
+                        
+                        {/* Detailed annotations */}
+                        {stepDesc.details.length > 0 && (
+                          <div className="space-y-0.5 text-xs text-muted-foreground">
+                            {stepDesc.details.map((detail, idx) => (
+                              <p key={idx}>• {detail}</p>
                             ))}
-                            {step.round && (
-                              <p className="text-xs text-muted-foreground">
-                                Round {step.round}
-                              </p>
-                            )}
                           </div>
-                        )}
-                        
-                        {/* Traditional workouts: Single exercise */}
-                        {!step.exercises && (step.exerciseName || step.exercise?.name) && (
-                          <div>
-                            <p className="font-medium">{step.exerciseName || step.exercise?.name}</p>
-                            {(step.set || step.round) && (
-                              <p className="text-xs text-muted-foreground">
-                                Set {step.set} {step.round && `• Exercise ${step.round}`}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Canonical transition labels */}
-                        {step.type === 'countdown' && step.label?.toUpperCase() === 'GO' && (
-                          <p className="font-medium text-green-600">▶ GO!</p>
-                        )}
-                        {step.type === 'countdown' && step.label?.toUpperCase() !== 'GO' && (
-                          <p className="text-sm text-muted-foreground">Countdown pip</p>
-                        )}
-                        {step.type === 'round_rest' && (
-                          <p className="text-sm text-muted-foreground">🔊 "Round rest" voice cue</p>
-                        )}
-                        
-                        {/* Legacy step types */}
-                        {step.type === 'instruction' && (
-                          <p className="text-sm text-muted-foreground">{step.message || step.text || "Instruction"}</p>
-                        )}
-                        {step.type === 'hold' && (
-                          <p className="text-sm text-muted-foreground">Hold position</p>
-                        )}
-                        
-                        {(step.message || step.text || (step.label && step.type !== 'countdown')) && (
-                          <p className="text-sm text-muted-foreground">
-                            {step.message || step.text || step.label}
-                          </p>
                         )}
                       </div>
                     </div>
@@ -372,6 +318,18 @@ export function TimelinePreview({ steps, title = "Workout Timeline" }: TimelineP
                   </DialogHeader>
                   
                   <div className="space-y-4">
+                    {/* Coach & Beep Information */}
+                    <div className="p-4 bg-primary/5 rounded-lg border-2 border-primary/20">
+                      <p className="text-lg font-semibold mb-2">{stepDesc.icon} {stepDesc.primary}</p>
+                      {stepDesc.details.length > 0 && (
+                        <div className="space-y-1 text-sm">
+                          {stepDesc.details.map((detail, idx) => (
+                            <p key={idx} className="text-muted-foreground">• {detail}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm font-medium">Type</p>
