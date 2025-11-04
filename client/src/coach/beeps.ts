@@ -35,18 +35,28 @@ class BeepEngine {
   }
 
   play(kind: BeepKind) {
+    console.log(`[BEEP] play(${kind}) - chatter: ${this.chatterLevel}`);
+    
     // Skip beeps in high chatter mode (voice cues replace them)
-    if (this.chatterLevel === 'high') return;
+    if (this.chatterLevel === 'high') {
+      console.log(`[BEEP] Suppressed (high chatter)`);
+      return;
+    }
 
     voiceBus.notifyBeep();
 
     const file = soundMap[kind] || soundMap.start;
+    console.log(`[BEEP] Loading audio file: ${file}`);
+    
     const audio = new Audio(file);
     audio.volume = 0.5; // Softer default (50%)
-    audio.play().catch(() => {
-      // Fallback: silent fail if audio file missing
-      console.warn(`Audio file not found: ${file}`);
-    });
+    audio.play()
+      .then(() => {
+        console.log(`[BEEP] ✅ Played successfully: ${file}`);
+      })
+      .catch((err) => {
+        console.error(`[BEEP] ❌ Failed to play: ${file}`, err);
+      });
   }
 
   /** Utility: schedule a sequence relative to now. Returns cancel(). */
