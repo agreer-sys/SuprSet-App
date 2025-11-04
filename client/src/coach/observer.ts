@@ -59,9 +59,19 @@ function synthesizePromptLine(ctx: TimelineContext, ev: Event): string | null {
     }
 
     case 'EV_HALFWAY':     return 'Halfway — smooth tempo.';
+    case 'EV_LAST_10S':    return '10 seconds — finish strong.';
     case 'EV_WORK_END':    return 'Nice work — breathe.';
     case 'EV_REST_START':  return 'Rest — log your set.';
     case 'EV_ROUND_REST_START': return 'Round rest — reset and get set.';
+    case 'EV_ROUND_COMPLETE': {
+      // Between-round motivational messages
+      const messages = [
+        'Round complete — nice work.',
+        'Shake it out — next one coming up.',
+        'Deep breath — we go again soon.'
+      ];
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
     case 'EV_BLOCK_END':   return 'Block complete — next block up.';
     default: return null;
   }

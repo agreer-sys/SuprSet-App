@@ -148,11 +148,24 @@ export function scheduleRepRound(opts: RoundSchedulerOpts): CancelFn {
     cancelFns.push(cancelTech);
   }
 
-  // Last-10s beeps
-  for (let sec = roundSec - 10; sec < roundSec; sec++) {
+  // Last-10s countdown - chatter-aware to reduce beep overload
+  if (ctx.chatterLevel === 'high') {
+    // High chatter: Voice cue instead of beeps
+    tids.push(window.setTimeout(() => {
+      emit({ type: 'EV_LAST_10S', roundIndex });
+    }, 3000 + (roundSec - 10) * 1000));
+  } else if (ctx.chatterLevel === 'minimal') {
+    // Minimal: 3 strategic beeps (10s, 5s, 1s)
+    [10, 5, 1].forEach(secBefore => {
+      tids.push(window.setTimeout(() => {
+        beeps.play('last5');
+      }, 3000 + (roundSec - secBefore) * 1000));
+    });
+  } else {
+    // Silent: Single ping at 10s
     tids.push(window.setTimeout(() => {
       beeps.play('last5');
-    }, 3000 + sec * 1000));
+    }, 3000 + (roundSec - 10) * 1000));
   }
 
   // ========== WORK END + CANONICAL TRANSITION ==========
@@ -174,6 +187,13 @@ export function scheduleRepRound(opts: RoundSchedulerOpts): CancelFn {
       sec: roundRestSec, // Use actual rest duration from timeline
       roundIndex
     });
+    
+    // Between-round coaching (not on final round)
+    const isNotFinalRound = roundIndex < totalRounds - 1;
+    if (isNotFinalRound && ctx.chatterLevel !== 'silent') {
+      // Optional motivational message between rounds
+      emit({ type: 'EV_ROUND_COMPLETE', roundIndex });
+    }
   }, 3000 + roundSec * 1000 + ROUND_END_TO_SPEECH_MS));
 
   // Countdown pips @T0+3s, T0+4s, T0+5s - emit EV_ROUND_COUNTDOWN

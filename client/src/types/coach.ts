@@ -29,10 +29,12 @@ export type Event =
   | { type:'EV_WORK_START'; exerciseId:string; setIndex?: number; roundIndex?: number }
   | { type:'EV_TECH_HINT'; exerciseId:string; source:'a2_predicted'|'generic' }
   | { type:'EV_HALFWAY'; exerciseId?:string }
+  | { type:'EV_LAST_10S'; roundIndex?: number }
   | { type:'EV_WORK_END'; exerciseId:string; roundIndex?: number }
   | { type:'EV_REST_START'; sec:number; reason?:string }
   | { type:'EV_REST_END' }
   | { type:'EV_ROUND_REST_START'; sec:number; roundIndex?: number }
+  | { type:'EV_ROUND_COMPLETE'; roundIndex?: number }
   | { type:'EV_ROUND_REST_END' }
   | { type:'EV_BLOCK_END'; blockId:string }
   | { type:'EV_WORKOUT_END' };
