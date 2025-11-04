@@ -1,0 +1,92 @@
+
+> rest-express@1.0.0 dev
+Airtable Service initialized with Base ID: apppI2s9...
+🎙️ OpenAI Realtime API relay configured on /realtime
+✅ Loaded 1 knowledge items from cache
+5:14:33 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 13 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+5:14:39 PM [express] GET /api/auth/user 401 in 4ms :: {"message":"Unauthorized"}
+Search params: {
+  q: undefined,
+  category: undefined,
+  equipment: undefined,
+  muscleGroup: undefined
+}
+📋 Serving 83 equipment items from catalog
+5:14:39 PM [express] GET /api/exercises/equipment 304 in 8ms :: ["Abductor Machine","Adductor Machin…
+5:14:39 PM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+Successfully loaded 215 exercises from Airtable
+5:14:41 PM [express] GET /api/exercises/categories 304 in 2370ms :: []
+Successfully loaded 215 exercises from Airtable
+5:14:42 PM [express] GET /api/exercises 304 in 2440ms :: [{"id":2093634808,"name":"Abductor Machine"…
+Successfully loaded 215 exercises from Airtable
+Returning 215 exercises
+5:14:42 PM [express] GET /api/exercises/search 304 in 2499ms :: [{"id":2093634808,"name":"Abductor M…
+Successfully loaded 215 exercises from Airtable
+5:14:42 PM [express] GET /api/exercises/muscle-groups 304 in 2539ms :: ["Accessory","Back","Biceps",…
+5:14:43 PM [express] GET /api/auth/user 401 in 3ms :: {"message":"Unauthorized"}
+5:14:43 PM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+5:14:43 PM [express] GET /api/exercises 200 in 8ms :: [{"id":2093634808,"name":"Abductor Machine","a…
+Search params: {
+  q: undefined,
+  category: undefined,
+  equipment: undefined,
+  muscleGroup: undefined
+}
+Returning 215 exercises
+📋 Serving 83 equipment items from catalog
+5:14:43 PM [express] GET /api/exercises/categories 200 in 10ms :: []
+5:14:43 PM [express] GET /api/exercises/muscle-groups 200 in 11ms :: ["Accessory","Back","Biceps","C…
+5:14:43 PM [express] GET /api/exercises/search 200 in 11ms :: [{"id":2093634808,"name":"Abductor Mac…
+5:14:43 PM [express] GET /api/exercises/equipment 200 in 14ms :: ["Abductor Machine","Adductor Machi…
+5:17:39 PM [express] GET /api/block-workouts 304 in 2638ms :: [{"id":73,"name":"SuprSet 1","descript…
+5:17:46 PM [express] POST /api/block-workout-sessions 201 in 233ms :: {"id":303,"userId":"guest-user…
+5:17:46 PM [express] GET /api/block-workout-sessions/active 200 in 90ms :: {"id":303,"userId":"guest…
+5:17:47 PM [express] GET /api/coaching/303 200 in 48ms :: {"id":347,"sessionId":null,"blockWorkoutSe…
+5:17:47 PM [express] GET /api/workout-sessions 200 in 5ms
+5:18:03 PM [express] GET /api/coach-responses 200 in 230ms :: {"items":[]}
+5:18:06 PM [express] GET /api/coach-responses 200 in 34ms :: {"items":[{"id":15,"textTemplate":"Star…
+5:18:06 PM [express] POST /api/coach-responses/15/mark-used 200 in 50ms :: {"ok":true}
+5:18:36 PM [express] GET /api/coach-responses 200 in 200ms :: {"items":[]}
+5:19:06 PM [express] GET /api/coach-responses 200 in 151ms :: {"items":[{"id":22,"textTemplate":"Goo…
+5:19:06 PM [express] POST /api/coach-responses/22/mark-used 200 in 38ms :: {"ok":true}
+5:19:07 PM [express] GET /api/coach-responses 200 in 37ms :: {"items":[{"id":33,"textTemplate":"Quic…
+5:19:07 PM [express] POST /api/coach-responses/33/mark-used 200 in 38ms :: {"ok":true}
+5:19:09 PM [express] GET /api/coach-responses 200 in 40ms :: {"items":[]}
+5:19:10 PM [express] GET /api/coach-responses 304 in 36ms :: {"items":[]}
+5:19:11 PM [express] GET /api/coach-responses 304 in 37ms :: {"items":[]}
+5:19:13 PM [express] GET /api/coach-responses 304 in 35ms :: {"items":[]}
+5:19:16 PM [express] GET /api/coach-responses 200 in 36ms :: {"items":[{"id":15,"textTemplate":"Star…
+5:19:16 PM [express] POST /api/coach-responses/16/mark-used 200 in 37ms :: {"ok":true}
+5:19:46 PM [express] GET /api/coach-responses 304 in 140ms :: {"items":[]}
+5:20:16 PM [express] GET /api/coach-responses 200 in 161ms :: {"items":[{"id":22,"textTemplate":"Goo…
+5:20:16 PM [express] POST /api/coach-responses/23/mark-used 200 in 34ms :: {"ok":true}
+5:20:17 PM [express] GET /api/coach-responses 200 in 33ms :: {"items":[{"id":33,"textTemplate":"Quic…
+5:20:17 PM [express] POST /api/coach-responses/34/mark-used 200 in 34ms :: {"ok":true}
+5:20:19 PM [express] GET /api/coach-responses 304 in 35ms :: {"items":[]}
+5:20:20 PM [express] GET /api/coach-responses 304 in 165ms :: {"items":[]}
+5:20:21 PM [express] GET /api/coach-responses 304 in 37ms :: {"items":[]}
+5:20:23 PM [express] GET /api/coach-responses 304 in 34ms :: {"items":[]}
+5:20:26 PM [express] GET /api/coach-responses 200 in 36ms :: {"items":[{"id":15,"textTemplate":"Star…
+5:20:26 PM [express] POST /api/coach-responses/15/mark-used 200 in 34ms :: {"ok":true}
+5:20:56 PM [express] GET /api/coach-responses 304 in 161ms :: {"items":[]}
+5:21:26 PM [express] GET /api/coach-responses 200 in 151ms :: {"items":[{"id":22,"textTemplate":"Goo…
+5:21:26 PM [express] POST /api/coach-responses/22/mark-used 200 in 35ms :: {"ok":true}
+5:21:27 PM [express] GET /api/coach-responses 200 in 35ms :: {"items":[{"id":33,"textTemplate":"Quic…
+5:21:27 PM [express] POST /api/coach-responses/33/mark-used 200 in 42ms :: {"ok":true}
+5:21:29 PM [express] GET /api/coach-responses 304 in 47ms :: {"items":[]}
+5:21:30 PM [express] GET /api/coach-responses 304 in 37ms :: {"items":[]}
+5:21:31 PM [express] GET /api/coach-responses 304 in 41ms :: {"items":[]}
+5:21:33 PM [express] GET /api/coach-responses 304 in 40ms :: {"items":[]}
+5:21:36 PM [express] GET /api/coach-responses 200 in 36ms :: {"items":[{"id":15,"textTemplate":"Star…
+5:21:36 PM [express] POST /api/coach-responses/16/mark-used 200 in 36ms :: {"ok":true}
+5:22:06 PM [express] GET /api/coach-responses 304 in 160ms :: {"items":[]}
+5:22:36 PM [express] GET /api/coach-responses 200 in 154ms :: {"items":[{"id":22,"textTemplate":"Goo…
+5:22:36 PM [express] POST /api/coach-responses/23/mark-used 200 in 35ms :: {"ok":true}
+5:22:37 PM [express] GET /api/coach-responses 200 in 35ms :: {"items":[{"id":33,"textTemplate":"Quic…
+5:22:37 PM [express] POST /api/coach-responses/34/mark-used 200 in 37ms :: {"ok":true}
+5:22:39 PM [express] GET /api/coach-responses 304 in 35ms :: {"items":[]}
+5:22:40 PM [express] GET /api/coach-responses 304 in 34ms :: {"items":[]}
+5:22:41 PM [express] GET /api/coach-responses 304 in 36ms :: {"items":[]}

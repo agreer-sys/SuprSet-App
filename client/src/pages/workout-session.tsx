@@ -818,6 +818,9 @@ export default function WorkoutSessionPage() {
 
   // Timeline execution timer for block workouts
   useEffect(() => {
+    // DISABLED: WorkoutPlayer now handles all timeline execution for block workouts
+    return;
+    
     if (!isBlockWorkout || !executionTimeline || !workoutStartEpochMs) {
       return;
     }
@@ -967,6 +970,9 @@ export default function WorkoutSessionPage() {
 
   // Send executionTimeline context to Realtime API (only on meaningful changes)
   useEffect(() => {
+    // DISABLED: WorkoutPlayer now handles all timeline execution for block workouts
+    return;
+    
     if (!realtime.isConnected || !isBlockWorkout || !executionTimeline || !preflightCompleted) return;
 
     const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
@@ -994,6 +1000,9 @@ export default function WorkoutSessionPage() {
   const hasSpokenForStepRef = useRef<Set<number | string>>(new Set());
   
   useEffect(() => {
+    // DISABLED: WorkoutPlayer now handles all voice prompts for block workouts
+    return;
+    
     if (!realtime.isConnected || !realtime.sendEvent || !isBlockWorkout || !executionTimeline || !workoutStartEpochMs || !preflightCompleted) return;
     
     const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
@@ -1110,6 +1119,9 @@ export default function WorkoutSessionPage() {
   const tenSecWarningStepRef = useRef<number | null>(null);
   
   useEffect(() => {
+    // DISABLED: WorkoutPlayer now handles all midpoint encouragement for block workouts
+    return;
+    
     if (!realtime.isConnected || !realtime.sendEvent || !isBlockWorkout || !executionTimeline || isPaused || isAwaitingReady) return;
     
     const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
@@ -1156,6 +1168,9 @@ export default function WorkoutSessionPage() {
   const lastBeepTimeRef = useRef<number>(0); // Track last beep timestamp to prevent rapid-fire
   
   useEffect(() => {
+    // DISABLED: WorkoutPlayer now handles all beeps for block workouts
+    return;
+    
     if (!isBlockWorkout || !executionTimeline || isPaused || isAwaitingReady || !workoutStartEpochMs) return;
     
     const currentStep = currentStepIndex < executionTimeline.executionTimeline.length 
@@ -1287,11 +1302,7 @@ export default function WorkoutSessionPage() {
     );
   }
 
-  const totalSets = 6; // Default for superset demo
-  const completedSets = setLogs?.length || 0;
-  const progressPercentage = (completedSets / totalSets) * 100;
-
-  // NEW: Use WorkoutPlayer for block workouts (handles intro, preflight, and execution internally)
+  // EARLY RETURN: Use WorkoutPlayer for block workouts (bypasses all legacy effects/state)
   if (isBlockWorkout && executionTimeline && blockSession) {
     return (
       <WorkoutPlayer
@@ -1303,6 +1314,11 @@ export default function WorkoutSessionPage() {
       />
     );
   }
+
+  // === LEGACY CODE BELOW: Only runs for template workouts ===
+  const totalSets = 6; // Default for superset demo
+  const completedSets = setLogs?.length || 0;
+  const progressPercentage = (completedSets / totalSets) * 100;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">

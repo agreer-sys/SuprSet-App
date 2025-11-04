@@ -55,6 +55,22 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     if (!workout.executionTimeline) return [];
     const exerciseMap = new Map();
     workout.executionTimeline.executionTimeline.forEach((step: any) => {
+      // Handle canonical rep-based rounds with exercises array
+      if (step.exercises) {
+        step.exercises.forEach((ex: any) => {
+          exerciseMap.set(ex.id.toString(), {
+            id: ex.id.toString(),
+            name: ex.name,
+            cues: ex.cues || [],
+            equipment: ex.equipment || [],
+            muscleGroup: ex.muscleGroup || '',
+            videoUrl: ex.videoUrl,
+            imageUrl: ex.imageUrl,
+            estimatedTimeSec: ex.estimatedTimeSec || 45
+          });
+        });
+      }
+      // Handle traditional single exercise steps
       if (step.exercise) {
         exerciseMap.set(step.exercise.id.toString(), {
           id: step.exercise.id.toString(),
