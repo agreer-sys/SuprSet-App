@@ -19,6 +19,7 @@ class BeepEngine {
   private ctx?: AudioContext;
   private chatterLevel: 'silent'|'minimal'|'high' = 'minimal';
   private audioUnlocked = false;
+  private preloadedAudio: Map<string, HTMLAudioElement> = new Map();
 
   ensureCtx() {
     if (!this.ctx) {
@@ -29,25 +30,47 @@ class BeepEngine {
 
   init() {
     this.ensureCtx();
-    // Unlock audio playback by playing a silent test sound
-    this.unlockAudio();
+    // Preload all audio files and unlock playback
+    this.preloadAndUnlock();
   }
 
-  private unlockAudio() {
+  private preloadAndUnlock() {
     if (this.audioUnlocked) return;
     
-    // Play silent audio to unlock browser autoplay restrictions
-    const testAudio = new Audio();
-    testAudio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD////////////////////////////////////////////AAAAAExhdmM1OC4xMwAAAAAAAAAAAAAAACQCgAAAAAAAAAGEfxqRsAAAAAAAAAAAAAAAAAAAAP/7kGQAD/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7kGQAj/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
-    testAudio.volume = 0.01;
-    testAudio.play()
-      .then(() => {
-        this.audioUnlocked = true;
-        console.log('[BEEP] Audio unlocked ✅');
-      })
-      .catch((err) => {
-        console.warn('[BEEP] Audio unlock failed (will retry on first beep):', err);
-      });
+    console.log('[BEEP] Preloading audio files...');
+    
+    // Preload all unique audio files
+    const uniqueFiles = new Set(Object.values(soundMap));
+    
+    uniqueFiles.forEach(file => {
+      const audio = new Audio();
+      audio.src = file;
+      audio.preload = 'auto';
+      audio.volume = 0.5;
+      
+      // Load the file
+      audio.load();
+      
+      // Play at 0 volume to unlock (browser requires play() during user gesture)
+      audio.volume = 0.001;
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = 0.5; // Restore normal volume
+            this.preloadedAudio.set(file, audio);
+            console.log(`[BEEP] ✅ Unlocked: ${file}`);
+          })
+          .catch((err) => {
+            console.warn(`[BEEP] ⚠️ Unlock failed for ${file}:`, err.name);
+          });
+      }
+    });
+    
+    this.audioUnlocked = true;
   }
 
   setChatterLevel(level: 'silent'|'minimal'|'high') {
@@ -57,26 +80,51 @@ class BeepEngine {
   play(kind: BeepKind) {
     console.log(`[BEEP] play(${kind}) - chatter: ${this.chatterLevel}`);
     
-    // Skip beeps in high chatter mode (voice cues replace them)
-    if (this.chatterLevel === 'high') {
-      console.log(`[BEEP] Suppressed (high chatter)`);
-      return;
-    }
+    // Silent mode: skip most beeps (only keep critical ones via chatter-aware scheduling)
+    // Minimal: all beeps, no voice
+    // High: all beeps + voice
+    // No suppression needed here - scheduling handles it
 
     voiceBus.notifyBeep();
 
     const file = soundMap[kind] || soundMap.start;
-    console.log(`[BEEP] Loading audio file: ${file}`);
     
-    const audio = new Audio(file);
-    audio.volume = 0.5; // Softer default (50%)
-    audio.play()
-      .then(() => {
-        console.log(`[BEEP] ✅ Played successfully: ${file}`);
-      })
-      .catch((err) => {
-        console.error(`[BEEP] ❌ Failed to play: ${file}`, err);
-      });
+    // Try to use preloaded audio first (already unlocked)
+    let audio = this.preloadedAudio.get(file);
+    
+    if (audio) {
+      // Reset and play preloaded audio
+      audio.currentTime = 0;
+      audio.volume = 0.5;
+      console.log(`[BEEP] Playing preloaded: ${file}`);
+      
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log(`[BEEP] ✅ Played successfully: ${file}`);
+          })
+          .catch((err) => {
+            console.error(`[BEEP] ❌ Play failed: ${file}`, err.name, err.message);
+          });
+      }
+    } else {
+      // Fallback: create new Audio (may be blocked by autoplay)
+      console.warn(`[BEEP] ⚠️ Audio not preloaded, creating new: ${file}`);
+      audio = new Audio(file);
+      audio.volume = 0.5;
+      
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log(`[BEEP] ✅ Played successfully (fallback): ${file}`);
+          })
+          .catch((err) => {
+            console.error(`[BEEP] ❌ Autoplay blocked: ${file}`, err.name, err.message);
+          });
+      }
+    }
   }
 
   /** Utility: schedule a sequence relative to now. Returns cancel(). */
