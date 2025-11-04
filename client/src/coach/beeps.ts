@@ -78,14 +78,8 @@ class BeepEngine {
   }
 
   play(kind: BeepKind) {
-    console.log(`[BEEP] play(${kind}) - chatter: ${this.chatterLevel}`);
+    console.log(`[BEEP] play(${kind})`);
     
-    // High chatter: voice cues are clear, skip beeps (no layering needed)
-    if (this.chatterLevel === 'high') {
-      console.log(`[BEEP] Suppressed (high chatter - voice cues sufficient)`);
-      return;
-    }
-
     voiceBus.notifyBeep();
 
     const file = soundMap[kind] || soundMap.start;

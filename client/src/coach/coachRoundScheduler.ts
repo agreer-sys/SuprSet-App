@@ -57,17 +57,19 @@ export function scheduleRepRound(opts: RoundSchedulerOpts): CancelFn {
     }, previewDelay));
   }
 
-  // Countdown beeps: 3-2-1
-  [3000, 2000, 1000].forEach((ms, idx) => {
-    tids.push(window.setTimeout(() => {
-      beeps.play('countdown');
-    }, 3000 - ms)); // At T-3s, T-2s, T-1s
-  });
+  // Countdown: 3-2-1 (beeps for minimal/silent, suppressed for high)
+  if (ctx.chatterLevel !== 'high') {
+    [3000, 2000, 1000].forEach((ms, idx) => {
+      tids.push(window.setTimeout(() => {
+        beeps.play('countdown');
+      }, 3000 - ms)); // At T-3s, T-2s, T-1s
+    });
 
-  // GO beep (T0)
-  tids.push(window.setTimeout(() => {
-    beeps.play('start');
-  }, 3000));
+    // GO beep (T0)
+    tids.push(window.setTimeout(() => {
+      beeps.play('start');
+    }, 3000));
+  }
 
   // ========== WORK PERIOD STARTS (T0) ==========
   const workStartMs = now + 3000;
@@ -82,20 +84,22 @@ export function scheduleRepRound(opts: RoundSchedulerOpts): CancelFn {
     });
   }, 3000));
 
-  // Minute pips (every 60s during work)
-  const minuteMarks = [];
-  for (let sec = 60; sec < roundSec - 10; sec += 60) {
-    minuteMarks.push(sec);
+  // Minute pips (every 60s during work) - beeps for minimal/silent only
+  if (ctx.chatterLevel !== 'high') {
+    const minuteMarks = [];
+    for (let sec = 60; sec < roundSec - 10; sec += 60) {
+      minuteMarks.push(sec);
+    }
+    minuteMarks.forEach(sec => {
+      tids.push(window.setTimeout(() => {
+        beeps.play('countdown'); // Brief pip
+        if (ctx.chatterLevel !== 'silent') {
+          const remaining = roundSec - sec;
+          ctx.caption?.(`${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')} left`);
+        }
+      }, 3000 + sec * 1000));
+    });
   }
-  minuteMarks.forEach(sec => {
-    tids.push(window.setTimeout(() => {
-      beeps.play('countdown'); // Brief pip
-      if (ctx.chatterLevel !== 'silent') {
-        const remaining = roundSec - sec;
-        ctx.caption?.(`${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')} left`);
-      }
-    }, 3000 + sec * 1000));
-  });
 
   // Halfway cue (50% mark)
   const halfwaySec = Math.floor(roundSec / 2);
@@ -163,9 +167,11 @@ export function scheduleRepRound(opts: RoundSchedulerOpts): CancelFn {
 
   // ========== WORK END + CANONICAL TRANSITION ==========
 
-  // End beep (at work completion)
+  // End beep (at work completion) - beeps for minimal/silent, voice for high
   tids.push(window.setTimeout(() => {
-    beeps.play('end');
+    if (ctx.chatterLevel !== 'high') {
+      beeps.play('end');
+    }
     emit({ 
       type: 'EV_WORK_END', 
       exerciseId: exercises[0]?.id || 'unknown',
@@ -189,18 +195,20 @@ export function scheduleRepRound(opts: RoundSchedulerOpts): CancelFn {
     }
   }, 3000 + roundSec * 1000 + ROUND_END_TO_SPEECH_MS));
 
-  // Countdown pips @T0+3s, T0+4s, T0+5s - emit EV_ROUND_COUNTDOWN
-  [3000, 4000, 5000].forEach(ms => {
-    tids.push(window.setTimeout(() => {
-      beeps.play('countdown');
-      emit({ type: 'EV_ROUND_COUNTDOWN', sec: (5000 - ms) / 1000 });
-    }, 3000 + roundSec * 1000 + ms));
-  });
+  // Countdown pips @T0+3s, T0+4s, T0+5s - beeps for minimal/silent only
+  if (ctx.chatterLevel !== 'high') {
+    [3000, 4000, 5000].forEach(ms => {
+      tids.push(window.setTimeout(() => {
+        beeps.play('countdown');
+        emit({ type: 'EV_ROUND_COUNTDOWN', sec: (5000 - ms) / 1000 });
+      }, 3000 + roundSec * 1000 + ms));
+    });
 
-  // GO beep @T0+5s (before rest period)
-  tids.push(window.setTimeout(() => {
-    beeps.play('start');
-  }, 3000 + roundSec * 1000 + 5000));
+    // GO beep @T0+5s (before rest period)
+    tids.push(window.setTimeout(() => {
+      beeps.play('start');
+    }, 3000 + roundSec * 1000 + 5000));
+  }
 
   // Rest period starts @T0+5.6s
   // (Timeline player will handle rest step; we just clean up here)
