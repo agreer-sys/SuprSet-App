@@ -18,6 +18,7 @@ const soundMap: Record<string, string> = {
 class BeepEngine {
   private ctx?: AudioContext;
   private chatterLevel: 'silent'|'minimal'|'high' = 'minimal';
+  private audioUnlocked = false;
 
   ensureCtx() {
     if (!this.ctx) {
@@ -28,6 +29,25 @@ class BeepEngine {
 
   init() {
     this.ensureCtx();
+    // Unlock audio playback by playing a silent test sound
+    this.unlockAudio();
+  }
+
+  private unlockAudio() {
+    if (this.audioUnlocked) return;
+    
+    // Play silent audio to unlock browser autoplay restrictions
+    const testAudio = new Audio();
+    testAudio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD////////////////////////////////////////////AAAAAExhdmM1OC4xMwAAAAAAAAAAAAAAACQCgAAAAAAAAAGEfxqRsAAAAAAAAAAAAAAAAAAAAP/7kGQAD/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7kGQAj/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+    testAudio.volume = 0.01;
+    testAudio.play()
+      .then(() => {
+        this.audioUnlocked = true;
+        console.log('[BEEP] Audio unlocked ✅');
+      })
+      .catch((err) => {
+        console.warn('[BEEP] Audio unlock failed (will retry on first beep):', err);
+      });
   }
 
   setChatterLevel(level: 'silent'|'minimal'|'high') {

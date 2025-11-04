@@ -32,7 +32,7 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     
     const initAudio = () => {
       voiceBus.ensure(); // Initialize AudioContext
-      beeps.ensureCtx(); // Initialize beep AudioContext
+      beeps.init(); // Initialize beep system and unlock audio
       setAudioReady(true);
       console.log('🎧 Audio system initialized');
       

@@ -84,8 +84,21 @@ export async function onEvent(ctx: TimelineContext, ev: Event) {
   // Countdown voice policy
   if (ev.type === 'EV_COUNTDOWN' && COUNTDOWN_VOICE_OFF) return;
 
-  // Gate halfway: High only
-  if (ev.type === 'EV_HALFWAY' && ctx.chatterLevel !== 'high') return;
+  // Gate all voice coaching to High chatter only (Minimal/Silent = beeps only)
+  const voiceOnlyEvents = [
+    'EV_WORK_PREVIEW',
+    'EV_WORK_START', 
+    'EV_HALFWAY',
+    'EV_LAST_10S',
+    'EV_WORK_END',
+    'EV_REST_START',
+    'EV_ROUND_REST_START',
+    'EV_ROUND_COMPLETE'
+  ];
+  
+  if (voiceOnlyEvents.includes(ev.type) && ctx.chatterLevel !== 'high') {
+    return; // No voice in Minimal/Silent modes
+  }
 
   const line = (await selectResponse(ctx, ev)) ?? synthesizePromptLine(ctx, ev);
   if (!line) return;
