@@ -65,6 +65,22 @@ app.use((req, res, next) => {
   // Use PORT env variable for deployment, fallback to 5000 for development
   // This serves both the API and the client.
   const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
+  server.on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      log(`⚠️ Port ${port} already in use, retrying in 2s...`);
+      setTimeout(() => {
+        try {
+          server.close();
+          server.listen(port);
+          log(`✅ Recovered: now serving on port ${port}`);
+        } catch (retryErr) {
+          log(`❌ Retry failed: ${retryErr.message}`);
+        }
+      }, 2000);
+    } else {
+      throw err;
+    }
+  });
   server.listen(
     {
       port,
