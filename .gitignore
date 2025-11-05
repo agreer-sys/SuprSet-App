@@ -4,3 +4,23 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+# Replit + Node + General
+.replit
+.replit.db
+.replit.secrets
+*.replit
+*.sqlite3
+*.db
+*.log
+.env
+__pycache__/
+node_modules/
+dist/
+build/
+.env.*
+*.pyc
+.DS_Store
+.vscode/
+*.swp
+.idea/
+*.bak
