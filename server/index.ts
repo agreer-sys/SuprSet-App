@@ -74,7 +74,7 @@ app.use((req, res, next) => {
           server.listen(port);
           log(`✅ Recovered: now serving on port ${port}`);
         } catch (retryErr) {
-          log(`❌ Retry failed: ${retryErr.message}`);
+          log(`❌ Retry failed: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`);
         }
       }, 2000);
     } else {
