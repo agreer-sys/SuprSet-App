@@ -5,8 +5,8 @@ import { initializeKnowledgeStore } from "./chroma-service";
 
 const app = express();
 // Increase payload limits for image uploads (50MB for AI training images)
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -54,7 +54,9 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  const isDev = process.env.NODE_ENV !== "production";
+
+  if (isDev) {
     await setupVite(app, server);
   } else {
     serveStatic(app);
@@ -63,11 +65,27 @@ app.use((req, res, next) => {
   // Use PORT env variable for deployment, fallback to 5000 for development
   // This serves both the API and the client.
   const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  server.listen(
+    {
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    },
+    () => {
+      log(`serving on port ${port}`);
+    },
+  );
+  process.on("SIGTERM", () => {
+    server.close(() => {
+      log("🛑 Server closed gracefully");
+      process.exit(0);
+    });
+  });
+
+  process.on("SIGINT", () => {
+    server.close(() => {
+      log("🛑 Server interrupted (Ctrl-C)");
+      process.exit(0);
+    });
   });
 })();
